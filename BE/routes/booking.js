@@ -13,6 +13,8 @@ router.get("/vouchers", bookingController.getBookingVouchers);
 
 // Booking CRUD
 router.post("/create", bookingController.createBooking);
+router.get("/:bookingId/payment/qr", bookingController.getPaymentQr);
+router.post("/payment/vietqr-webhook", bookingController.vietqrWebhook);
 router.put("/:bookingId/confirm", bookingController.confirmBooking);
 router.post("/:bookingId/payment", bookingController.processPayment);
 router.delete("/:bookingId/cancel", bookingController.cancelBooking); // ← mới

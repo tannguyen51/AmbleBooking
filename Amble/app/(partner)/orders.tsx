@@ -48,6 +48,7 @@ const EMPTY_COUNTS: OrderCounts = {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ xác nhận",
+  pending_payment: "Chờ thanh toán",
   confirmed: "Đã xác nhận",
   cancelled: "Đã hủy",
   paid: "Đã thanh toán",
@@ -59,6 +60,7 @@ const STATUS_STYLES: Record<
   { color: string; backgroundColor: string; borderColor?: string }
 > = {
   pending: { color: "#E69A00", backgroundColor: "#FFF7E2" },
+  pending_payment: { color: "#E69A00", backgroundColor: "#FFF7E2" },
   confirmed: { color: "#22C55E", backgroundColor: "#E7F8EE" },
   cancelled: {
     color: "#F04444",

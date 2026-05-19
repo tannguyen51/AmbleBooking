@@ -25,7 +25,11 @@ const PRIMARY = "#FF6B35";
 type Tab = "active" | "completed" | "cancelled";
 
 const TAB_CONFIG: { id: Tab; label: string; statuses: string[] }[] = [
-  { id: "active", label: "Đang đặt", statuses: ["confirmed", "paid", "draft"] },
+  {
+    id: "active",
+    label: "Đang đặt",
+    statuses: ["pending", "pending_payment", "confirmed", "paid", "draft"],
+  },
   { id: "completed", label: "Đã xong", statuses: ["completed"] },
   { id: "cancelled", label: "Đã hủy", statuses: ["cancelled"] },
 ];
@@ -35,10 +39,26 @@ const STATUS_DISPLAY: Record<
   { label: string; color: string; bg: string }
 > = {
   draft: { label: "Chờ xác nhận", color: "#92400E", bg: "#FEF3C7" },
+  pending: { label: "Chờ xác nhận", color: "#92400E", bg: "#FEF3C7" },
+  pending_payment: {
+    label: "Chờ thanh toán",
+    color: "#B45309",
+    bg: "#FEF3C7",
+  },
   confirmed: { label: "Đã xác nhận", color: "#065F46", bg: "#D1FAE5" },
   paid: { label: "Đã thanh toán", color: "#1D4ED8", bg: "#DBEAFE" },
   completed: { label: "Hoàn thành", color: "#374151", bg: "#F3F4F6" },
   cancelled: { label: "Đã hủy", color: "#991B1B", bg: "#FEE2E2" },
+};
+
+const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
+  pending_payment: { label: "Chờ thanh toán", color: "#B45309" },
+  paid: { label: "Đã thanh toán", color: "#1D4ED8" },
+  completed: { label: "Đã thanh toán", color: "#1D4ED8" },
+  cancelled: { label: "Đã hủy", color: "#991B1B" },
+  confirmed: { label: "Chưa thanh toán", color: "#6B7280" },
+  pending: { label: "Chưa thanh toán", color: "#6B7280" },
+  draft: { label: "Chưa thanh toán", color: "#6B7280" },
 };
 
 export default function BookingHistoryScreen() {
@@ -114,7 +134,31 @@ export default function BookingHistoryScreen() {
     const restaurant = item.restaurantId;
     const table = item.tableId;
     const status = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.draft;
-    const canCancel = ["draft", "confirmed", "paid"].includes(item.status);
+    const paymentStatus =
+      PAYMENT_STATUS[item.status] || PAYMENT_STATUS.confirmed;
+    const goToPayment = () =>
+      router.push({
+        pathname: "/booking/payment" as any,
+        params: {
+          bookingId: item._id,
+          bookingNumber: item.bookingNumber,
+          restaurantName: restaurant?.name || "Nhà hàng",
+          restaurantImage: restaurant?.images?.[0],
+          tableName: table?.name || "Bàn",
+          date: item.bookingDetails?.date || "",
+          time: item.bookingDetails?.time || "",
+          partySize: String(item.bookingDetails?.partySize || ""),
+          deposit: String(item.pricing?.totalAmount || "0"),
+        },
+      });
+    const canCancel = [
+      "draft",
+      "pending",
+      "pending_payment",
+      "confirmed",
+      "paid",
+    ].includes(item.status);
+    const canPay = item.status === "pending_payment";
 
     return (
       <View style={c.card}>
@@ -134,11 +178,23 @@ export default function BookingHistoryScreen() {
             <Text style={c.restName} numberOfLines={1}>
               {restaurant?.name || "Nhà hàng"}
             </Text>
-            <View style={[c.statusBadge, { backgroundColor: status.bg }]}>
-              <Text style={[c.statusTxt, { color: status.color }]}>
-                {status.label}
-              </Text>
-            </View>
+            {canPay ? (
+              <TouchableOpacity
+                style={[c.statusBadge, { backgroundColor: status.bg }]}
+                onPress={goToPayment}
+                activeOpacity={0.8}
+              >
+                <Text style={[c.statusTxt, { color: status.color }]}>
+                  {status.label}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[c.statusBadge, { backgroundColor: status.bg }]}>
+                <Text style={[c.statusTxt, { color: status.color }]}>
+                  {status.label}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Details */}
@@ -158,6 +214,43 @@ export default function BookingHistoryScreen() {
               {item.bookingDetails?.partySize} người
             </Text>
           </View>
+          {canPay ? (
+            <TouchableOpacity
+              style={c.detailRow}
+              onPress={goToPayment}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="card-outline"
+                size={13}
+                color={paymentStatus.color}
+              />
+              <Text
+                style={[
+                  c.detailTxt,
+                  { color: paymentStatus.color, fontWeight: "700" },
+                ]}
+              >
+                Thanh toán: {paymentStatus.label}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={c.detailRow}>
+              <Ionicons
+                name="card-outline"
+                size={13}
+                color={paymentStatus.color}
+              />
+              <Text
+                style={[
+                  c.detailTxt,
+                  { color: paymentStatus.color, fontWeight: "700" },
+                ]}
+              >
+                Thanh toán: {paymentStatus.label}
+              </Text>
+            </View>
+          )}
 
           {/* Footer */}
           <View style={c.cardFooter}>
@@ -183,6 +276,24 @@ export default function BookingHistoryScreen() {
               ) : (
                 <Text style={c.cancelTxt}>Hủy đặt bàn</Text>
               )}
+            </TouchableOpacity>
+          )}
+
+          {canPay && (
+            <TouchableOpacity
+              style={c.payBtn}
+              onPress={goToPayment}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#FF6B35", "#FFD700"]}
+                style={c.payBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="qr-code-outline" size={16} color="#fff" />
+                <Text style={c.payBtnText}>Thanh toán ngay</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
@@ -377,4 +488,17 @@ const c = StyleSheet.create({
     alignItems: "center",
   },
   cancelTxt: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
+  payBtn: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  payBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  payBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });

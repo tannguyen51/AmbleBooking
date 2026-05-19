@@ -161,6 +161,24 @@ export default function ConfirmBookingScreen() {
         voucherDiscount: discount,
       });
       const booking = res.data.booking;
+      if (selectedPayment === "bank") {
+        router.push({
+          pathname: "/booking/payment" as any,
+          params: {
+            bookingId: booking._id,
+            bookingNumber: booking.bookingNumber,
+            restaurantName,
+            restaurantImage: tableImage,
+            tableName,
+            date: bookingData.date,
+            time: bookingData.time,
+            partySize: bookingData.partySize,
+            deposit: total.toString(),
+          },
+        });
+        return;
+      }
+
       router.push({
         pathname: "/booking/success" as any,
         params: {

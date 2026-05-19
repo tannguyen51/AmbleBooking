@@ -19,8 +19,14 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Connect MongoDB ─────────────────────────────────────
+const mongoUri =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URI ||
+  //"mongodb://localhost:27017/amble_db";
+  "mongodb+srv://QuangNhat:201004@cluster.swkdm7f.mongodb.net/Amble?appname=Amble";
+
 mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/amble_db")
+  .connect(mongoUri)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB error:", err));
 
@@ -35,7 +41,7 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/ai", aiRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "🚶 Amble API is running!" });
+  res.json({ success: true, message: " Amble API is running!" });
 });
 
 // 404

@@ -31,6 +31,10 @@ export const authAPI = {
   }) => api.post("/auth/register", data),
   login: (data: { email: string; password: string }) =>
     api.post("/auth/login", data),
+  requestPasswordReset: (data: { email: string }) =>
+    api.post("/auth/forgot-password", data),
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    api.post("/auth/reset-password", data),
   getMe: () => api.get("/auth/me"),
 };
 
@@ -121,6 +125,10 @@ export const bookingAPI = {
 
   // Partner xác nhận booking
   confirm: (bookingId: string) => api.put(`/booking/${bookingId}/confirm`),
+
+  // Lấy QR chuyển khoản
+  getPaymentQr: (bookingId: string) =>
+    api.get(`/booking/${bookingId}/payment/qr`),
 
   // AI conversation
   processMessage: (data: {

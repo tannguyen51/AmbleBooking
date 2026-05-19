@@ -1,6 +1,19 @@
 const Booking = require("../models/booking");
 const Table = require("../models/table");
 const Restaurant = require("../models/restaurant");
+const paymentConfig = require("../config/paymentConfig");
+
+const buildVietQrImageUrl = (amount, content) => {
+  if (!paymentConfig.accountNumber || !paymentConfig.accountName) return null;
+  const addInfo = encodeURIComponent(content || "");
+  const accountName = encodeURIComponent(paymentConfig.accountName);
+  return `${paymentConfig.imageBase}/${paymentConfig.bankCode}-${paymentConfig.accountNumber}-${paymentConfig.template}.png?amount=${amount}&addInfo=${addInfo}&accountName=${accountName}`;
+};
+
+const generateTransferContent = (bookingRef) => {
+  const randomCode = Math.floor(100000 + Math.random() * 900000);
+  return `${paymentConfig.contentPrefix}-${bookingRef}-${randomCode}`;
+};
 
 const BOOKING_VOUCHERS = [
   { code: "AMBLE10", discount: 10, minBill: 50000, isPercent: true },
@@ -105,8 +118,25 @@ exports.createBooking = async (req, res) => {
           : undefined,
       },
       payment: paymentMethod ? { method: paymentMethod } : undefined,
-      status: "pending",
+      status: paymentMethod === "bank" ? "pending_payment" : "pending",
     });
+
+    if (paymentMethod === "bank") {
+      const bookingRef = booking.bookingNumber || booking._id.toString();
+      const expectedContent = generateTransferContent(bookingRef);
+      const qrUrl = buildVietQrImageUrl(totalAmount, expectedContent);
+      booking.payment = {
+        ...(booking.payment || {}),
+        method: "bank",
+        expectedContent,
+        qrUrl,
+        bankCode: paymentConfig.bankCode,
+        accountNumber: paymentConfig.accountNumber,
+        amount: totalAmount,
+      };
+      booking.status = "pending_payment";
+      await booking.save();
+    }
 
     // Cập nhật trạng thái bàn → đã đặt
     await Table.findByIdAndUpdate(tableId, {
@@ -175,6 +205,129 @@ exports.processPayment = async (req, res) => {
     return res.json({ success: true, booking, transactionId });
   } catch (err) {
     console.error("[processPayment]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// ── GET /api/booking/:bookingId/payment/qr ───────────────
+exports.getPaymentQr = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking không tồn tại" });
+
+    if (booking.status === "paid") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Booking đã được thanh toán" });
+    }
+
+    if (booking.payment?.method && booking.payment.method !== "bank") {
+      return res.status(400).json({
+        success: false,
+        message: "Booking không sử dụng thanh toán chuyển khoản",
+      });
+    }
+
+    const bookingRef = booking.bookingNumber || booking._id.toString();
+    const expectedContent =
+      booking.payment?.expectedContent || generateTransferContent(bookingRef);
+    const amount = booking.pricing?.totalAmount || 0;
+    const qrUrl = buildVietQrImageUrl(amount, expectedContent);
+
+    booking.payment = {
+      ...(booking.payment || {}),
+      method: "bank",
+      expectedContent,
+      qrUrl,
+      bankCode: paymentConfig.bankCode,
+      accountNumber: paymentConfig.accountNumber,
+      amount,
+    };
+    if (booking.status !== "pending_payment") {
+      booking.status = "pending_payment";
+    }
+    await booking.save();
+
+    return res.json({
+      success: true,
+      qr: {
+        imageUrl: qrUrl,
+        amount,
+        content: expectedContent,
+        bankCode: paymentConfig.bankCode,
+        accountNumber: paymentConfig.accountNumber,
+        accountName: paymentConfig.accountName,
+      },
+    });
+  } catch (err) {
+    console.error("[getPaymentQr]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// ── POST /api/booking/payment/vietqr-webhook ─────────────
+exports.vietqrWebhook = async (req, res) => {
+  try {
+    const payload = req.body?.data || req.body || {};
+    const content = payload.content || payload.addInfo || payload.description;
+    const amount = Number(payload.amount || 0);
+    const transactionId = payload.transactionId || payload.refId;
+    const bankCode = payload.bankCode || paymentConfig.bankCode;
+    const accountNumber =
+      payload.accountNumber || paymentConfig.accountNumber || "";
+    const paidAt = payload.paidAt || payload.transactionTime;
+
+    if (!content) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu nội dung chuyển khoản" });
+    }
+
+    const booking = await Booking.findOne({
+      "payment.expectedContent": content,
+    });
+
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy booking" });
+    }
+
+    if (booking.status === "paid") {
+      return res.json({ success: true, bookingId: booking._id });
+    }
+
+    if (accountNumber && accountNumber !== paymentConfig.accountNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Thông tin tài khoản không khớp",
+      });
+    }
+
+    if (amount < (booking.pricing?.totalAmount || 0)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Số tiền không đủ" });
+    }
+
+    booking.status = "paid";
+    booking.payment = {
+      ...(booking.payment || {}),
+      method: "bank",
+      transactionId: transactionId || `VQR-${Date.now()}`,
+      paidAt: paidAt ? new Date(paidAt) : new Date(),
+      bankCode,
+      accountNumber,
+      amount: amount || booking.pricing?.totalAmount || 0,
+    };
+    await booking.save();
+
+    return res.json({ success: true, bookingId: booking._id });
+  } catch (err) {
+    console.error("[vietqrWebhook]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };

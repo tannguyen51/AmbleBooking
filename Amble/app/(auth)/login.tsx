@@ -116,7 +116,9 @@ export default function LoginScreen() {
             <View style={styles.labelRow}>
               <Text style={styles.label}>Mật khẩu</Text>
 
-              <TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/forgot-password")}
+                >
                 <Text style={styles.forgotText}>Quên mật khẩu?</Text>
               </TouchableOpacity>
             </View>
@@ -168,19 +170,6 @@ export default function LoginScreen() {
                 <Text style={styles.loginBtnText}>Đăng nhập</Text>
               )}
             </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>hoặc</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google Login */}
-          <TouchableOpacity style={styles.googleBtn}>
-            <Ionicons name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleText}>Tiếp tục với Google</Text>
           </TouchableOpacity>
 
           {/* Register */}
@@ -345,41 +334,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "800",
-  },
-
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: BORDER,
-  },
-
-  dividerText: {
-    marginHorizontal: 14,
-    color: TEXT_MUTED,
-  },
-
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 54,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    gap: 10,
-    marginBottom: 22,
-  },
-
-  googleText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: TEXT,
   },
 
   registerRow: {

@@ -40,7 +40,15 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "pending", "confirmed", "paid", "completed", "cancelled"],
+      enum: [
+        "draft",
+        "pending",
+        "pending_payment",
+        "confirmed",
+        "paid",
+        "completed",
+        "cancelled",
+      ],
       default: "draft",
     },
     payment: {
@@ -50,6 +58,11 @@ const bookingSchema = new mongoose.Schema(
         enum: ["momo", "bank", "credit", "apple"],
       },
       paidAt: Date,
+      expectedContent: String,
+      qrUrl: String,
+      bankCode: String,
+      accountNumber: String,
+      amount: Number,
     },
     conversationSessionId: String,
     confirmedAt: Date,
