@@ -343,7 +343,6 @@ export default function BookingHistoryScreen() {
         </View>
       ) : filteredBookings.length === 0 ? (
         <View style={s.center}>
-          <Text style={{ fontSize: 48 }}>📋</Text>
           <Text style={s.emptyTxt}>Không có đặt bàn nào</Text>
           <TouchableOpacity
             style={s.exploreBtn}
