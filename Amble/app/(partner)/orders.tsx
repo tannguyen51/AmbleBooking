@@ -6,10 +6,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
@@ -97,6 +99,8 @@ export default function PartnerOrdersScreen() {
   const [counts, setCounts] = useState<OrderCounts>(EMPTY_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [searchBookingNumber, setSearchBookingNumber] = useState("");
+  const [searchDate, setSearchDate] = useState("");
 
   const loadOrders = async (status: OrderStatus) => {
     try {
@@ -136,6 +140,18 @@ export default function PartnerOrdersScreen() {
 
   const pendingCount = counts.pending || 0;
 
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchBooking = searchBookingNumber
+        ? order.bookingNumber
+            .toLowerCase()
+            .includes(searchBookingNumber.toLowerCase())
+        : true;
+      const matchDate = searchDate ? order.date.includes(searchDate) : true;
+      return matchBooking && matchDate;
+    });
+  }, [orders, searchBookingNumber, searchDate]);
+
   const handleConfirm = async (orderId: string) => {
     try {
       setSubmittingId(orderId);
@@ -174,13 +190,58 @@ export default function PartnerOrdersScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerWrap}>
-        <Text style={styles.headerTitle}>Đơn đặt bàn</Text>
+        <Text style={styles.headerTitle}>Lịch sử đơn đặt</Text>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.push("/dashboard")}
         >
           <Text style={styles.backBtnText}>Về Dashboard</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchInputWrap}>
+          <Ionicons
+            name="search-outline"
+            size={16}
+            color="#9CA3AF"
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm mã đơn..."
+            placeholderTextColor="#D1D5DB"
+            value={searchBookingNumber}
+            onChangeText={setSearchBookingNumber}
+          />
+          {searchBookingNumber ? (
+            <TouchableOpacity onPress={() => setSearchBookingNumber("")}>
+              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.searchInputWrap}>
+          <Ionicons
+            name="calendar-outline"
+            size={16}
+            color="#9CA3AF"
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm ngày (YYYY-MM-DD)..."
+            placeholderTextColor="#D1D5DB"
+            value={searchDate}
+            onChangeText={setSearchDate}
+          />
+          {searchDate ? (
+            <TouchableOpacity onPress={() => setSearchDate("")}>
+              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       <ScrollView
@@ -240,7 +301,7 @@ export default function PartnerOrdersScreen() {
             <ActivityIndicator size="small" color="#FF6B35" />
             <Text style={styles.helperText}>Đang tải đơn đặt bàn...</Text>
           </View>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.emptyTitle}>Không có đơn phù hợp</Text>
             <Text style={styles.helperText}>
@@ -248,7 +309,7 @@ export default function PartnerOrdersScreen() {
             </Text>
           </View>
         ) : (
-          orders.map((order) => {
+          filteredOrders.map((order) => {
             const statusLabel = STATUS_LABELS[order.status] || order.status;
             const isPending = order.status === "pending";
             const isSubmitting = submittingId === order.id;
@@ -336,6 +397,30 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backBtnText: { fontSize: 12, fontWeight: "700", color: "#FF6B35" },
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF0F3",
+  },
+  searchInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+    gap: 8,
+  },
+  searchIcon: { opacity: 0.6 },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#1A1A1A",
+    fontWeight: "500",
+  },
   filterScroll: { maxHeight: 52 },
   filterRow: {
     paddingHorizontal: 16,

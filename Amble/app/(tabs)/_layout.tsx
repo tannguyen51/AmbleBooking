@@ -43,11 +43,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="favorites"
         options={{
-          title: "Khám phá",
+          title: "Yêu thích",
           tabBarIcon: ({ color }) => (
-            <Ionicons size={28} name="compass-outline" color={color} />
+            <Ionicons size={28} name="heart-outline" color={color} />
           ),
         }}
       />

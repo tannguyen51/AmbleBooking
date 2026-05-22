@@ -777,18 +777,6 @@ export default function HomeScreen() {
             <View style={styles.headerBtns}>
               <TouchableOpacity
                 style={styles.headerIconBtn}
-                onPress={() => router.push("/favorites")}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 18 }}>❤️</Text>
-                {favoriteIds.length > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeNum}>{favoriteIds.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerIconBtn}
                 activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 18 }}>🔔</Text>

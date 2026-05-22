@@ -420,21 +420,6 @@ export default function PartnerDashboard() {
           <Text style={styles.sectionTitle}>Truy cập nhanh</Text>
           <View style={styles.quickGrid}>
             {[
-              {
-                iconName: "grid-outline",
-                label: "Quản lý bàn",
-                path: "/tables",
-              },
-              {
-                iconName: "clipboard-outline",
-                label: "Đơn đặt bàn",
-                path: "/orders",
-              },
-              {
-                iconName: "business-outline",
-                label: "Hồ sơ nhà hàng",
-                path: "/profile",
-              },
               // {
               //   iconName: "notifications-outline",
               //   label: "Thông báo",
