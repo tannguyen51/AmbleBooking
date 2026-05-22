@@ -28,6 +28,8 @@ export default function RootLayout() {
     const inAuthGroup =
       pathname.startsWith("/login") ||
       pathname.startsWith("/register") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/reset-password") ||
       pathname.startsWith("/(auth)");
     const inPartnerAuthGroup =
       pathname.startsWith("/partner-login") ||

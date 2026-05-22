@@ -10,7 +10,8 @@ const signToken = (id) => {
 };
 
 const buildResetToken = () => {
-  const rawToken = crypto.randomBytes(32).toString("hex");
+  // Tạo mã 6 chữ số (000000-999999)
+  const rawToken = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
   const hashedToken = crypto
     .createHash("sha256")
     .update(rawToken)
