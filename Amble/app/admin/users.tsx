@@ -181,7 +181,7 @@ export default function AdminUsersScreen() {
               <View style={styles.cardHeader}>
                 <Text style={styles.name}>{item.fullName}</Text>
                 <StatusPill
-                  label={item.isActive ? "Active" : "Locked"}
+                  label={item.isActive ? "Hoạt Động" : "Bị Khóa"}
                   tone={item.isActive ? "success" : "danger"}
                 />
               </View>

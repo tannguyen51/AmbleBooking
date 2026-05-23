@@ -141,12 +141,22 @@ export default function ConfirmBookingScreen() {
   };
 
   const handleConfirm = async () => {
+    console.log('[DEBUG] User object:', user);
+    console.log('[DEBUG] User ID:', user?._id);
     if (!user?._id) {
       Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt bàn");
       return;
     }
     setLoading(true);
     try {
+      console.log('[DEBUG] Booking data:', {
+        userId: user._id,
+        restaurantId,
+        tableId,
+        partySize,
+        date,
+        time,
+      });
       const res = await bookingAPI.create({
         userId: user._id,
         restaurantId: restaurantId as string,
@@ -193,6 +203,8 @@ export default function ConfirmBookingScreen() {
         },
       });
     } catch (err: any) {
+      console.error('[DEBUG] Booking error:', err);
+      console.error('[DEBUG] Error details:', err.response?.data);
       Alert.alert(
         "Lỗi",
         err.response?.data?.message || "Đặt bàn thất bại. Vui lòng thử lại.",

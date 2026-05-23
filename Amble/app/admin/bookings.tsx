@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { adminTheme } from "../../constants/adminTheme";
 import { adminAPI } from "../../services/api";
@@ -16,15 +17,53 @@ import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 
+/** Chỉ các trạng thái còn được admin thao tác */
+const MANAGEABLE_STATUSES = new Set([
+  "pending",
+  "pending_payment",
+  "confirmed",
+  "paid",
+]);
+
+interface BookingRefund {
+  refundPercent?: number;
+  refundAmount?: number;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  requestedAt?: string;
+}
+
 interface BookingItem {
   _id: string;
   bookingNumber: string;
   status: string;
   bookingDetails?: { date?: string; time?: string; partySize?: number };
-  userId?: { fullName?: string; email?: string };
+  userId?: { fullName?: string; email?: string; phone?: string };
   restaurantId?: { name?: string };
   tableId?: { name?: string };
+  refund?: BookingRefund;
 }
+
+const formatVnd = (amount?: number) =>
+  `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
+
+const copyRefundInfo = async (item: BookingItem) => {
+  const r = item.refund;
+  if (!r?.accountNumber) {
+    Alert.alert("Thông báo", "Không có số tài khoản để sao chép");
+    return;
+  }
+  const text = [
+    `Mã: ${item.bookingNumber}`,
+    `Ngân hàng: ${r.bankName || "—"}`,
+    `STK: ${r.accountNumber}`,
+    `Chủ TK: ${r.accountName || "—"}`,
+    `Số tiền: ${formatVnd(r.refundAmount)}`,
+  ].join("\n");
+  await Clipboard.setStringAsync(text);
+  Alert.alert("Đã sao chép", "Thông tin hoàn tiền đã được copy");
+};
 
 const STATUS_TABS = [
   "pending",
@@ -37,6 +76,18 @@ const STATUS_TABS = [
   "refunded",
   "all",
 ];
+
+const STATUS_LABELS: Record<string, string> = {
+  "pending": "Chờ Xác Nhận",
+  "pending_payment": "Chờ Thanh Toán",
+  "confirmed": "Đã Xác Nhận",
+  "paid": "Đã Thanh Toán",
+  "completed": "Hoàn Thành",
+  "cancelled": "Đã Hủy",
+  "refund_pending": "Chờ Hoàn Tiền",
+  "refunded": "Đã Hoàn Tiền",
+  "all": "Tất Cả",
+};
 
 export default function AdminBookingsScreen() {
   const [status, setStatus] = useState<string>("pending");
@@ -79,8 +130,19 @@ export default function AdminBookingsScreen() {
   }, [status]);
 
   const setStatusAction = async (item: BookingItem, nextStatus: string) => {
+    const statusMap: Record<string, string> = {
+      "pending": "pending",
+      "pending_payment": "pending_payment",
+      "confirmed": "confirmed",
+      "paid": "paid",
+      "completed": "completed",
+      "cancelled": "cancelled",
+      "refund_pending": "refund_pending",
+      "refunded": "refunded",
+    };
+    const actualStatus = Object.entries(statusMap).find(([, v]) => v === nextStatus)?.[0] || nextStatus;
     try {
-      await adminAPI.updateBookingStatus(item._id, { status: nextStatus });
+      await adminAPI.updateBookingStatus(item._id, { status: actualStatus });
       await loadBookings();
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
@@ -89,7 +151,7 @@ export default function AdminBookingsScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Bookings" subtitle="Theo dõi và cập nhật" />
+      <AdminHeader title="Đơn Hàng" subtitle="Theo dõi và cập nhật" />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
@@ -127,7 +189,7 @@ export default function AdminBookingsScreen() {
               onPress={() => setStatus(tab)}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab}
+                {STATUS_LABELS[tab] || tab}
               </Text>
             </TouchableOpacity>
           );
@@ -159,51 +221,117 @@ export default function AdminBookingsScreen() {
             <AdminCard style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.name}>{item.bookingNumber}</Text>
-                <Text style={styles.status}>{item.status}</Text>
+                <Text style={styles.status}>
+                  {STATUS_LABELS[item.status] || item.status}
+                </Text>
               </View>
               <Text style={styles.meta}>
                 {item.restaurantId?.name || "Nhà hàng"} • {item.tableId?.name || "Bàn"}
               </Text>
               <Text style={styles.meta}>
-                {item.userId?.fullName || "Khách hàng"} • {item.bookingDetails?.date || ""} {item.bookingDetails?.time || ""}
+                {item.userId?.fullName || "Khách hàng"}
+                {item.userId?.phone ? ` • ${item.userId.phone}` : ""}
+                {" • "}
+                {item.bookingDetails?.date || ""} {item.bookingDetails?.time || ""}
               </Text>
-              {item.status === "refund_pending" ? (
-                <Text style={styles.metaStrong}>
-                  Refund: {(item as any)?.refund?.refundAmount || 0}đ
-                </Text>
+
+              {item.status === "refund_pending" || item.status === "refunded" ? (
+                <View style={styles.refundBox}>
+                  <Text style={styles.refundTitle}>Thông tin hoàn tiền</Text>
+                  <Text style={styles.refundRow}>
+                    <Text style={styles.refundLabel}>Số tiền: </Text>
+                    <Text style={styles.refundValue}>
+                      {formatVnd(item.refund?.refundAmount)}
+                      {item.refund?.refundPercent != null
+                        ? ` (${item.refund.refundPercent}%)`
+                        : ""}
+                    </Text>
+                  </Text>
+                  <Text style={styles.refundRow}>
+                    <Text style={styles.refundLabel}>Ngân hàng: </Text>
+                    <Text style={styles.refundValue}>
+                      {item.refund?.bankName?.trim() || "—"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.refundRow}>
+                    <Text style={styles.refundLabel}>Số TK: </Text>
+                    <Text style={styles.refundValueMono}>
+                      {item.refund?.accountNumber?.trim() || "—"}
+                    </Text>
+                  </Text>
+                  <Text style={styles.refundRow}>
+                    <Text style={styles.refundLabel}>Chủ TK: </Text>
+                    <Text style={styles.refundValue}>
+                      {item.refund?.accountName?.trim() || "—"}
+                    </Text>
+                  </Text>
+                  {item.status === "refund_pending" &&
+                  item.refund?.accountNumber?.trim() ? (
+                    <TouchableOpacity
+                      style={styles.copyBtn}
+                      onPress={() => copyRefundInfo(item)}
+                    >
+                      <Ionicons
+                        name="copy-outline"
+                        size={14}
+                        color={adminTheme.colors.onSurface}
+                      />
+                      <Text style={styles.copyBtnText}>Sao chép thông tin</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {item.status === "refund_pending" &&
+                  !item.refund?.bankName?.trim() &&
+                  !item.refund?.accountNumber?.trim() ? (
+                    <Text style={styles.refundWarning}>
+                      Khách chưa gửi thông tin ngân hàng khi hủy.
+                    </Text>
+                  ) : null}
+                </View>
               ) : null}
 
-              <View style={styles.actionsRow}>
-                {item.status === "refund_pending" ? (
+              {item.status === "refund_pending" ? (
+                <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionPrimary]}
-                    onPress={() => setStatusAction(item, "refunded")}
+                    onPress={() =>
+                      Alert.alert(
+                        "Xác nhận hoàn tiền",
+                        `Đã chuyển ${formatVnd(item.refund?.refundAmount)} cho ${item.refund?.accountName || "khách"}?`,
+                        [
+                          { text: "Hủy", style: "cancel" },
+                          {
+                            text: "Đã hoàn",
+                            onPress: () => setStatusAction(item, "refunded"),
+                          },
+                        ],
+                      )
+                    }
                   >
-                    <Text style={styles.actionTextPrimary}>Mark refunded</Text>
+                    <Text style={styles.actionTextPrimary}>Đã Hoàn</Text>
                   </TouchableOpacity>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionGhost]}
-                      onPress={() => setStatusAction(item, "confirmed")}
-                    >
-                      <Text style={styles.actionText}>Confirm</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionPrimary]}
-                      onPress={() => setStatusAction(item, "paid")}
-                    >
-                      <Text style={styles.actionTextPrimary}>Mark paid</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionDanger]}
-                      onPress={() => setStatusAction(item, "cancelled")}
-                    >
-                      <Text style={styles.actionTextDanger}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
+                </View>
+              ) : MANAGEABLE_STATUSES.has(item.status) ? (
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionGhost]}
+                    onPress={() => setStatusAction(item, "confirmed")}
+                  >
+                    <Text style={styles.actionText}>Xác Nhận</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionPrimary]}
+                    onPress={() => setStatusAction(item, "paid")}
+                  >
+                    <Text style={styles.actionTextPrimary}>Thanh Toán</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionDanger]}
+                    onPress={() => setStatusAction(item, "cancelled")}
+                  >
+                    <Text style={styles.actionTextDanger}>Hủy Bỏ</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </AdminCard>
           )}
         />
@@ -332,11 +460,61 @@ const styles = StyleSheet.create({
     color: adminTheme.colors.muted,
     marginTop: 2,
   },
-  metaStrong: {
+  refundBox: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: adminTheme.colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: adminTheme.colors.surfaceLow,
+    gap: 4,
+  },
+  refundTitle: {
     fontSize: 12,
-    color: adminTheme.colors.onSurface,
-    marginTop: 4,
     fontWeight: "700",
+    color: adminTheme.colors.onSurface,
+    marginBottom: 4,
+  },
+  refundRow: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  refundLabel: {
+    color: adminTheme.colors.muted,
+    fontWeight: "600",
+  },
+  refundValue: {
+    color: adminTheme.colors.onSurface,
+    fontWeight: "600",
+  },
+  refundValueMono: {
+    color: adminTheme.colors.onSurface,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  refundWarning: {
+    marginTop: 6,
+    fontSize: 11,
+    color: adminTheme.colors.danger,
+    fontWeight: "600",
+  },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: adminTheme.colors.surface,
+    borderWidth: 1,
+    borderColor: adminTheme.colors.surfaceLow,
+  },
+  copyBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: adminTheme.colors.onSurface,
   },
   actionsRow: {
     flexDirection: "row",
@@ -372,6 +550,6 @@ const styles = StyleSheet.create({
   actionTextDanger: {
     fontSize: 11,
     fontWeight: "700",
-    color: adminTheme.colors.danger,
+    color: adminTheme.colors.onDanger,
   },
 });

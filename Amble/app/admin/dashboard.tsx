@@ -38,12 +38,12 @@ const EMPTY_STATS: DashboardStats = {
 };
 
 const ACTIONS = [
-  { label: "Users", icon: "people", path: "/admin/users" },
-  { label: "Đối tác", icon: "business", path: "/admin/partners" },
-  { label: "Nhà hàng", icon: "restaurant", path: "/admin/restaurants" },
-  { label: "Bookings", icon: "calendar", path: "/admin/bookings" },
-  { label: "Rewards", icon: "trophy", path: "/admin/rewards" },
-  { label: "Routes", icon: "map", path: "/admin/routes" },
+  { label: "Người Dùng", icon: "people", path: "/admin/users" },
+  { label: "Đối Tác", icon: "business", path: "/admin/partners" },
+  { label: "Nhà Hàng", icon: "restaurant", path: "/admin/restaurants" },
+  { label: "Đơn Hàng", icon: "calendar", path: "/admin/bookings" },
+  { label: "Điểm Thưởng", icon: "trophy", path: "/admin/rewards" },
+  { label: "Tuyến Đường", icon: "map", path: "/admin/routes" },
 ];
 
 export default function AdminDashboard() {
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           colors={[adminTheme.colors.primary, adminTheme.colors.primaryContainer]}
           style={styles.hero}
         >
-          <Text style={styles.heroTitle}>Admin Dashboard</Text>
+          <Text style={styles.heroTitle}>Dashboard Quản Trị</Text>
           <Text style={styles.heroSubtitle}>
             Tổng quan vận hành hôm nay
           </Text>
@@ -88,13 +88,13 @@ export default function AdminDashboard() {
           </View>
         ) : (
           <View style={styles.statsGrid}>
-            <StatCard label="Total users" value={stats.totalUsers} />
-            <StatCard label="Active users" value={stats.activeUsers} />
-            <StatCard label="Partner pending" value={stats.partnersPending} />
-            <StatCard label="Partner active" value={stats.partnersActive} />
-            <StatCard label="Restaurants" value={stats.restaurantsActive} />
-            <StatCard label="Bookings today" value={stats.bookingsToday} />
-            <StatCard label="Pending payments" value={stats.pendingPayments} />
+            <StatCard label="Tổng Users" value={stats.totalUsers} />
+            <StatCard label="Users Hoạt Động" value={stats.activeUsers} />
+            <StatCard label="Đối Tác Chờ" value={stats.partnersPending} />
+            <StatCard label="Đối Tác Hoạt" value={stats.partnersActive} />
+            <StatCard label="Nhà Hàng" value={stats.restaurantsActive} />
+            <StatCard label="Đơn Hôm Nay" value={stats.bookingsToday} />
+            <StatCard label="Chờ Thanh Toán" value={stats.pendingPayments} />
           </View>
         )}
 
@@ -111,7 +111,7 @@ export default function AdminDashboard() {
                 <Ionicons
                   name={action.icon as any}
                   size={18}
-                  color="#0F172A"
+                  color={adminTheme.colors.primary}
                 />
               </View>
               <Text style={styles.actionLabel}>{action.label}</Text>
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Ionicons name="log-out" size={16} color="#0F172A" />
+          <Ionicons name="log-out" size={16} color={adminTheme.colors.primary} />
           <Text style={styles.logoutText}>Đăng xuất admin</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -154,11 +154,11 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#F8FAFC",
+    color: "#FFFFFF",
   },
   heroSubtitle: {
     marginTop: 6,
-    color: "#CBD5F5",
+    color: "rgba(255, 255, 255, 0.9)",
     fontSize: 13,
   },
   loadingWrap: {
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingText: {
-    color: "#64748B",
+    color: adminTheme.colors.muted,
     fontSize: 12,
   },
   statsGrid: {

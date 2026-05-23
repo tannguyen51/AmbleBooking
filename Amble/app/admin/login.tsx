@@ -87,7 +87,7 @@ export default function AdminLoginScreen() {
           <View style={styles.decCircle2} />
 
           <AmbleLogo size="md" textColor={adminTheme.colors.onPrimary} />
-          <Text style={styles.title}>Admin Console</Text>
+          <Text style={styles.title}>Bảng Điều Khiển Admin</Text>
           <Text style={styles.subtitle}>Đăng nhập để quản trị hệ thống</Text>
         </LinearGradient>
 
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: SURFACE,
   },
   input: {
     flex: 1,
