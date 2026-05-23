@@ -11,8 +11,10 @@ const buildVietQrImageUrl = (amount, content) => {
 };
 
 const generateTransferContent = (bookingRef) => {
-  const randomCode = Math.floor(100000 + Math.random() * 900000);
-  return `${paymentConfig.contentPrefix}-${bookingRef}-${randomCode}`;
+  const cleanRef = String(bookingRef).replace(/[^0-9A-Za-z]/g, "");
+  const shortRef = cleanRef.slice(-2).toUpperCase();
+  const randomCode = Math.floor(100 + Math.random() * 900);
+  return `${paymentConfig.contentPrefix}-${shortRef}${randomCode}`;
 };
 
 const BOOKING_VOUCHERS = [
@@ -20,6 +22,41 @@ const BOOKING_VOUCHERS = [
   { code: "GENZ2025", discount: 20000, minBill: 100000, isPercent: false },
   { code: "VIP50", discount: 50000, minBill: 200000, isPercent: false },
 ];
+
+const parseBookingDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  const iso = `${dateStr}T${timeStr}:00`;
+  const parsed = new Date(iso);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+
+  const [y, m, d] = String(dateStr).split("-").map(Number);
+  const [hh, mm] = String(timeStr).split(":").map(Number);
+  if (!y || !m || !d || Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+};
+
+const computeRefund = (booking) => {
+  const bookingDate = parseBookingDateTime(
+    booking?.bookingDetails?.date,
+    booking?.bookingDetails?.time,
+  );
+  if (!bookingDate) {
+    return {
+      hoursRemaining: 0,
+      refundPercent: 0,
+      refundAmount: 0,
+    };
+  }
+
+  const now = new Date();
+  const diffMs = bookingDate.getTime() - now.getTime();
+  const hoursRemaining = Math.max(0, diffMs / (1000 * 60 * 60));
+  const refundPercent = hoursRemaining >= 24 ? 100 : hoursRemaining >= 12 ? 50 : 0;
+  const depositAmount = Math.max(0, Number(booking?.pricing?.depositAmount || 0));
+  const refundAmount = Math.max(0, Math.round((depositAmount * refundPercent) / 100));
+
+  return { hoursRemaining, refundPercent, refundAmount };
+};
 
 // ── GET /api/booking/vouchers ────────────────────────────
 exports.getBookingVouchers = async (req, res) => {
@@ -36,6 +73,32 @@ exports.getTablesByRestaurant = async (req, res) => {
     return res.json({ success: true, tables });
   } catch (err) {
     console.error("[getTablesByRestaurant]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// ── GET /api/booking/:bookingId/refund-preview ───────────
+exports.getRefundPreview = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId).lean();
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking không tồn tại" });
+    }
+
+    const { hoursRemaining, refundPercent, refundAmount } = computeRefund(booking);
+
+    return res.json({
+      success: true,
+      preview: {
+        hoursRemaining,
+        refundPercent,
+        refundAmount,
+      },
+    });
+  } catch (err) {
+    console.error("[getRefundPreview]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
@@ -147,7 +210,7 @@ exports.createBooking = async (req, res) => {
     return res.json({
       success: true,
       booking,
-      message: "Yeu cau dat ban da duoc gui cho nha hang",
+      message: "Yêu cầu đặt bàn đã được gửi cho nhà hàng",
     });
   } catch (err) {
     console.error("[createBooking]", err);
@@ -372,7 +435,7 @@ exports.getBookingById = async (req, res) => {
 // ── DELETE /api/booking/:bookingId/cancel ─────────────────
 exports.cancelBooking = async (req, res) => {
   try {
-    const { reason } = req.body;
+    const { reason, refundAccount } = req.body;
     const booking = await Booking.findById(req.params.bookingId);
 
     if (!booking)
@@ -380,14 +443,48 @@ exports.cancelBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (["cancelled", "completed"].includes(booking.status)) {
+    if (["cancelled", "completed", "refund_pending", "refunded"].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể hủy booking ở trạng thái: ${booking.status}`,
       });
     }
 
-    booking.status = "cancelled";
+    const { hoursRemaining, refundPercent, refundAmount } = computeRefund(booking);
+    const bankName = String(refundAccount?.bankName || "").trim();
+    const accountNumber = String(refundAccount?.accountNumber || "").trim();
+    const accountName = String(refundAccount?.accountName || "").trim();
+
+    if (refundAmount > 0) {
+      if (!bankName || !accountNumber || !accountName) {
+        return res.status(400).json({
+          success: false,
+          message: "Vui lòng nhập đầy đủ thông tin hoàn tiền.",
+        });
+      }
+      booking.status = "refund_pending";
+      booking.refund = {
+        refundPercent,
+        refundAmount,
+        requestedAt: new Date(),
+        refundedAt: null,
+        bankName,
+        accountNumber,
+        accountName,
+      };
+    } else {
+      booking.status = "cancelled";
+      booking.refund = {
+        refundPercent,
+        refundAmount,
+        requestedAt: null,
+        refundedAt: null,
+        bankName: "",
+        accountNumber: "",
+        accountName: "",
+      };
+    }
+
     booking.cancelledAt = new Date();
     booking.cancellationReason = reason || "Người dùng hủy";
     await booking.save();
@@ -401,7 +498,15 @@ exports.cancelBooking = async (req, res) => {
     return res.json({
       success: true,
       booking,
-      message: "Hủy booking thành công",
+      message:
+        refundAmount > 0
+          ? "Yêu cầu hoàn tiền đã được ghi nhận"
+          : "Hủy booking thành công",
+      refund: {
+        hoursRemaining,
+        refundPercent,
+        refundAmount,
+      },
     });
   } catch (err) {
     console.error("[cancelBooking]", err);

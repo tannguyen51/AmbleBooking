@@ -38,15 +38,15 @@ export default function ResetPasswordScreen() {
 
   const handleReset = async () => {
     if (!form.token.trim()) {
-      Alert.alert("Loi", "Vui long nhap ma dat lai");
+      Alert.alert("Lỗi", "Vui lòng nhập mã đặt lại");
       return;
     }
     if (form.password.length < 6) {
-      Alert.alert("Loi", "Mat khau toi thieu 6 ky tu");
+      Alert.alert("Lỗi", "Mật khẩu tối thiểu 6 ký tự");
       return;
     }
     if (form.password !== form.confirm) {
-      Alert.alert("Loi", "Mat khau xac nhan khong khop");
+      Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp");
       return;
     }
 
@@ -56,12 +56,12 @@ export default function ResetPasswordScreen() {
         token: form.token.trim(),
         newPassword: form.password,
       });
-      Alert.alert("Thanh cong", "Dat lai mat khau thanh cong");
+      Alert.alert("Thành công", "Đặt lại mật khẩu thành công");
       router.replace("/(auth)/login");
     } catch (error: any) {
       const message =
-        error.response?.data?.message || "Khong dat lai duoc mat khau";
-      Alert.alert("Loi", message);
+        error.response?.data?.message || "Không đặt lại được mật khẩu";
+      Alert.alert("Lỗi", message);
     } finally {
       setLoading(false);
     }
@@ -77,19 +77,19 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Dat lai mat khau</Text>
+          <Text style={styles.headerTitle}>Đặt lại mật khẩu</Text>
           <Text style={styles.headerSubtitle}>
-            Nhap ma tu email va mat khau moi
+            Nhập mã từ email và mật khẩu mới
           </Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Ma dat lai</Text>
+          <Text style={styles.label}>Mã đặt lại</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="key-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Nhap ma"
+              placeholder="Nhập mã"
               placeholderTextColor={TEXT_MUTED}
               value={form.token}
               onChangeText={(v) => update("token", v)}
@@ -97,12 +97,12 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Mat khau moi</Text>
+          <Text style={[styles.label, { marginTop: 12 }]}>Mật khẩu mới</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Toi thieu 6 ky tu"
+              placeholder="Tối thiểu 6 ký tự"
               placeholderTextColor={TEXT_MUTED}
               value={form.password}
               onChangeText={(v) => update("password", v)}
@@ -110,12 +110,12 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Xac nhan</Text>
+          <Text style={[styles.label, { marginTop: 12 }]}>Xác nhận</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Nhap lai mat khau"
+              placeholder="Nhập lại mật khẩu"
               placeholderTextColor={TEXT_MUTED}
               value={form.confirm}
               onChangeText={(v) => update("confirm", v)}
@@ -137,7 +137,7 @@ export default function ResetPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Cap nhat mat khau</Text>
+                <Text style={styles.submitText}>Cập nhật mật khẩu</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
