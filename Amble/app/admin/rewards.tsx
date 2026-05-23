@@ -85,7 +85,7 @@ export default function AdminRewardsScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Rewards" subtitle="Điều chỉnh điểm tích lũy" />
+      <AdminHeader title="Điểm Thưởng" subtitle="Điều chỉnh điểm tích lũy" />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
@@ -159,7 +159,8 @@ export default function AdminRewardsScreen() {
               }
             />
             <View style={styles.typeRow}>
-              {["earn", "redeem"].map((type) => {
+              {(["earn", "redeem"] as const).map((type) => {
+                const typeLabel = type === "earn" ? "Cộng Điểm" : "Dùng Điểm";
                 const isActive = form.type === type;
                 return (
                   <TouchableOpacity
@@ -175,7 +176,7 @@ export default function AdminRewardsScreen() {
                         isActive && styles.typeTextActive,
                       ]}
                     >
-                      {type}
+                      {typeLabel}
                     </Text>
                   </TouchableOpacity>
                 );

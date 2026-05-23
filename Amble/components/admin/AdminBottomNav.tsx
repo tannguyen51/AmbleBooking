@@ -5,11 +5,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { adminTheme } from "../../constants/adminTheme";
 
 const TABS = [
-  { name: "dashboard", label: "Tổng quan", icon: "speedometer" },
-  { name: "users", label: "Users", icon: "people" },
-  { name: "partners", label: "Đối tác", icon: "business" },
-  { name: "restaurants", label: "Nhà hàng", icon: "restaurant" },
-  { name: "bookings", label: "Bookings", icon: "calendar" },
+  { name: "dashboard", label: "Tổng Quan", icon: "speedometer" },
+  { name: "users", label: "Người Dùng", icon: "people" },
+  { name: "partners", label: "Đối Tác", icon: "business" },
+  { name: "restaurants", label: "Nhà Hàng", icon: "restaurant" },
+  { name: "bookings", label: "Đơn Hàng", icon: "calendar" },
 ];
 
 export function AdminBottomNav() {

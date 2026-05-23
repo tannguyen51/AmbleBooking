@@ -120,15 +120,15 @@ export default function AdminRestaurantsScreen() {
       <View style={styles.filterRow}>
         <TextInput
           style={styles.filterInput}
-          placeholder="City"
+          placeholder="Thành Phố"
           placeholderTextColor="#94A3B8"
           value={city}
           onChangeText={setCity}
-          onSubmitEditing={() => loadRestaurants(true)}
+          onSubmitEditing={loadRestaurants}
         />
         <TextInput
           style={styles.filterInput}
-          placeholder="Cuisine"
+          placeholder="Loại Ẩm Thực"
           placeholderTextColor="#94A3B8"
           value={cuisine}
           onChangeText={setCuisine}

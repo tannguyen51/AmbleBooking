@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backgroundColor: "rgba(26, 26, 26, 0.6)",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,

@@ -92,7 +92,7 @@ export default function AdminRoutesScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Routes" subtitle="Quản lý tuyến đường" />
+      <AdminHeader title="Tuyến Đường" subtitle="Quản lý tuyến đường" />
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Thêm route</Text>
