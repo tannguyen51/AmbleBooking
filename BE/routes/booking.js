@@ -17,6 +17,7 @@ router.get("/:bookingId/payment/qr", bookingController.getPaymentQr);
 router.post("/payment/vietqr-webhook", bookingController.vietqrWebhook);
 router.put("/:bookingId/confirm", bookingController.confirmBooking);
 router.post("/:bookingId/payment", bookingController.processPayment);
+router.get("/:bookingId/refund-preview", bookingController.getRefundPreview);
 router.delete("/:bookingId/cancel", bookingController.cancelBooking); // ← mới
 router.get("/user/:userId", bookingController.getUserBookings);
 router.get("/:bookingId", bookingController.getBookingById);

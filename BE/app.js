@@ -11,6 +11,7 @@ const partnerRoutes = require("./routes/partner");
 const restaurantRoutes = require("./routes/restaurants");
 const bookingRoutes = require("./routes/booking");
 const aiRoutes = require("./routes/ai");
+const adminRoutes = require("./routes/admin");
 const app = express();
 
 // ── Middleware ──────────────────────────────────────────
@@ -19,11 +20,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Connect MongoDB ─────────────────────────────────────
-const mongoUri =
-  process.env.MONGODB_URI ||
-  process.env.MONGO_URI ||
-  //"mongodb://localhost:27017/amble_db";
-  "mongodb+srv://QuangNhat:201004@cluster.swkdm7f.mongodb.net/Amble?appname=Amble";
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+if (!mongoUri) {
+  throw new Error("Missing MONGODB_URI or MONGO_URI in environment");
+}
 
 mongoose
   .connect(mongoUri)
@@ -39,6 +40,7 @@ app.use("/api/partner", partnerRoutes);
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/admin", adminRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: " Amble API is running!" });
