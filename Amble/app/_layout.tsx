@@ -6,7 +6,7 @@ import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
 
 export default function RootLayout() {
-  const { isAuthenticated, loadUser } = useAuthStore();
+  const { isAuthenticated, loadUser, user } = useAuthStore();
   const { isAuthenticated: isPartnerAuthenticated, loadPartner } =
     usePartnerAuthStore();
   const { language, loadLanguage } = useLanguageStore();
@@ -28,6 +28,8 @@ export default function RootLayout() {
     const inAuthGroup =
       pathname.startsWith("/login") ||
       pathname.startsWith("/register") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/reset-password") ||
       pathname.startsWith("/(auth)");
     const inPartnerAuthGroup =
       pathname.startsWith("/partner-login") ||
@@ -35,15 +37,21 @@ export default function RootLayout() {
       pathname.startsWith("/(partner-auth)");
     const inPartnerGroup =
       pathname.includes("/dashboard") ||
+      pathname.includes("/team") ||
+      pathname.includes("/partner-team") ||
+      pathname.includes("/partner-terms") ||
       pathname.includes("/tables") ||
       pathname.includes("/orders") ||
       pathname.includes("/notifications") ||
       pathname.includes("/profile") ||
       pathname.startsWith("/(partner)");
+    const inAdminGroup = pathname.startsWith("/admin");
+    const onAdminLogin = pathname.startsWith("/admin/login");
     const inTabsGroup = pathname.startsWith("/(tabs)") || pathname === "/";
     const onWelcome = pathname === "/welcome";
     const onLanguage = pathname === "/language";
     const onIntro = pathname === "/intro";
+    const isAdmin = isAuthenticated && user?.role === "admin";
 
     // ── Không redirect khi đang ở các màn hình con ──────────
     if (pathname.startsWith("/restaurant/")) return; // detail nhà hàng
@@ -54,11 +62,26 @@ export default function RootLayout() {
       return;
     }
 
+    if (isAdmin) {
+      if (!inAdminGroup) router.replace("/admin/dashboard");
+      return;
+    }
+
     if (isAuthenticated) {
       // Chỉ redirect khi đang ở auth screens.
       // KHÔNG redirect từ restaurant, booking, hay bất kỳ screen con nào khác
       // vì khi router.back() chạy, pathname thay đổi và trigger effect này
-      if (inAuthGroup || inPartnerAuthGroup) router.replace("/(tabs)");
+      if (inAuthGroup || inPartnerAuthGroup || inAdminGroup)
+        router.replace("/(tabs)");
+      return;
+    }
+
+    if (onAdminLogin) {
+      return;
+    }
+
+    if (inAdminGroup) {
+      router.replace("/admin/login");
       return;
     }
 
@@ -74,7 +97,7 @@ export default function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language]);
+  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user]);
 
   return (
     <>
@@ -98,10 +121,10 @@ export default function RootLayout() {
           Tất cả screens nằm cùng root Stack → router.back() hoạt động
           xuyên suốt từ payment → confirm → select-table → restaurant/[id]
         */}
-        <Stack.Screen
-          name="booking/select-table"
-          options={{
-            animation: "slide_from_right",
+      <Stack.Screen
+        name="booking/select-table"
+        options={{
+          animation: "slide_from_right",
             gestureEnabled: true,
             gestureDirection: "horizontal",
           }}

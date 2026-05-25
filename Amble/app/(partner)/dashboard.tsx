@@ -353,8 +353,10 @@ export default function PartnerDashboard() {
                 <Ionicons name="flash-outline" size={14} color="#1A1A1A" />
                 <Text style={styles.sectionTitle}>Đơn chờ xác nhận</Text>
               </View>
-              <TouchableOpacity onPress={() => router.push("/orders")}>
-                <Text style={styles.sectionLink}>Xem tất cả →</Text>
+              <TouchableOpacity onPress={() => router.push("/(partner)/orders")}>
+                <View style={styles.sectionLinkBtn}>
+                  <Text style={styles.sectionLink}>Xem tất cả</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -415,48 +417,6 @@ export default function PartnerDashboard() {
           </Animated.View>
         )}
 
-        {/* ── Quick actions ──────────────────────────────────── */}
-        <Animated.View style={slideUp(actionsAnim)}>
-          <Text style={styles.sectionTitle}>Truy cập nhanh</Text>
-          <View style={styles.quickGrid}>
-            {[
-              {
-                iconName: "grid-outline",
-                label: "Quản lý bàn",
-                path: "/tables",
-              },
-              {
-                iconName: "clipboard-outline",
-                label: "Đơn đặt bàn",
-                path: "/orders",
-              },
-              {
-                iconName: "business-outline",
-                label: "Hồ sơ nhà hàng",
-                path: "/profile",
-              },
-              // {
-              //   iconName: "notifications-outline",
-              //   label: "Thông báo",
-              //   path: "/(partner)/notifications",
-              // },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                style={styles.quickCard}
-                onPress={() => router.push(item.path as any)}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={item.iconName as any}
-                  size={20}
-                  color="#374151"
-                />
-                <Text style={styles.quickLabel}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
       </ScrollView>
 
       {/* ── Bottom nav ─────────────────────────────────────── */}
@@ -620,7 +580,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.7)",
   },
-  revenueAmount: { fontSize: 35, fontWeight: "900", color: "#fff" },
+  revenueAmount: { fontSize: 31, fontWeight: "900", color: "#fff" },
   revenueGrowthRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -677,15 +637,28 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
   },
   sectionLink: { fontSize: 12, color: "#FF6B35", fontWeight: "700" },
+  sectionLinkBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    backgroundColor: "#FFF7ED",
+  },
 
   // Pending cards
   pendingCard: {
-    backgroundColor: "#FFFBEB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "#F3F4F6",
     padding: 14,
     marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   pendingCardTop: {
     flexDirection: "row",
@@ -713,40 +686,17 @@ const styles = StyleSheet.create({
   pendingActions: { flexDirection: "row", gap: 8 },
   rejectBtn: {
     flex: 1,
-    height: 40,
+    height: 42,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#FCA5A5",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
     alignItems: "center",
     justifyContent: "center",
   },
-  rejectBtnText: { fontSize: 13, color: "#EF4444", fontWeight: "700" },
-  confirmBtn: { flex: 1, height: 40, borderRadius: 12, overflow: "hidden" },
+  rejectBtnText: { fontSize: 13, color: "#DC2626", fontWeight: "800" },
+  confirmBtn: { flex: 1, height: 42, borderRadius: 12, overflow: "hidden" },
   confirmBtnGrad: { flex: 1, alignItems: "center", justifyContent: "center" },
   confirmBtnText: { fontSize: 13, color: "#fff", fontWeight: "800" },
 
-  // Quick actions
-  quickGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
-  },
-  quickCard: {
-    width: (width - 50) / 2,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F3F4F6",
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  quickLabel: { fontSize: 13, fontWeight: "600", color: "#374151", flex: 1 },
 });

@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -11,6 +17,8 @@ import {
   FlatList,
   TextInput,
   StatusBar,
+  Modal,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -23,6 +31,7 @@ import { useFavoritesStore } from "../../store/favoritesStore";
 import { restaurantAPI } from "../../services/api";
 import { Ionicons } from "@expo/vector-icons";
 import AmbleLogo from "../../components/AmbleLogo";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -68,6 +77,22 @@ interface Category {
   key: string;
 }
 
+type FilterState = {
+  locationMode: "nearby" | "district" | "place" | null;
+  district: string;
+  place: string;
+  distance: string | null;
+  date: string;
+  time: string;
+  people: number;
+  availableNow: boolean;
+  priceRanges: string[];
+  purposes: string[];
+  ratings: number[];
+  quickTags: string[];
+  sort: string | null;
+};
+
 const CATEGORY_PRESET_LABEL: Record<string, string> = {
   local: "Gần đây",
   date: "Hẹn hò",
@@ -89,7 +114,34 @@ const CATEGORIES: Category[] = [
 
 const QUICK_TAGS = ["Món Việt", "Đồ Âu", "Rooftop", "Nhật Bản", "Lẩu nướng"];
 
-const PRICE_OPTIONS = ["$", "$$", "$$$"];
+const PRICE_OPTIONS = [
+  "Dưới 100k/người",
+  "100k – 300k/người",
+  "300k – 500k/người",
+  "Trên 500k/người",
+];
+
+const PRICE_MAP: Record<string, string[]> = {
+  "Dưới 100k/người": ["$"],
+  "100k – 300k/người": ["$$"],
+  "300k – 500k/người": ["$$$"],
+  "Trên 500k/người": ["$$$"],
+};
+
+const DISTANCE_OPTIONS = ["Dưới 1km", "Dưới 3km", "Dưới 5km"];
+
+const PURPOSE_OPTIONS = [
+  "Hẹn hò",
+  "Sinh nhật",
+  "Đi gia đình",
+  "Họp mặt bạn bè",
+  "Làm việc / học bài",
+  "Business Meeting",
+  "Chill / Sống ảo",
+  "Fine Dining",
+];
+
+const RATING_OPTIONS = [5, 4, 3, 2, 1];
 
 const SORT_OPTIONS = [
   { key: "rating", label: "Đánh giá cao nhất" },
@@ -331,7 +383,6 @@ const SkeletonCard = () => (
     </View>
   </View>
 );
-
 // ═══════════════════════════════════════════════════════════
 //  HOME SCREEN
 // ═══════════════════════════════════════════════════════════
@@ -359,10 +410,45 @@ export default function HomeScreen() {
   // Search & filter
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [activePrice, setActivePrice] = useState<string | null>(null);
-  const [activeSort, setActiveSort] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  const initialFilters: FilterState = useMemo(
+    () => ({
+      locationMode: null,
+      district: "",
+      place: "",
+      distance: null,
+      date: "",
+      time: "",
+      people: 2,
+      availableNow: false,
+      priceRanges: [],
+      purposes: [],
+      ratings: [],
+      quickTags: [],
+      sort: null,
+    }),
+    [],
+  );
+
+  const [draftFilters, setDraftFilters] = useState<FilterState>(initialFilters);
+  const [appliedFilters, setAppliedFilters] =
+    useState<FilterState>(initialFilters);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [dateValue, setDateValue] = useState<Date>(new Date());
+  const [timeValue, setTimeValue] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(19, 0, 0, 0);
+    return d;
+  });
+  const [tempDate, setTempDate] = useState<Date>(new Date());
+  const [tempTime, setTempTime] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(19, 0, 0, 0);
+    return d;
+  });
+  const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch ─────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -398,9 +484,8 @@ export default function HomeScreen() {
     setRefreshing(true);
     setSearch("");
     setActiveCategory(null);
-    setActiveTag(null);
-    setActivePrice(null);
-    setActiveSort(null);
+    setDraftFilters(initialFilters);
+    setAppliedFilters(initialFilters);
     fetchData();
   };
 
@@ -436,48 +521,180 @@ export default function HomeScreen() {
       );
     }
 
-    // 3. Quick tag
-    if (activeTag) {
-      list = list.filter(
-        (r) =>
-          r.cuisine?.toLowerCase().includes(activeTag.toLowerCase()) ||
-          r.tags?.some((t) =>
-            t.toLowerCase().includes(activeTag.toLowerCase()),
-          ),
+    // 3. Quick tags
+    if (appliedFilters.quickTags.length > 0) {
+      list = list.filter((r) =>
+        appliedFilters.quickTags.some((tag) => {
+          const t = tag.toLowerCase();
+          return (
+            r.cuisine?.toLowerCase().includes(t) ||
+            r.tags?.some((x) => x.toLowerCase().includes(t))
+          );
+        }),
       );
     }
 
     // 4. Price
-    if (activePrice) {
-      list = list.filter((r) => r.priceRange === activePrice);
+    if (appliedFilters.priceRanges.length > 0) {
+      const priceSet = new Set(
+        appliedFilters.priceRanges.flatMap((p) => PRICE_MAP[p] ?? []),
+      );
+      list = list.filter((r) => priceSet.has(r.priceRange));
     }
 
-    // 5. Sort
-    if (activeSort === "rating") {
+    // 5. Purpose
+    if (appliedFilters.purposes.length > 0) {
+      list = list.filter((r) =>
+        appliedFilters.purposes.some((p) => {
+          const key = p.toLowerCase();
+          return (
+            r.tags?.some((t) => t.toLowerCase().includes(key)) ||
+            r.categories?.some((c) => c.toLowerCase().includes(key))
+          );
+        }),
+      );
+    }
+
+    // 6. Rating
+    if (appliedFilters.ratings.length > 0) {
+      list = list.filter((r) =>
+        appliedFilters.ratings.some((rating) => r.rating >= rating),
+      );
+    }
+
+    // 7. Sort
+    if (appliedFilters.sort === "rating") {
       list.sort((a, b) => b.rating - a.rating);
-    } else if (activeSort === "reviews") {
+    } else if (appliedFilters.sort === "reviews") {
       list.sort((a, b) => b.reviewCount - a.reviewCount);
-    } else if (activeSort === "name") {
+    } else if (appliedFilters.sort === "name") {
       list.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return list;
   })();
 
-  const hasActiveFilter =
-    !!search.trim() ||
-    !!activeCategory ||
-    !!activeTag ||
-    !!activePrice ||
-    !!activeSort;
+  const formatDateInput = useCallback((value: Date) => {
+    return value.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }, []);
+
+  const formatTimeInput = useCallback((value: Date) => {
+    const hh = String(value.getHours()).padStart(2, "0");
+    const mm = String(value.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }, []);
+
+  const commitDate = useCallback(
+    (value: Date) => {
+      setDateValue(value);
+      setDraftFilters((prev) => ({
+        ...prev,
+        date: formatDateInput(value),
+      }));
+    },
+    [formatDateInput],
+  );
+
+  const commitTime = useCallback(
+    (value: Date) => {
+      setTimeValue(value);
+      setDraftFilters((prev) => ({
+        ...prev,
+        time: formatTimeInput(value),
+      }));
+    },
+    [formatTimeInput],
+  );
+
+  useEffect(() => {
+    if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+    applyTimerRef.current = setTimeout(() => {
+      setAppliedFilters(draftFilters);
+    }, 120);
+    return () => {
+      if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
+    };
+  }, [draftFilters]);
+
+  const filterCount = useMemo(() => {
+    let count = 0;
+    if (appliedFilters.locationMode === "nearby") count += 1;
+    if (
+      appliedFilters.locationMode === "district" &&
+      appliedFilters.district.trim()
+    )
+      count += 1;
+    if (appliedFilters.locationMode === "place" && appliedFilters.place.trim())
+      count += 1;
+    if (appliedFilters.distance) count += 1;
+    if (appliedFilters.date.trim()) count += 1;
+    if (appliedFilters.time.trim()) count += 1;
+    if (appliedFilters.people !== 2) count += 1;
+    if (appliedFilters.availableNow) count += 1;
+    count += appliedFilters.priceRanges.length;
+    count += appliedFilters.purposes.length;
+    count += appliedFilters.ratings.length;
+    count += appliedFilters.quickTags.length;
+    if (appliedFilters.sort) count += 1;
+    return count;
+  }, [appliedFilters]);
+
+  const hasActiveFilter = !!search.trim() || filterCount > 0;
 
   const clearFilters = () => {
     setSearch("");
     setActiveCategory(null);
-    setActiveTag(null);
-    setActivePrice(null);
-    setActiveSort(null);
+    setDraftFilters(initialFilters);
+    setAppliedFilters(initialFilters);
   };
+
+  const toggleInList = useCallback((list: string[], value: string) => {
+    return list.includes(value)
+      ? list.filter((v) => v !== value)
+      : [...list, value];
+  }, []);
+
+  const toggleRating = useCallback((list: number[], value: number) => {
+    return list.includes(value)
+      ? list.filter((v) => v !== value)
+      : [...list, value];
+  }, []);
+
+  const summaryChips = useMemo(() => {
+    const chips: string[] = [];
+    if (appliedFilters.locationMode === "nearby") chips.push("Gần tôi");
+    if (
+      appliedFilters.locationMode === "district" &&
+      appliedFilters.district.trim()
+    ) {
+      chips.push(`Quận ${appliedFilters.district.trim()}`);
+    }
+    if (
+      appliedFilters.locationMode === "place" &&
+      appliedFilters.place.trim()
+    ) {
+      chips.push(`Gần ${appliedFilters.place.trim()}`);
+    }
+    if (appliedFilters.distance) chips.push(appliedFilters.distance);
+    if (appliedFilters.date.trim()) chips.push(`Ngày ${appliedFilters.date}`);
+    if (appliedFilters.time.trim()) chips.push(`Giờ ${appliedFilters.time}`);
+    if (appliedFilters.people !== 2)
+      chips.push(`${appliedFilters.people} người`);
+    if (appliedFilters.availableNow) chips.push("Còn bàn ngay");
+    chips.push(...appliedFilters.priceRanges);
+    chips.push(...appliedFilters.purposes);
+    chips.push(...appliedFilters.quickTags);
+    chips.push(...appliedFilters.ratings.map((r) => `${r} sao+`));
+    const sortLabel = SORT_OPTIONS.find(
+      (s) => s.key === appliedFilters.sort,
+    )?.label;
+    if (sortLabel) chips.push(sortLabel);
+    return chips;
+  }, [appliedFilters]);
 
   const favRestaurants = allRestaurants.filter((r) =>
     favoriteIds.includes(r._id),
@@ -620,6 +837,11 @@ export default function HomeScreen() {
                   size={16}
                   color={hasActiveFilter ? "#fff" : TEXT_SEC}
                 />
+                {filterCount > 0 && (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{filterCount}</Text>
+                  </View>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -631,12 +853,15 @@ export default function HomeScreen() {
             contentContainerStyle={styles.quickTagsRow}
           >
             {QUICK_TAGS.map((tag) => {
-              const active = activeTag === tag;
+              const active = draftFilters.quickTags.includes(tag);
               return (
                 <TouchableOpacity
                   key={tag}
                   style={[styles.quickTag, active && styles.quickTagActive]}
-                  onPress={() => setActiveTag(active ? null : tag)}
+                  onPress={() => {
+                    const next = toggleInList(draftFilters.quickTags, tag);
+                    setDraftFilters((prev) => ({ ...prev, quickTags: next }));
+                  }}
                   activeOpacity={0.75}
                 >
                   <Text
@@ -654,11 +879,218 @@ export default function HomeScreen() {
 
           {/* Filter panel */}
           {showFilters && (
-            <View style={styles.filterPanel}>
+            <View style={styles.filterSheet}>
+              <View style={styles.filterSheetHeader}>
+                <View>
+                  <Text style={styles.filterTitle}>Bộ lọc</Text>
+                  <Text style={styles.filterSub}>
+                    {filterCount > 0
+                      ? `${filterCount} bộ lọc đang chọn`
+                      : "Tùy chỉnh nhanh theo nhu cầu"}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.filterLabel}>Vị trí</Text>
+              <View style={styles.filterRow}>
+                {[
+                  { key: "nearby", label: "Gần tôi" },
+                  { key: "district", label: "Quận, khu vực" },
+                  { key: "place", label: "Gần địa điểm" },
+                ].map((item) => {
+                  const active = draftFilters.locationMode === item.key;
+                  return (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                      ]}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          locationMode: active ? null : (item.key as any),
+                        }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {draftFilters.locationMode === "district" && (
+                <View style={styles.inlineInputRow}>
+                  <Ionicons
+                    name="location-outline"
+                    size={16}
+                    color={TEXT_MUTED}
+                  />
+                  <TextInput
+                    style={styles.inlineInput}
+                    placeholder="Nhập quận/khu vực"
+                    placeholderTextColor={TEXT_MUTED}
+                    value={draftFilters.district}
+                    onChangeText={(value) =>
+                      setDraftFilters((prev) => ({ ...prev, district: value }))
+                    }
+                  />
+                </View>
+              )}
+
+              {draftFilters.locationMode === "place" && (
+                <View style={styles.inlineInputRow}>
+                  <Ionicons name="pin-outline" size={16} color={TEXT_MUTED} />
+                  <TextInput
+                    style={styles.inlineInput}
+                    placeholder="Nhập địa điểm cụ thể"
+                    placeholderTextColor={TEXT_MUTED}
+                    value={draftFilters.place}
+                    onChangeText={(value) =>
+                      setDraftFilters((prev) => ({ ...prev, place: value }))
+                    }
+                  />
+                </View>
+              )}
+
+              <Text style={styles.filterLabel}>Khoảng cách</Text>
+              <View style={styles.filterRow}>
+                {DISTANCE_OPTIONS.map((d) => {
+                  const active = draftFilters.distance === d;
+                  return (
+                    <TouchableOpacity
+                      key={d}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                      ]}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          distance: active ? null : d,
+                        }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {d}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.filterLabel}>Thời gian đặt bàn</Text>
+              <View style={styles.reservationRow}>
+                <TouchableOpacity
+                  style={styles.reservationInputWrap}
+                  onPress={() => {
+                    setTempDate(dateValue);
+                    setShowDatePicker(true);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={16}
+                    color={TEXT_MUTED}
+                  />
+                  <Text
+                    style={[
+                      styles.reservationValue,
+                      !draftFilters.date && styles.reservationPlaceholder,
+                    ]}
+                  >
+                    {draftFilters.date || "Ngày"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.reservationInputWrap}
+                  onPress={() => {
+                    setTempTime(timeValue);
+                    setShowTimePicker(true);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="time-outline" size={16} color={TEXT_MUTED} />
+                  <Text
+                    style={[
+                      styles.reservationValue,
+                      !draftFilters.time && styles.reservationPlaceholder,
+                    ]}
+                  >
+                    {draftFilters.time || "Giờ"}
+                  </Text>
+                </TouchableOpacity>
+                <View style={styles.peopleControl}>
+                  <TouchableOpacity
+                    style={styles.peopleBtn}
+                    onPress={() =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        people: Math.max(1, prev.people - 1),
+                      }))
+                    }
+                  >
+                    <Text style={styles.peopleBtnText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.peopleCount}>{draftFilters.people}</Text>
+                  <TouchableOpacity
+                    style={styles.peopleBtn}
+                    onPress={() =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        people: Math.min(12, prev.people + 1),
+                      }))
+                    }
+                  >
+                    <Text style={styles.peopleBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.toggleRow,
+                  draftFilters.availableNow && styles.toggleRowActive,
+                ]}
+                onPress={() =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    availableNow: !prev.availableNow,
+                  }))
+                }
+              >
+                <Ionicons
+                  name={draftFilters.availableNow ? "checkmark-circle" : "time"}
+                  size={18}
+                  color={draftFilters.availableNow ? "#fff" : TEXT_SEC}
+                />
+                <Text
+                  style={[
+                    styles.toggleText,
+                    draftFilters.availableNow && styles.toggleTextActive,
+                  ]}
+                >
+                  Còn bàn ngay bây giờ
+                </Text>
+              </TouchableOpacity>
+
               <Text style={styles.filterLabel}>Mức giá</Text>
               <View style={styles.filterRow}>
                 {PRICE_OPTIONS.map((p) => {
-                  const active = activePrice === p;
+                  const active = draftFilters.priceRanges.includes(p);
                   return (
                     <TouchableOpacity
                       key={p}
@@ -666,7 +1098,12 @@ export default function HomeScreen() {
                         styles.filterChip,
                         active && styles.filterChipActive,
                       ]}
-                      onPress={() => setActivePrice(active ? null : p)}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          priceRanges: toggleInList(prev.priceRanges, p),
+                        }))
+                      }
                     >
                       <Text
                         style={[
@@ -681,10 +1118,72 @@ export default function HomeScreen() {
                 })}
               </View>
 
+              <Text style={styles.filterLabel}>Không gian / Mục đích</Text>
+              <View style={styles.filterRow}>
+                {PURPOSE_OPTIONS.map((p) => {
+                  const active = draftFilters.purposes.includes(p);
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                      ]}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          purposes: toggleInList(prev.purposes, p),
+                        }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {p}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.filterLabel}>Rating</Text>
+              <View style={styles.filterRow}>
+                {RATING_OPTIONS.map((r) => {
+                  const active = draftFilters.ratings.includes(r);
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                      ]}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          ratings: toggleRating(prev.ratings, r),
+                        }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {r} sao
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               <Text style={styles.filterLabel}>Sắp xếp</Text>
               <View style={styles.filterRow}>
                 {SORT_OPTIONS.map((s) => {
-                  const active = activeSort === s.key;
+                  const active = draftFilters.sort === s.key;
                   return (
                     <TouchableOpacity
                       key={s.key}
@@ -692,7 +1191,12 @@ export default function HomeScreen() {
                         styles.filterChip,
                         active && styles.filterChipActive,
                       ]}
-                      onPress={() => setActiveSort(active ? null : s.key)}
+                      onPress={() =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          sort: active ? null : s.key,
+                        }))
+                      }
                     >
                       <Text
                         style={[
@@ -706,18 +1210,113 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-
-              {hasActiveFilter && (
-                <TouchableOpacity
-                  style={styles.clearBtn}
-                  onPress={clearFilters}
-                >
-                  <Text style={styles.clearBtnText}>Xóa bộ lọc</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
         </View>
+
+        {showDatePicker && Platform.OS === "android" && (
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (event.type === "set" && selectedDate) {
+                commitDate(selectedDate);
+              }
+            }}
+            locale="vi"
+          />
+        )}
+
+        {showTimePicker && Platform.OS === "android" && (
+          <DateTimePicker
+            value={tempTime}
+            mode="time"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowTimePicker(false);
+              if (event.type === "set" && selectedDate) {
+                commitTime(selectedDate);
+              }
+            }}
+            locale="vi"
+          />
+        )}
+
+        {showDatePicker && Platform.OS === "ios" && (
+          <Modal transparent animationType="fade">
+            <View style={styles.pickerOverlay}>
+              <View style={styles.pickerCard}>
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity
+                    onPress={() => setShowDatePicker(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerBtn}>CANCEL</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.pickerTitle}>Chọn ngày</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      commitDate(tempDate);
+                      setShowDatePicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerBtnOk}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="inline"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) setTempDate(selectedDate);
+                  }}
+                  locale="vi"
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {showTimePicker && Platform.OS === "ios" && (
+          <Modal transparent animationType="fade">
+            <View style={styles.pickerOverlay}>
+              <View style={styles.pickerCard}>
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity
+                    onPress={() => setShowTimePicker(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerBtn}>CANCEL</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.pickerTitle}>Chọn giờ</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      commitTime(tempTime);
+                      setShowTimePicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerBtnOk}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={tempTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) setTempTime(selectedDate);
+                  }}
+                  locale="vi"
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
 
         {/* ════ CATEGORIES ════ */}
         <View style={styles.categoriesGrid}>
@@ -745,6 +1344,26 @@ export default function HomeScreen() {
             );
           })}
         </View>
+
+        {filterCount > 0 && (
+          <View style={styles.filterSummary}>
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryTitle}>Đang lọc</Text>
+              <Text style={styles.summaryCount}>{filterCount} lựa chọn</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.summaryRow}
+            >
+              {summaryChips.map((chip, idx) => (
+                <View key={`${chip}-${idx}`} style={styles.summaryChip}>
+                  <Text style={styles.summaryChipText}>{chip}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Khi đang search/filter: ẩn section featured/date/budget, chỉ show kết quả */}
         {hasActiveFilter ? (
@@ -1184,13 +1803,49 @@ const styles = StyleSheet.create({
   quickTagText: { fontSize: 12, fontWeight: "600", color: TEXT_SEC },
   quickTagTextActive: { color: "#fff" },
 
-  // Filter panel
-  filterPanel: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+  // Filter sheet
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: PRIMARY,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
   },
+  filterBadgeText: { fontSize: 9, color: "#fff", fontWeight: "800" },
+  filterSheet: {
+    marginTop: 12,
+    padding: 14,
+    backgroundColor: SURFACE,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  filterSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  filterTitle: { fontSize: 16, fontWeight: "800", color: TEXT },
+  filterSub: { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
+  filterGhostBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  filterGhostText: { fontSize: 11, fontWeight: "700", color: TEXT_SEC },
   filterLabel: {
     fontSize: 11,
     fontWeight: "700",
@@ -1216,6 +1871,120 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   filterChipText: { fontSize: 12, color: TEXT_SEC, fontWeight: "600" },
   filterChipTextActive: { color: "#fff" },
+  inlineInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    height: 42,
+    marginBottom: 14,
+  },
+  inlineInput: { flex: 1, fontSize: 13, color: TEXT, paddingVertical: 0 },
+  reservationRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  reservationInputWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    height: 42,
+  },
+  reservationInput: { flex: 1, fontSize: 13, color: TEXT, paddingVertical: 0 },
+  reservationValue: { flex: 1, fontSize: 13, color: TEXT, fontWeight: "600" },
+  reservationPlaceholder: { color: TEXT_MUTED, fontWeight: "500" },
+  peopleControl: {
+    width: 92,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    height: 42,
+    backgroundColor: "#FFF",
+  },
+  peopleBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  peopleBtnText: { fontSize: 14, fontWeight: "700", color: TEXT },
+  peopleCount: { fontSize: 13, fontWeight: "700", color: TEXT },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFF",
+    marginBottom: 14,
+  },
+  toggleRowActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  toggleText: { fontSize: 12, fontWeight: "600", color: TEXT_SEC },
+  toggleTextActive: { color: "#fff" },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  pickerCard: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 14,
+    paddingHorizontal: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+  },
+  pickerTitle: { fontSize: 14, fontWeight: "800", color: TEXT },
+  pickerBtn: { fontSize: 12, fontWeight: "700", color: TEXT_SEC },
+  pickerBtnOk: { fontSize: 12, fontWeight: "800", color: PRIMARY },
+  filterActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 6,
+  },
+  resetBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+  },
+  resetBtnText: { fontSize: 13, fontWeight: "700", color: TEXT_SEC },
+  applyBtn: { flex: 1 },
+  applyBtnGradient: {
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  applyBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   clearBtn: {
     alignSelf: "flex-start",
     paddingHorizontal: 16,
@@ -1234,6 +2003,34 @@ const styles = StyleSheet.create({
     borderColor: "#EF4444",
   },
   clearBtnText: { fontSize: 13, color: "#EF4444", fontWeight: "700" },
+
+  filterSummary: {
+    marginHorizontal: 14,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  summaryTitle: { fontSize: 13, fontWeight: "800", color: TEXT },
+  summaryCount: { fontSize: 12, color: TEXT_MUTED, fontWeight: "600" },
+  summaryRow: { gap: 8, paddingRight: 6 },
+  summaryChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#FFE1D4",
+    backgroundColor: "#FFF3ED",
+  },
+  summaryChipText: { fontSize: 12, fontWeight: "700", color: PRIMARY },
 
   // Categories
   categoriesGrid: {

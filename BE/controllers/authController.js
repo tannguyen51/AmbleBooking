@@ -10,7 +10,8 @@ const signToken = (id) => {
 };
 
 const buildResetToken = () => {
-  const rawToken = crypto.randomBytes(32).toString("hex");
+  // Tạo mã 6 chữ số (000000-999999)
+  const rawToken = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
   const hashedToken = crypto
     .createHash("sha256")
     .update(rawToken)
@@ -128,13 +129,13 @@ exports.requestPasswordReset = async (req, res) => {
     await user.save();
 
     const resetLink = buildResetLink(rawToken);
-    const subject = "Dat lai mat khau Amble";
+    const subject = "Đặt lại mật khẩu Amble";
     const text = resetLink
-      ? `Mo lien ket de dat lai mat khau: ${resetLink}`
-      : `Ma dat lai mat khau: ${rawToken}`;
+      ? `Mở liên kết để đặt lại mật khẩu: ${resetLink}`
+      : `Mã đặt lại mật khẩu: ${rawToken}`;
     const html = resetLink
-      ? `<p>Mo lien ket de dat lai mat khau:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Hoac nhap ma: <strong>${rawToken}</strong></p>`
-      : `<p>Ma dat lai mat khau: <strong>${rawToken}</strong></p>`;
+      ? `<p>Mở liên kết để đặt lại mật khẩu:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Hoặc nhập mã: <strong>${rawToken}</strong></p>`
+      : `<p>Mã đặt lại mật khẩu: <strong>${rawToken}</strong></p>`;
 
     await sendMail({ to: email, subject, text, html });
 

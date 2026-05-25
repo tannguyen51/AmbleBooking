@@ -9,6 +9,8 @@ import {
   Alert,
   RefreshControl,
   Image,
+  Modal,
+  TextInput,
 } from "react-native";
 import {
   SafeAreaView,
@@ -31,7 +33,11 @@ const TAB_CONFIG: { id: Tab; label: string; statuses: string[] }[] = [
     statuses: ["pending", "pending_payment", "confirmed", "paid", "draft"],
   },
   { id: "completed", label: "Đã xong", statuses: ["completed"] },
-  { id: "cancelled", label: "Đã hủy", statuses: ["cancelled"] },
+  {
+    id: "cancelled",
+    label: "Đã hủy",
+    statuses: ["cancelled", "refund_pending", "refunded"],
+  },
 ];
 
 const STATUS_DISPLAY: Record<
@@ -49,6 +55,12 @@ const STATUS_DISPLAY: Record<
   paid: { label: "Đã thanh toán", color: "#1D4ED8", bg: "#DBEAFE" },
   completed: { label: "Hoàn thành", color: "#374151", bg: "#F3F4F6" },
   cancelled: { label: "Đã hủy", color: "#991B1B", bg: "#FEE2E2" },
+  refund_pending: {
+    label: "Chờ hoàn tiền",
+    color: "#92400E",
+    bg: "#FEF3C7",
+  },
+  refunded: { label: "Đã hoàn tiền", color: "#065F46", bg: "#D1FAE5" },
 };
 
 const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
@@ -56,10 +68,23 @@ const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
   paid: { label: "Đã thanh toán", color: "#1D4ED8" },
   completed: { label: "Đã thanh toán", color: "#1D4ED8" },
   cancelled: { label: "Đã hủy", color: "#991B1B" },
+  refund_pending: { label: "Chờ hoàn tiền", color: "#92400E" },
+  refunded: { label: "Đã hoàn tiền", color: "#065F46" },
   confirmed: { label: "Chưa thanh toán", color: "#6B7280" },
   pending: { label: "Chưa thanh toán", color: "#6B7280" },
   draft: { label: "Chưa thanh toán", color: "#6B7280" },
 };
+
+const BANK_OPTIONS = [
+  "Vietcombank",
+  "VietinBank",
+  "BIDV",
+  "Techcombank",
+  "ACB",
+  "MBBank",
+  "VPBank",
+  "Sacombank",
+];
 
 export default function BookingHistoryScreen() {
   const router = useRouter();
@@ -71,6 +96,19 @@ export default function BookingHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [refundVisible, setRefundVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [refundPreview, setRefundPreview] = useState<{
+    hoursRemaining: number;
+    refundPercent: number;
+    refundAmount: number;
+  } | null>(null);
+  const [refundForm, setRefundForm] = useState({
+    bankName: "",
+    accountNumber: "",
+    accountName: "",
+  });
+  const [showBankList, setShowBankList] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     if (!user?._id) return;
@@ -94,35 +132,68 @@ export default function BookingHistoryScreen() {
     fetchBookings();
   };
 
-  const handleCancel = (bookingId: string, bookingNumber: string) => {
-    Alert.alert(
-      "Hủy đặt bàn",
-      `Bạn có chắc muốn hủy booking ${bookingNumber}?\nTiền cọc sẽ được hoàn nếu hủy trước 2 giờ.`,
-      [
-        { text: "Không", style: "cancel" },
-        {
-          text: "Hủy đặt bàn",
-          style: "destructive",
-          onPress: async () => {
-            setCancelling(bookingId);
-            try {
-              await bookingAPI.cancel(bookingId, "Người dùng hủy");
-              // Cập nhật local state
-              setBookings((prev) =>
-                prev.map((b) =>
-                  b._id === bookingId ? { ...b, status: "cancelled" } : b,
-                ),
-              );
-              Alert.alert("Thành công", "Đã hủy đặt bàn");
-            } catch (err: any) {
-              Alert.alert("Lỗi", err.response?.data?.message || "Hủy thất bại");
-            } finally {
-              setCancelling(null);
+  const handleCancel = async (bookingId: string) => {
+    setCancelling(bookingId);
+    try {
+      const res = await bookingAPI.getRefundPreview(bookingId);
+      setRefundPreview(res.data?.preview || null);
+      const booking = bookings.find((b) => b._id === bookingId) || null;
+      setSelectedBooking(booking);
+      setRefundForm({ bankName: "", accountNumber: "", accountName: "" });
+      setShowBankList(false);
+      setRefundVisible(true);
+    } catch (err: any) {
+      Alert.alert(
+        "Lỗi",
+        err.response?.data?.message || "Không lấy được hoàn tiền",
+      );
+    } finally {
+      setCancelling(null);
+    }
+  };
+
+  const submitCancel = async () => {
+    if (!selectedBooking) return;
+    const amount = refundPreview?.refundAmount || 0;
+    if (amount > 0) {
+      if (!refundForm.bankName || !refundForm.accountNumber || !refundForm.accountName) {
+        Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin hoàn tiền");
+        return;
+      }
+    }
+
+    setCancelling(selectedBooking._id);
+    try {
+      const payload =
+        amount > 0
+          ? {
+              reason: "Người dùng hủy",
+              refundAccount: {
+                bankName: refundForm.bankName,
+                accountNumber: refundForm.accountNumber,
+                accountName: refundForm.accountName,
+              },
             }
-          },
-        },
-      ],
-    );
+          : { reason: "Người dùng hủy" };
+      const res = await bookingAPI.cancel(selectedBooking._id, payload);
+      const newStatus = res.data?.booking?.status || "cancelled";
+      setBookings((prev) =>
+        prev.map((b) =>
+          b._id === selectedBooking._id
+            ? { ...b, status: newStatus, refund: res.data?.booking?.refund }
+            : b,
+        ),
+      );
+      Alert.alert(
+        "Thành công",
+        amount > 0 ? "Yêu cầu hoàn tiền đã được gửi" : "Đã hủy đặt bàn",
+      );
+      setRefundVisible(false);
+    } catch (err: any) {
+      Alert.alert("Lỗi", err.response?.data?.message || "Hủy thất bại");
+    } finally {
+      setCancelling(null);
+    }
   };
 
   const currentTab = TAB_CONFIG.find((t) => t.id === activeTab)!;
@@ -162,7 +233,6 @@ export default function BookingHistoryScreen() {
 
     return (
       <View style={c.card}>
-        {/* Restaurant image */}
         <Image
           source={{
             uri:
@@ -173,7 +243,6 @@ export default function BookingHistoryScreen() {
         />
 
         <View style={c.cardBody}>
-          {/* Header */}
           <View style={c.cardHeaderRow}>
             <Text style={c.restName} numberOfLines={1}>
               {restaurant?.name || "Nhà hàng"}
@@ -197,7 +266,6 @@ export default function BookingHistoryScreen() {
             )}
           </View>
 
-          {/* Details */}
           <View style={c.detailRow}>
             <Ionicons name="restaurant-outline" size={13} color="#9CA3AF" />
             <Text style={c.detailTxt}>{table?.name || "Bàn"}</Text>
@@ -252,7 +320,6 @@ export default function BookingHistoryScreen() {
             </View>
           )}
 
-          {/* Footer */}
           <View style={c.cardFooter}>
             <View>
               <Text style={c.depositLabel}>Tiền cọc</Text>
@@ -263,11 +330,10 @@ export default function BookingHistoryScreen() {
             <Text style={c.bookingNum}>#{item.bookingNumber}</Text>
           </View>
 
-          {/* Cancel button */}
           {canCancel && (
             <TouchableOpacity
               style={c.cancelBtn}
-              onPress={() => handleCancel(item._id, item.bookingNumber)}
+              onPress={() => handleCancel(item._id)}
               disabled={cancelling === item._id}
               activeOpacity={0.7}
             >
@@ -303,7 +369,6 @@ export default function BookingHistoryScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["left", "right"]}>
-      {/* Header */}
       <View style={[s.header, { paddingTop: 12 + insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
@@ -312,7 +377,6 @@ export default function BookingHistoryScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
       <View style={s.tabBar}>
         {TAB_CONFIG.map((tab) => {
           const count = bookings.filter((b) =>
@@ -336,14 +400,12 @@ export default function BookingHistoryScreen() {
         })}
       </View>
 
-      {/* List */}
       {loading ? (
         <View style={s.center}>
           <ActivityIndicator size="large" color={PRIMARY} />
         </View>
       ) : filteredBookings.length === 0 ? (
         <View style={s.center}>
-          <Text style={{ fontSize: 48 }}>📋</Text>
           <Text style={s.emptyTxt}>Không có đặt bàn nào</Text>
           <TouchableOpacity
             style={s.exploreBtn}
@@ -376,6 +438,89 @@ export default function BookingHistoryScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <Modal transparent visible={refundVisible} animationType="fade">
+        <View style={c.modalBackdrop}>
+          <View style={c.modalCard}>
+            <Text style={c.modalTitle}>Hủy booking</Text>
+            <Text style={c.modalSubtitle}>
+              Bạn sẽ nhận hoàn tiền trong 1-3 ngày làm việc
+            </Text>
+
+            <View style={c.previewRow}>
+              <Text style={c.previewLabel}>Hoàn tiền</Text>
+              <Text style={c.previewValue}>
+                {refundPreview?.refundAmount?.toLocaleString("vi-VN") || 0}đ
+              </Text>
+            </View>
+            <Text style={c.previewMeta}>
+              {refundPreview?.refundPercent || 0}% • {Math.round(refundPreview?.hoursRemaining || 0)}h còn lại
+            </Text>
+
+            <TouchableOpacity
+              style={c.bankSelect}
+              onPress={() => setShowBankList((prev) => !prev)}
+            >
+              <Text style={c.bankSelectText}>
+                {refundForm.bankName || "Chọn ngân hàng"}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#64748B" />
+            </TouchableOpacity>
+
+            {showBankList ? (
+              <View style={c.bankList}>
+                {BANK_OPTIONS.map((bank) => (
+                  <TouchableOpacity
+                    key={bank}
+                    style={c.bankItem}
+                    onPress={() => {
+                      setRefundForm((prev) => ({ ...prev, bankName: bank }));
+                      setShowBankList(false);
+                    }}
+                  >
+                    <Text style={c.bankItemText}>{bank}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
+            <TextInput
+              style={c.modalInput}
+              placeholder="Số tài khoản"
+              placeholderTextColor="#94A3B8"
+              value={refundForm.accountNumber}
+              onChangeText={(value) =>
+                setRefundForm((prev) => ({ ...prev, accountNumber: value }))
+              }
+            />
+            <TextInput
+              style={c.modalInput}
+              placeholder="Chủ tài khoản"
+              placeholderTextColor="#94A3B8"
+              value={refundForm.accountName}
+              onChangeText={(value) =>
+                setRefundForm((prev) => ({ ...prev, accountName: value }))
+              }
+            />
+
+            <View style={c.modalActions}>
+              <TouchableOpacity
+                style={[c.modalBtn, c.modalGhost]}
+                onPress={() => setRefundVisible(false)}
+              >
+                <Text style={c.modalGhostText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[c.modalBtn, c.modalPrimary]}
+                onPress={submitCancel}
+                disabled={cancelling === selectedBooking?._id}
+              >
+                <Text style={c.modalPrimaryText}>Xác nhận hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -501,4 +646,119 @@ const c = StyleSheet.create({
     paddingVertical: 10,
   },
   payBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    padding: 18,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  previewLabel: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  previewValue: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  previewMeta: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginBottom: 12,
+  },
+  bankSelect: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F8FAFC",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  bankSelectText: {
+    fontSize: 12,
+    color: "#0F172A",
+  },
+  bankList: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: "#FFFFFF",
+  },
+  bankItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  bankItemText: {
+    fontSize: 12,
+    color: "#0F172A",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 12,
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
+    marginBottom: 8,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalGhost: {
+    backgroundColor: "#E2E8F0",
+  },
+  modalPrimary: {
+    backgroundColor: PRIMARY,
+  },
+  modalGhostText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  modalPrimaryText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
 });

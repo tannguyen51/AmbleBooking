@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 
@@ -174,12 +175,15 @@ export default function PartnerOrdersScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerWrap}>
-        <Text style={styles.headerTitle}>Đơn đặt bàn</Text>
+        <View>
+          <Text style={styles.headerTitle}>Đơn đặt bàn</Text>
+          <Text style={styles.headerSub}>Theo dõi và xử lý theo trạng thái</Text>
+        </View>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.push("/dashboard")}
         >
-          <Text style={styles.backBtnText}>Về Dashboard</Text>
+          <Ionicons name="home-outline" size={16} color="#374151" />
         </TouchableOpacity>
       </View>
 
@@ -272,14 +276,16 @@ export default function PartnerOrdersScreen() {
                   </Text>
                 </View>
 
-                <Text style={styles.metaText}>{order.userPhone || "--"}</Text>
-                <Text style={styles.metaText}>
-                  {order.tableNumber} • {order.date} • {order.time}
-                </Text>
-                <Text style={styles.metaText}>
-                  {order.guests} khách • Cọc{" "}
-                  {order.depositAmount.toLocaleString("vi-VN")}đ
-                </Text>
+                <View style={styles.metaGrid}>
+                  <Text style={styles.metaText}>Mã: {order.bookingNumber}</Text>
+                  <Text style={styles.metaText}>SĐT: {order.userPhone || "--"}</Text>
+                  <Text style={styles.metaText}>
+                    {order.tableNumber} • {order.date} • {order.time}
+                  </Text>
+                  <Text style={styles.metaTextStrong}>
+                    {order.guests} khách • Cọc {order.depositAmount.toLocaleString("vi-VN")}đ
+                  </Text>
+                </View>
 
                 {isPending && (
                   <View style={styles.actionRow}>
@@ -321,27 +327,31 @@ export default function PartnerOrdersScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
   headerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#1A1A1A" },
+  headerTitle: { fontSize: 24, fontWeight: "900", color: "#111827" },
+  headerSub: { marginTop: 2, fontSize: 12, color: "#6B7280", fontWeight: "500" },
   backBtn: {
-    backgroundColor: "#FFF3ED",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 34,
+    height: 34,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backBtnText: { fontSize: 12, fontWeight: "700", color: "#FF6B35" },
-  filterScroll: { maxHeight: 52 },
+  filterScroll: { maxHeight: 56 },
   filterRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingRight: 20,
-    gap: 8,
-    paddingVertical: 8,
+    gap: 10,
+    paddingVertical: 10,
     alignItems: "center",
   },
   filterChip: {
@@ -349,19 +359,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 999,
     paddingHorizontal: 14,
-    minHeight: 36,
+    minHeight: 38,
     justifyContent: "center",
     backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E6EAF0",
   },
   filterGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  filterText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
+  filterText: { fontSize: 12, fontWeight: "700", color: "#4B5563" },
   filterTextAllActive: { color: "#fff" },
   listWrap: { flex: 1 },
-  listContent: { padding: 16, gap: 12, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 18, paddingTop: 8, gap: 12, paddingBottom: 24 },
   centerBox: {
     alignItems: "center",
     justifyContent: "center",
@@ -372,15 +382,15 @@ const styles = StyleSheet.create({
   helperText: { fontSize: 12, color: "#9CA3AF" },
   orderCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEF0F3",
-    padding: 14,
+    borderColor: "#E8EDF3",
+    padding: 13,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
   },
   orderTopRow: {
     flexDirection: "row",
@@ -388,36 +398,39 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 6,
   },
-  customerName: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
+  customerName: { fontSize: 15, fontWeight: "800", color: "#111827" },
   statusBadge: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
     color: "#374151",
     backgroundColor: "#F3F4F6",
     borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
-  metaText: { fontSize: 12, color: "#6B7280", marginBottom: 2 },
+  metaGrid: { gap: 2 },
+  metaText: { fontSize: 12, color: "#6B7280" },
+  metaTextStrong: { fontSize: 12, color: "#374151", fontWeight: "700" },
   actionRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
   },
   rejectBtn: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EF4444",
-    paddingVertical: 10,
+    borderColor: "#FCA5A5",
+    backgroundColor: "#FEF2F2",
+    paddingVertical: 11,
     alignItems: "center",
   },
-  rejectText: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
+  rejectText: { fontSize: 13, fontWeight: "800", color: "#DC2626" },
   confirmBtn: {
     flex: 1,
     borderRadius: 12,
-    backgroundColor: "#22C55E",
-    paddingVertical: 10,
+    backgroundColor: "#16A34A",
+    paddingVertical: 11,
     alignItems: "center",
   },
   confirmText: { fontSize: 13, fontWeight: "800", color: "#fff" },

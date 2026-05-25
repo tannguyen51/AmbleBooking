@@ -62,6 +62,34 @@ export default function RegisterScreen() {
     return null;
   };
 
+  const getRegisterErrorMessage = (err: any) => {
+    if (!err) return "Đăng ký thất bại. Vui lòng thử lại.";
+
+    const apiData = err?.response?.data;
+
+    if (typeof apiData?.message === "string" && apiData.message.trim()) {
+      return apiData.message;
+    }
+
+    if (Array.isArray(apiData?.errors) && apiData.errors.length > 0) {
+      const firstError = apiData.errors[0];
+      if (typeof firstError === "string" && firstError.trim()) return firstError;
+      if (typeof firstError?.message === "string" && firstError.message.trim()) {
+        return firstError.message;
+      }
+    }
+
+    if (typeof apiData?.error === "string" && apiData.error.trim()) {
+      return apiData.error;
+    }
+
+    if (typeof err?.message === "string" && err.message.trim()) {
+      return err.message;
+    }
+
+    return "Đăng ký thất bại. Vui lòng thử lại.";
+  };
+
   const handleRegister = async () => {
     const error = validate();
     if (error) {
@@ -76,7 +104,7 @@ export default function RegisterScreen() {
         phone: form.phone.trim(),
       });
     } catch (err: any) {
-      Alert.alert("Đăng ký thất bại", err.message);
+      Alert.alert("Đăng ký thất bại", getRegisterErrorMessage(err));
     }
   };
 

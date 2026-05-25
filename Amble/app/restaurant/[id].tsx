@@ -455,6 +455,50 @@ export default function DetailScreen() {
             </View>
           </View>
 
+          {/* ── Mạng xã hội ── */}
+          {(restaurant.facebook ||
+            restaurant.instagram ||
+            restaurant.tiktok ||
+            restaurant.website) && (
+              <View style={[s.section, { marginTop: -2 }]}>
+                <Text style={s.sectionTitle}>Mạng xã hội</Text>
+                <View style={s.socialRow}>
+                  {restaurant.facebook && (
+                    <SocialBtn
+                      icon="logo-facebook"
+                      label="Facebook"
+                      url={restaurant.facebook}
+                      color="#1877F2"
+                    />
+                  )}
+                  {restaurant.instagram && (
+                    <SocialBtn
+                      icon="logo-instagram"
+                      label="Instagram"
+                      url={restaurant.instagram}
+                      color="#E1306C"
+                    />
+                  )}
+                  {restaurant.tiktok && (
+                    <SocialBtn
+                      icon="logo-tiktok"
+                      label="TikTok"
+                      url={restaurant.tiktok}
+                      color="#010101"
+                    />
+                  )}
+                  {restaurant.website && (
+                    <SocialBtn
+                      icon="globe-outline"
+                      label="Website"
+                      url={restaurant.website}
+                      color={PRIMARY}
+                    />
+                  )}
+                </View>
+              </View>
+            )}
+
           {/* ── Tags ── */}
           {restaurant.tags?.length > 0 && (
             <ScrollView
@@ -469,6 +513,7 @@ export default function DetailScreen() {
               ))}
             </ScrollView>
           )}
+
 
           {/* ── Quick stats strip ── */}
           <View style={s.statsStrip}>
@@ -587,50 +632,6 @@ export default function DetailScreen() {
               </View>
             </View>
           )}
-
-          {/* ── Mạng xã hội ── */}
-          {(restaurant.facebook ||
-            restaurant.instagram ||
-            restaurant.tiktok ||
-            restaurant.website) && (
-              <View style={s.section}>
-                <Text style={s.sectionTitle}>Mạng xã hội</Text>
-                <View style={s.socialRow}>
-                  {restaurant.facebook && (
-                    <SocialBtn
-                      icon="logo-facebook"
-                      label="Facebook"
-                      url={restaurant.facebook}
-                      color="#1877F2"
-                    />
-                  )}
-                  {restaurant.instagram && (
-                    <SocialBtn
-                      icon="logo-instagram"
-                      label="Instagram"
-                      url={restaurant.instagram}
-                      color="#E1306C"
-                    />
-                  )}
-                  {restaurant.tiktok && (
-                    <SocialBtn
-                      icon="logo-tiktok"
-                      label="TikTok"
-                      url={restaurant.tiktok}
-                      color="#010101"
-                    />
-                  )}
-                  {restaurant.website && (
-                    <SocialBtn
-                      icon="globe-outline"
-                      label="Website"
-                      url={restaurant.website}
-                      color={PRIMARY}
-                    />
-                  )}
-                </View>
-              </View>
-            )}
 
           {/* Bottom spacer for CTA bar */}
           <View style={{ height: 110 }} />
