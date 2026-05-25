@@ -15,6 +15,7 @@ import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
+import { AdminSegmented } from "../../components/admin/AdminSegmented";
 
 interface AdminUser {
   _id: string;
@@ -24,6 +25,18 @@ interface AdminUser {
   role: "customer" | "admin";
   isActive: boolean;
 }
+
+const ROLE_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "customer", label: "Khách" },
+  { value: "admin", label: "Admin" },
+] as const;
+
+const ACTIVE_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "active", label: "Hoạt động" },
+  { value: "locked", label: "Đã khóa" },
+] as const;
 
 export default function AdminUsersScreen() {
   const [search, setSearch] = useState("");
@@ -94,7 +107,7 @@ export default function AdminUsersScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Users" subtitle="Quản lý tài khoản khách hàng" />
+      <AdminHeader title="Users" subtitle="Quản lý tài khoản khách hàng" showBack={false} />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
@@ -114,45 +127,22 @@ export default function AdminUsersScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filterRow}>
-        {(["all", "customer", "admin"] as const).map((role) => {
-          const isActive = roleFilter === role;
-          return (
-            <TouchableOpacity
-              key={role}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setRoleFilter(role)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}
-              >
-                {role}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-        {(["all", "active", "locked"] as const).map((status) => {
-          const isActive = activeFilter === status;
-          return (
-            <TouchableOpacity
-              key={status}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setActiveFilter(status)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}
-              >
-                {status}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.filterGroup}>
+        <Text style={styles.filterLabel}>Vai trò</Text>
+        <AdminSegmented
+          options={ROLE_OPTIONS}
+          value={roleFilter}
+          onChange={setRoleFilter}
+        />
+      </View>
+
+      <View style={styles.filterGroup}>
+        <Text style={styles.filterLabel}>Trạng thái</Text>
+        <AdminSegmented
+          options={ACTIVE_OPTIONS}
+          value={activeFilter}
+          onChange={setActiveFilter}
+        />
       </View>
 
       {loading ? (
@@ -247,8 +237,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
@@ -266,32 +256,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  filterRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  filterGroup: {
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 8,
   },
-  filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
-    backgroundColor: adminTheme.colors.surface,
-  },
-  filterChipActive: {
-    backgroundColor: adminTheme.colors.onSurface,
-    borderColor: adminTheme.colors.onSurface,
-  },
-  filterChipText: {
-    fontSize: 11,
-    color: adminTheme.colors.onSurface,
-    fontWeight: "600",
-  },
-  filterChipTextActive: {
-    color: adminTheme.colors.onPrimary,
+  filterLabel: {
+    fontSize: 12,
+    color: adminTheme.colors.muted,
+    fontWeight: "700",
+    marginBottom: 8,
   },
   loadingWrap: {
     marginTop: 30,
@@ -304,8 +277,8 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
   loadMoreBtn: {
     marginTop: 4,
@@ -371,8 +344,8 @@ const styles = StyleSheet.create({
     color: adminTheme.colors.onPrimary,
   },
   pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
   },
   pillSuccess: {
@@ -382,13 +355,13 @@ const styles = StyleSheet.create({
     backgroundColor: adminTheme.colors.danger,
   },
   pillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   pillTextSuccess: {
-    color: adminTheme.colors.success,
+    color: "#FFFFFF",
   },
   pillTextDanger: {
-    color: adminTheme.colors.danger,
+    color: "#FFFFFF",
   },
 });

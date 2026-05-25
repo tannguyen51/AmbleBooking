@@ -510,9 +510,15 @@ exports.deleteTable = async (req, res) => {
 // GET /api/partner/restaurant-profile
 exports.getRestaurantProfile = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({
-      partnerId: req.partner._id,
-    }).lean();
+    const restaurantId = req.partner.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner chưa liên kết với nhà hàng.",
+      });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId).lean();
 
     if (!restaurant) {
       return res.status(404).json({
@@ -552,6 +558,14 @@ exports.getRestaurantProfile = async (req, res) => {
 // PUT /api/partner/restaurant-profile
 exports.updateRestaurantProfile = async (req, res) => {
   try {
+    const restaurantId = req.partner.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner chưa liên kết với nhà hàng.",
+      });
+    }
+
     const {
       coverImage,
       name,
@@ -595,9 +609,7 @@ exports.updateRestaurantProfile = async (req, res) => {
       });
     }
 
-    const currentRestaurant = await Restaurant.findOne({
-      partnerId: req.partner._id,
-    }).lean();
+    const currentRestaurant = await Restaurant.findById(restaurantId).lean();
 
     if (!currentRestaurant) {
       return res.status(404).json({
@@ -660,7 +672,7 @@ exports.updateRestaurantProfile = async (req, res) => {
     };
 
     const restaurant = await Restaurant.findOneAndUpdate(
-      { partnerId: req.partner._id },
+      { _id: restaurantId },
       { $set: updateData },
       { new: true },
     ).lean();

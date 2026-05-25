@@ -17,6 +17,12 @@ const TABS = [
     path: "/dashboard",
   },
   {
+    name: "team",
+    label: "Nhân sự",
+    icon: "people-outline",
+    path: "/partner-team",
+  },
+  {
     name: "tables",
     label: "Bàn",
     icon: "grid-outline",
@@ -36,7 +42,7 @@ const TABS = [
   },
   {
     name: "profile",
-    label: "Hồ sơ",
+    label: "Cài Đặt",
     icon: "person-circle-outline",
     path: "/profile",
   },
@@ -91,23 +97,28 @@ export function PartnerBottomNav({ pendingCount = 0 }: PartnerBottomNavProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.97)",
+    backgroundColor: "rgba(255,255,255,0.99)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.07)",
-    paddingBottom: Platform.OS === "ios" ? 24 : 8,
-    paddingTop: 8,
-    paddingHorizontal: 4,
+    borderTopColor: "#EEF1F5",
+    paddingBottom: Platform.OS === "ios" ? 24 : 10,
+    paddingTop: 9,
+    paddingHorizontal: 8,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginHorizontal: 2,
+    paddingVertical: 7,
+    borderRadius: 10,
+    marginHorizontal: 1,
   },
   tabActive: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#111827",
   },
   iconWrap: {
     position: "relative",
@@ -132,7 +143,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 10,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#9CA3AF",
   },
   tabLabelActive: {

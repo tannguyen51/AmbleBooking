@@ -210,6 +210,30 @@ export const partnerDashboardAPI = {
   }) => api.put("/partner/restaurant-profile", data),
 };
 
+export const partnerStaffAPI = {
+  getMembers: () => api.get("/partner/staff"),
+  createMember: (data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    role: "manager" | "staff";
+    sendMethod?: "email" | "sms" | "both";
+  }) => api.post("/partner/staff", data),
+  updateMember: (
+    staffId: string,
+    data: {
+      fullName?: string;
+      phone?: string;
+      role?: "manager" | "staff";
+      isActive?: boolean;
+    },
+  ) => api.put(`/partner/staff/${staffId}`, data),
+  resendCredentials: (
+    staffId: string,
+    data?: { sendMethod?: "email" | "sms" | "both" },
+  ) => api.post(`/partner/staff/${staffId}/resend-credentials`, data || {}),
+};
+
 // ── Admin ──────────────────────────────────────────────
 export const adminAPI = {
   getDashboard: () => api.get("/admin/dashboard"),

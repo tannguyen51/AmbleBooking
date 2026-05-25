@@ -29,13 +29,24 @@ interface PartnerItem {
   approvalNote?: string;
 }
 
-const STATUS_TABS: Array<PartnerItem["subscriptionStatus"] | "all"> = [
-  "pending",
-  "active",
-  "expired",
-  "cancelled",
-  "all",
-];
+const toLabelCase = (value: string) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const ACTIVE_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "active", label: "Hoạt động" },
+  { value: "locked", label: "Đã khóa" },
+] as const;
+
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Chờ duyệt" },
+  { value: "active", label: "Đang chạy" },
+  { value: "expired", label: "Hết hạn" },
+  { value: "cancelled", label: "Đã hủy" },
+  { value: "all", label: "Tất cả" },
+] as const;
 
 export default function AdminPartnersScreen() {
   const [status, setStatus] = useState<
@@ -126,7 +137,7 @@ export default function AdminPartnersScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Đối tác" subtitle="Kiểm duyệt và quản lý" />
+      <AdminHeader title="Đối tác" subtitle="Kiểm duyệt và quản lý" showBack={false} />
 
       <View style={styles.searchRow}>
         <TextInput
@@ -142,43 +153,44 @@ export default function AdminPartnersScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filterRow}>
-        {(["all", "active", "locked"] as const).map((item) => {
-          const isActive = activeFilter === item;
-          return (
-            <TouchableOpacity
-              key={item}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setActiveFilter(item)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}
+      <View style={styles.filterGroup}>
+        <Text style={styles.filterLabel}>Trạng thái hoạt động</Text>
+        <View style={styles.chipRow}>
+          {ACTIVE_OPTIONS.map((item) => {
+            const active = activeFilter === item.value;
+            return (
+              <TouchableOpacity
+                key={item.value}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => setActiveFilter(item.value)}
               >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.tabRow}>
-        {STATUS_TABS.map((tab) => {
-          const isActive = status === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setStatus(tab)}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.filterGroup}>
+        <Text style={styles.filterLabel}>Tình trạng đối tác</Text>
+        <View style={styles.chipRow}>
+          {STATUS_OPTIONS.map((item) => {
+            const active = status === item.value;
+            return (
+              <TouchableOpacity
+                key={item.value}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => setStatus(item.value)}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {loading ? (
@@ -201,9 +213,23 @@ export default function AdminPartnersScreen() {
               ) : null}
 
               <View style={styles.badgeRow}>
-                <Badge label={item.subscriptionStatus} />
-                <Badge label={item.subscriptionPackage} tone="info" />
-                <Badge label={item.isActive ? "active" : "locked"} tone="warn" />
+                <Badge
+                  label={toLabelCase(item.subscriptionStatus)}
+                  tone={
+                    item.subscriptionStatus === "pending"
+                      ? "warning"
+                      : item.subscriptionStatus === "active"
+                        ? "success"
+                        : item.subscriptionStatus === "expired"
+                          ? "danger"
+                          : "default"
+                  }
+                />
+                <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
+                <Badge
+                  label={item.isActive ? "Active" : "Locked"}
+                  tone={item.isActive ? "success" : "danger"}
+                />
               </View>
 
               <View style={styles.actionsRow}>
@@ -311,9 +337,23 @@ export default function AdminPartnersScreen() {
   );
 }
 
-function Badge({ label, tone = "default" }: { label: string; tone?: "default" | "info" | "warn" }) {
+function Badge({
+  label,
+  tone = "default",
+}: {
+  label: string;
+  tone?: "default" | "info" | "warning" | "success" | "danger";
+}) {
   const toneStyle =
-    tone === "info" ? styles.badgeInfo : tone === "warn" ? styles.badgeWarn : styles.badgeDefault;
+    tone === "info"
+      ? styles.badgeInfo
+      : tone === "warning"
+        ? styles.badgeWarning
+        : tone === "success"
+          ? styles.badgeSuccess
+          : tone === "danger"
+            ? styles.badgeDanger
+            : styles.badgeDefault;
 
   return (
     <View style={[styles.badge, toneStyle]}>
@@ -333,8 +373,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
@@ -355,58 +395,39 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: adminTheme.colors.onSurface,
   },
-  tabRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  filterGroup: {
     paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    color: adminTheme.colors.muted,
+    fontWeight: "700",
     marginBottom: 8,
   },
-  filterRow: {
+  chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    gap: 6,
   },
-  filterChip: {
+  chip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
   },
-  filterChipActive: {
+  chipActive: {
     backgroundColor: adminTheme.colors.onSurface,
     borderColor: adminTheme.colors.onSurface,
   },
-  filterChipText: {
+  chipText: {
     fontSize: 11,
-    color: adminTheme.colors.onSurface,
     fontWeight: "600",
-  },
-  filterChipTextActive: {
-    color: adminTheme.colors.onPrimary,
-  },
-  tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
-    backgroundColor: adminTheme.colors.surface,
-  },
-  tabActive: {
-    backgroundColor: adminTheme.colors.onSurface,
-    borderColor: adminTheme.colors.onSurface,
-  },
-  tabText: {
-    fontSize: 11,
     color: adminTheme.colors.onSurface,
-    fontWeight: "600",
   },
-  tabTextActive: {
+  chipTextActive: {
     color: adminTheme.colors.onPrimary,
   },
   loadingWrap: {
@@ -420,8 +441,8 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
   card: {
     backgroundColor: adminTheme.colors.surface,
@@ -452,22 +473,28 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: adminTheme.colors.surfaceVariant,
   },
   badgeInfo: {
     backgroundColor: adminTheme.colors.surfaceContainer,
   },
-  badgeWarn: {
-    backgroundColor: adminTheme.colors.warning,
+  badgeWarning: {
+    backgroundColor: "#FEF3C7",
+  },
+  badgeSuccess: {
+    backgroundColor: "#DCFCE7",
+  },
+  badgeDanger: {
+    backgroundColor: "#FEE2E2",
   },
   badgeDefault: {
     backgroundColor: adminTheme.colors.surfaceVariant,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     color: adminTheme.colors.onSurface,
   },

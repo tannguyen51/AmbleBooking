@@ -537,7 +537,6 @@ const s = StyleSheet.create({
     color: "#fff",
     fontSize: 22,
     fontWeight: "800",
-    fontFamily: "Montserrat_700Bold",
   },
 
   pointsBig: {
@@ -545,14 +544,12 @@ const s = StyleSheet.create({
     fontSize: 35,
     fontWeight: "900",
     textAlign: "center",
-    fontFamily: "Montserrat_900Black",
   },
   pointsSub: {
     color: "#9CA3AF",
     fontSize: 17,
     textAlign: "center",
     marginTop: 6,
-    fontFamily: "Montserrat_600SemiBold",
   },
   memberRow: {
     flexDirection: "row",
@@ -565,7 +562,6 @@ const s = StyleSheet.create({
     color: "#E5E7EB",
     fontSize: 21,
     fontWeight: "700",
-    fontFamily: "Montserrat_700Bold",
   },
 
   progressCard: {
@@ -585,7 +581,6 @@ const s = StyleSheet.create({
     color: "#D1D5DB",
     fontSize: 15,
     fontWeight: "700",
-    fontFamily: "Montserrat_700Bold",
   },
   progressTrack: {
     height: 10,
@@ -599,7 +594,6 @@ const s = StyleSheet.create({
     color: "#D1D5DB",
     fontSize: 17,
     textAlign: "center",
-    fontFamily: "Montserrat_600SemiBold",
   },
 
   body: { padding: 16, paddingBottom: 32 },

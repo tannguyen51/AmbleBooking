@@ -22,7 +22,6 @@ const MANAGEABLE_STATUSES = new Set([
   "pending",
   "pending_payment",
   "confirmed",
-  "paid",
 ]);
 
 interface BookingRefund {
@@ -65,17 +64,26 @@ const copyRefundInfo = async (item: BookingItem) => {
   Alert.alert("Đã sao chép", "Thông tin hoàn tiền đã được copy");
 };
 
-const STATUS_TABS = [
-  "pending",
-  "pending_payment",
-  "confirmed",
-  "paid",
-  "completed",
-  "cancelled",
-  "refund_pending",
-  "refunded",
-  "all",
-];
+const getStatusTone = (
+  status: string,
+): "warning" | "success" | "danger" | "info" | "default" => {
+  if (status === "pending" || status === "pending_payment") return "warning";
+  if (status === "paid" || status === "completed" || status === "confirmed") return "success";
+  if (status === "cancelled") return "danger";
+  if (status === "refund_pending" || status === "refunded") return "info";
+  return "default";
+};
+
+const BOOKING_FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "confirmed", label: "Đã xác nhận" },
+  { value: "paid", label: "Đã thanh toán" },
+  { value: "refund_pending", label: "Chờ hoàn tiền" },
+  { value: "refunded", label: "Đã hoàn tiền" },
+  { value: "cancelled", label: "Đã hủy" },
+  { value: "completed", label: "Hoàn thành" },
+] as const;
 
 const STATUS_LABELS: Record<string, string> = {
   "pending": "Chờ Xác Nhận",
@@ -90,7 +98,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AdminBookingsScreen() {
-  const [status, setStatus] = useState<string>("pending");
+  const [status, setStatus] = useState<
+    "all" | "pending" | "confirmed" | "paid" | "refund_pending" | "refunded" | "cancelled" | "completed"
+  >("all");
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [bookings, setBookings] = useState<BookingItem[]>([]);
@@ -103,7 +113,7 @@ export default function AdminBookingsScreen() {
   const loadBookings = async (reset = false) => {
     setLoading(true);
     try {
-      const nextPage = reset ? 1 : page;
+      const nextPage = reset ? 1 : page + 1;
       const res = await adminAPI.getBookings({
         status: status === "all" ? undefined : status,
         search: search || undefined,
@@ -143,57 +153,81 @@ export default function AdminBookingsScreen() {
     const actualStatus = Object.entries(statusMap).find(([, v]) => v === nextStatus)?.[0] || nextStatus;
     try {
       await adminAPI.updateBookingStatus(item._id, { status: actualStatus });
-      await loadBookings();
+      await loadBookings(true);
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
     }
   };
 
+  const applyFilters = () => {
+    loadBookings(true);
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setDate("");
+    setStatus("all");
+    setTimeout(() => loadBookings(true), 0);
+  };
+
   return (
     <View style={styles.container}>
-      <AdminHeader title="Đơn Hàng" subtitle="Theo dõi và cập nhật" />
+      <AdminHeader title="Đơn Hàng" subtitle="Theo dõi và cập nhật" showBack={false} />
 
-      <View style={styles.searchRow}>
-        <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm theo mã booking"
-          placeholderTextColor={adminTheme.colors.muted}
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={() => loadBookings(true)}
-        />
-        <TextInput
-          style={styles.dateInput}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={adminTheme.colors.muted}
-          value={date}
-          onChangeText={setDate}
-          onSubmitEditing={() => loadBookings(true)}
-        />
-        <TouchableOpacity
-          style={styles.refreshBtn}
-          onPress={() => loadBookings(true)}
-        >
-          <Ionicons name="refresh" size={16} color={adminTheme.colors.onSurface} />
-        </TouchableOpacity>
+      <View style={styles.filterPanel}>
+        <Text style={styles.filterPanelTitle}>Bộ lọc đơn hàng</Text>
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Mã đơn (VD: BK-20260525-1234)"
+            placeholderTextColor={adminTheme.colors.muted}
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={applyFilters}
+          />
+        </View>
+        <View style={styles.searchRow}>
+          <Ionicons name="calendar-outline" size={16} color={adminTheme.colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Ngày đặt (YYYY-MM-DD)"
+            placeholderTextColor={adminTheme.colors.muted}
+            value={date}
+            onChangeText={setDate}
+            onSubmitEditing={applyFilters}
+          />
+        </View>
+        <View style={styles.filterActions}>
+          <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
+            <Text style={styles.resetBtnText}>Xóa lọc</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.applyBtn} onPress={applyFilters}>
+            <Text style={styles.applyBtnText}>Lọc</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.tabRow}>
-        {STATUS_TABS.map((tab) => {
-          const isActive = status === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setStatus(tab)}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {STATUS_LABELS[tab] || tab}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.filterGroup}>
+        <Text style={styles.filterLabel}>Trạng thái nhanh</Text>
+        <View style={styles.quickFilterRow}>
+          {BOOKING_FILTERS.map((item) => {
+            const active = status === item.value;
+            return (
+              <TouchableOpacity
+                key={item.value}
+                style={[styles.quickFilterChip, active && styles.quickFilterChipActive]}
+                onPress={() => setStatus(item.value)}
+              >
+                <Text
+                  style={[styles.quickFilterText, active && styles.quickFilterTextActive]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {loading ? (
@@ -221,9 +255,10 @@ export default function AdminBookingsScreen() {
             <AdminCard style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.name}>{item.bookingNumber}</Text>
-                <Text style={styles.status}>
-                  {STATUS_LABELS[item.status] || item.status}
-                </Text>
+                <StatusBadge
+                  label={STATUS_LABELS[item.status] || item.status}
+                  tone={getStatusTone(item.status)}
+                />
               </View>
               <Text style={styles.meta}>
                 {item.restaurantId?.name || "Nhà hàng"} • {item.tableId?.name || "Bàn"}
@@ -312,18 +347,22 @@ export default function AdminBookingsScreen() {
                 </View>
               ) : MANAGEABLE_STATUSES.has(item.status) ? (
                 <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.actionGhost]}
-                    onPress={() => setStatusAction(item, "confirmed")}
-                  >
-                    <Text style={styles.actionText}>Xác Nhận</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.actionPrimary]}
-                    onPress={() => setStatusAction(item, "paid")}
-                  >
-                    <Text style={styles.actionTextPrimary}>Thanh Toán</Text>
-                  </TouchableOpacity>
+                  {item.status !== "confirmed" ? (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionGhost]}
+                      onPress={() => setStatusAction(item, "confirmed")}
+                    >
+                      <Text style={styles.actionText}>Xác Nhận</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {item.status === "confirmed" ? (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionPrimary]}
+                      onPress={() => setStatusAction(item, "paid")}
+                    >
+                      <Text style={styles.actionTextPrimary}>Thanh Toán</Text>
+                    </TouchableOpacity>
+                  ) : null}
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionDanger]}
                     onPress={() => setStatusAction(item, "cancelled")}
@@ -342,6 +381,28 @@ export default function AdminBookingsScreen() {
   );
 }
 
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "warning" | "success" | "danger" | "info" | "default";
+}) {
+  return (
+    <View
+      style={[
+        styles.statusBadge,
+        tone === "warning" && styles.statusBadgeWarning,
+        tone === "success" && styles.statusBadgeSuccess,
+        tone === "danger" && styles.statusBadgeDanger,
+        tone === "info" && styles.statusBadgeInfo,
+      ]}
+    >
+      <Text style={styles.statusBadgeText}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -351,57 +412,91 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
+  },
+  filterPanel: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    gap: 8,
+  },
+  filterPanelTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: adminTheme.colors.muted,
   },
   searchInput: {
     flex: 1,
     color: adminTheme.colors.onSurface,
     fontSize: 13,
   },
-  dateInput: {
-    width: 110,
-    color: adminTheme.colors.onSurface,
-    fontSize: 12,
+  filterActions: {
+    flexDirection: "row",
+    gap: 8,
   },
-  refreshBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
+  resetBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
     backgroundColor: adminTheme.colors.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  resetBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: adminTheme.colors.onSurface,
+  },
+  applyBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    backgroundColor: adminTheme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: adminTheme.colors.onPrimary,
+  },
+  filterGroup: {
     paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    color: adminTheme.colors.muted,
+    fontWeight: "700",
     marginBottom: 8,
   },
-  tab: {
+  quickFilterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  quickFilterChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
   },
-  tabActive: {
+  quickFilterChipActive: {
     backgroundColor: adminTheme.colors.onSurface,
     borderColor: adminTheme.colors.onSurface,
   },
-  tabText: {
+  quickFilterText: {
     fontSize: 11,
-    color: adminTheme.colors.onSurface,
     fontWeight: "600",
+    color: adminTheme.colors.onSurface,
   },
-  tabTextActive: {
+  quickFilterTextActive: {
     color: adminTheme.colors.onPrimary,
   },
   loadingWrap: {
@@ -415,8 +510,8 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
   loadMoreBtn: {
     marginTop: 4,
@@ -450,7 +545,25 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: adminTheme.colors.onSurface,
   },
-  status: {
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: adminTheme.colors.surfaceVariant,
+  },
+  statusBadgeWarning: {
+    backgroundColor: "#FEF3C7",
+  },
+  statusBadgeSuccess: {
+    backgroundColor: "#DCFCE7",
+  },
+  statusBadgeDanger: {
+    backgroundColor: "#FEE2E2",
+  },
+  statusBadgeInfo: {
+    backgroundColor: "#DBEAFE",
+  },
+  statusBadgeText: {
     fontSize: 11,
     fontWeight: "700",
     color: adminTheme.colors.onSurface,
