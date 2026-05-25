@@ -19,16 +19,17 @@ import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
 
-type PaymentId = "momo" | "zalopay" | "bank" | "credit";
+//type PaymentId = "momo" | "zalopay" | "bank" | "credit";
+type PaymentId = "bank";
 const PAYMENT_METHODS: {
   id: PaymentId;
   name: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { id: "momo", name: "MoMo", icon: "wallet-outline" },
-  { id: "zalopay", name: "ZaloPay", icon: "phone-portrait-outline" },
+  //{ id: "momo", name: "MoMo", icon: "wallet-outline" },
+  //{ id: "zalopay", name: "ZaloPay", icon: "phone-portrait-outline" },
   { id: "bank", name: "Chuyển khoản", icon: "business-outline" },
-  { id: "credit", name: "Thẻ tín dụng", icon: "card-outline" },
+  //{ id: "credit", name: "Thẻ tín dụng", icon: "card-outline" },
 ];
 
 interface VoucherItem {
@@ -77,7 +78,7 @@ export default function ConfirmBookingScreen() {
   const [loading, setLoading] = useState(false);
   const [voucherLoading, setVoucherLoading] = useState(true);
   const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("momo");
+  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("bank");
   const [showPayments, setShowPayments] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(
@@ -456,7 +457,7 @@ export default function ConfirmBookingScreen() {
             style={{ marginTop: 1 }}
           />
           <Text style={s.infoTxt}>
-            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 2 giờ:
+            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được:
             hoàn tiền cọc.
           </Text>
         </View>

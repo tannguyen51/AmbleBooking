@@ -54,15 +54,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: "AI",
+          title: "",
           tabBarIcon: () => (
             <View style={styles.aiTabWrap}>
               <View style={styles.aiTabBtn}>
-                <Ionicons
-                  size={23}
-                  name="chatbubble-ellipses-outline"
-                  color="#fff"
-                />
+                <Text style={styles.aiTabText}>AI</Text>
               </View>
             </View>
           ),
@@ -111,14 +107,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   aiTabWrap: {
-    marginTop: -30,
+    
+    marginTop: -28,
     width: 64,
     alignItems: "center",
   },
   aiTabBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: "#FFB100",
     alignItems: "center",
     justifyContent: "center",
@@ -129,5 +126,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 10,
     elevation: 8,
+  },
+  aiTabText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 0,
   },
 });

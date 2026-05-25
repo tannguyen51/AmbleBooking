@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { adminTheme } from "../../constants/adminTheme";
@@ -15,15 +16,29 @@ import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
+import { AdminSegmented } from "../../components/admin/AdminSegmented";
 
 interface RestaurantItem {
   _id: string;
   name: string;
   city?: string;
   cuisine?: string;
+  images?: string[];
   isActive: boolean;
   isFeatured: boolean;
 }
+
+const STATUS_FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "active", label: "Đang hoạt động" },
+  { value: "inactive", label: "Đang ẩn" },
+] as const;
+
+const FEATURE_FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "featured", label: "Nổi bật" },
+  { value: "normal", label: "Thường" },
+] as const;
 
 export default function AdminRestaurantsScreen() {
   const [search, setSearch] = useState("");
@@ -45,7 +60,7 @@ export default function AdminRestaurantsScreen() {
   const loadRestaurants = async (reset = false) => {
     setLoading(true);
     try {
-      const nextPage = reset ? 1 : page;
+      const nextPage = reset ? 1 : page + 1;
       const res = await adminAPI.getRestaurants({
         search: search || undefined,
         city: city || undefined,
@@ -61,7 +76,10 @@ export default function AdminRestaurantsScreen() {
       } as any);
       const list = res.data?.restaurants || [];
       const total = Number(res.data?.total || 0);
-      const merged = reset ? list : [...restaurants, ...list];
+      const mergedBase = reset ? list : [...restaurants, ...list];
+      const merged = mergedBase.filter(
+        (item, index, arr) => arr.findIndex((x) => x._id === item._id) === index
+      );
       setRestaurants(merged);
       setPage(nextPage);
       setHasMore(merged.length < total);
@@ -80,7 +98,7 @@ export default function AdminRestaurantsScreen() {
   const toggleFeatured = async (item: RestaurantItem) => {
     try {
       await adminAPI.setRestaurantFeatured(item._id, !item.isFeatured);
-      await loadRestaurants();
+      await loadRestaurants(true);
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
     }
@@ -89,7 +107,7 @@ export default function AdminRestaurantsScreen() {
   const toggleActive = async (item: RestaurantItem) => {
     try {
       await adminAPI.setRestaurantActive(item._id, !item.isActive);
-      await loadRestaurants();
+      await loadRestaurants(true);
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
     }
@@ -97,7 +115,7 @@ export default function AdminRestaurantsScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Nhà hàng" subtitle="Kiểm duyệt nội dung" />
+      <AdminHeader title="Nhà hàng" subtitle="Kiểm duyệt nội dung" showBack={false} />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
@@ -124,7 +142,7 @@ export default function AdminRestaurantsScreen() {
           placeholderTextColor="#94A3B8"
           value={city}
           onChangeText={setCity}
-          onSubmitEditing={loadRestaurants}
+          onSubmitEditing={() => loadRestaurants(true)}
         />
         <TextInput
           style={styles.filterInput}
@@ -136,45 +154,22 @@ export default function AdminRestaurantsScreen() {
         />
       </View>
 
-      <View style={styles.chipRow}>
-        {(["all", "active", "inactive"] as const).map((item) => {
-          const isActive = activeFilter === item;
-          return (
-            <TouchableOpacity
-              key={item}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setActiveFilter(item)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}
-              >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-        {(["all", "featured", "normal"] as const).map((item) => {
-          const isActive = featuredFilter === item;
-          return (
-            <TouchableOpacity
-              key={item}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setFeaturedFilter(item)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isActive && styles.filterChipTextActive,
-                ]}
-              >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.filterGroupWrap}>
+        <Text style={styles.filterGroupTitle}>Trạng thái</Text>
+        <AdminSegmented
+          options={STATUS_FILTERS}
+          value={activeFilter}
+          onChange={setActiveFilter}
+        />
+      </View>
+
+      <View style={styles.filterGroupWrap}>
+        <Text style={styles.filterGroupTitle}>Hiển thị</Text>
+        <AdminSegmented
+          options={FEATURE_FILTERS}
+          value={featuredFilter}
+          onChange={setFeaturedFilter}
+        />
       </View>
 
       {loading ? (
@@ -200,14 +195,20 @@ export default function AdminRestaurantsScreen() {
           }
           renderItem={({ item }) => (
             <AdminCard style={styles.card}>
+              {item.images?.[0] ? (
+                <Image source={{ uri: item.images[0] }} style={styles.coverImage} />
+              ) : null}
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.meta}>
                 {item.city || "-"} • {item.cuisine || "-"}
               </Text>
 
               <View style={styles.badgeRow}>
-                <Badge label={item.isActive ? "active" : "inactive"} />
-                {item.isFeatured ? <Badge label="featured" tone="info" /> : null}
+                <Badge
+                  label={item.isActive ? "Active" : "Inactive"}
+                  tone={item.isActive ? "success" : "danger"}
+                />
+                {item.isFeatured ? <Badge label="Featured" tone="info" /> : null}
               </View>
 
               <View style={styles.actionsRow}>
@@ -238,9 +239,22 @@ export default function AdminRestaurantsScreen() {
   );
 }
 
-function Badge({ label, tone = "default" }: { label: string; tone?: "default" | "info" }) {
+function Badge({
+  label,
+  tone = "default",
+}: {
+  label: string;
+  tone?: "default" | "info" | "success" | "danger";
+}) {
   return (
-    <View style={[styles.badge, tone === "info" && styles.badgeInfo]}>
+    <View
+      style={[
+        styles.badge,
+        tone === "info" && styles.badgeInfo,
+        tone === "success" && styles.badgeSuccess,
+        tone === "danger" && styles.badgeDanger,
+      ]}
+    >
       <Text style={styles.badgeText}>{label}</Text>
     </View>
   );
@@ -257,8 +271,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
@@ -280,45 +294,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 8,
   },
   filterInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
     color: adminTheme.colors.onSurface,
     backgroundColor: adminTheme.colors.surface,
   },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  filterGroupWrap: {
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 8,
   },
-  filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
-    backgroundColor: adminTheme.colors.surface,
-  },
-  filterChipActive: {
-    backgroundColor: adminTheme.colors.onSurface,
-    borderColor: adminTheme.colors.onSurface,
-  },
-  filterChipText: {
-    fontSize: 11,
-    color: adminTheme.colors.onSurface,
-    fontWeight: "600",
-  },
-  filterChipTextActive: {
-    color: adminTheme.colors.onPrimary,
+  filterGroupTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: adminTheme.colors.muted,
+    marginBottom: 8,
   },
   loadingWrap: {
     marginTop: 30,
@@ -331,8 +328,8 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 10,
   },
   loadMoreBtn: {
     marginTop: 4,
@@ -355,6 +352,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
   },
+  coverImage: {
+    width: "100%",
+    height: 132,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: adminTheme.colors.surfaceVariant,
+  },
   name: {
     fontSize: 15,
     fontWeight: "700",
@@ -372,16 +376,22 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: adminTheme.colors.surfaceVariant,
   },
   badgeInfo: {
-    backgroundColor: adminTheme.colors.surfaceContainer,
+    backgroundColor: "#DBEAFE",
+  },
+  badgeSuccess: {
+    backgroundColor: "#DCFCE7",
+  },
+  badgeDanger: {
+    backgroundColor: "#FEE2E2",
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     color: adminTheme.colors.onSurface,
   },

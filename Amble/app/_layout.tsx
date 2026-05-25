@@ -37,6 +37,9 @@ export default function RootLayout() {
       pathname.startsWith("/(partner-auth)");
     const inPartnerGroup =
       pathname.includes("/dashboard") ||
+      pathname.includes("/team") ||
+      pathname.includes("/partner-team") ||
+      pathname.includes("/partner-terms") ||
       pathname.includes("/tables") ||
       pathname.includes("/orders") ||
       pathname.includes("/notifications") ||
@@ -118,10 +121,10 @@ export default function RootLayout() {
           Tất cả screens nằm cùng root Stack → router.back() hoạt động
           xuyên suốt từ payment → confirm → select-table → restaurant/[id]
         */}
-        <Stack.Screen
-          name="booking/select-table"
-          options={{
-            animation: "slide_from_right",
+      <Stack.Screen
+        name="booking/select-table"
+        options={{
+          animation: "slide_from_right",
             gestureEnabled: true,
             gestureDirection: "horizontal",
           }}

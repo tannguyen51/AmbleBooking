@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { partnerDashboardAPI } from "../../services/api";
+import { hasPartnerPermission } from "../../constants/partnerPermissions";
 
 type OpenDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -46,7 +47,8 @@ const FALLBACK_COVER =
 
 export default function PartnerProfileScreen() {
   const router = useRouter();
-  const { logout } = usePartnerAuthStore();
+  const { logout, partner } = usePartnerAuthStore();
+  const canManageStaff = hasPartnerPermission(partner?.role, "staff:view");
 
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -204,6 +206,28 @@ export default function PartnerProfileScreen() {
     ]);
   };
 
+  const openVoucher = () => {
+    Alert.alert(
+      "Voucher nhà hàng",
+      "Tính năng quản lý voucher sẽ được bật trong bản cập nhật tiếp theo.",
+    );
+  };
+
+  const openSubscription = () => {
+    Alert.alert(
+      "Gói đăng ký",
+      `Gói hiện tại: ${partner?.subscriptionPackage || "basic"}`,
+    );
+  };
+
+  const openTerms = () => {
+    router.push("/partner-terms");
+  };
+
+  const openSupport = () => {
+    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@amble.vn");
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -211,6 +235,16 @@ export default function PartnerProfileScreen() {
         contentContainerStyle={styles.contentInner}
       >
         <Text style={styles.title}>Hồ sơ nhà hàng</Text>
+        {canManageStaff && (
+          <TouchableOpacity
+            style={styles.teamEntryBtn}
+            onPress={() => router.push("/partner-team")}
+          >
+            <Ionicons name="people-outline" size={16} color="#FF6B35" />
+            <Text style={styles.teamEntryText}>Quản lý nhân sự nhà hàng</Text>
+            <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Ảnh bìa nhà hàng</Text>
@@ -457,6 +491,42 @@ export default function PartnerProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Dịch vụ & Chính sách</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="ticket-outline" size={18} color="#374151" />
+              <Text style={styles.menuItemText}>Voucher</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={openSubscription}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="diamond-outline" size={18} color="#374151" />
+              <Text style={styles.menuItemText}>Gói đăng ký</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={openTerms}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="document-text-outline" size={18} color="#374151" />
+              <Text style={styles.menuItemText}>Điều khoản</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={openSupport}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="help-buoy-outline" size={18} color="#374151" />
+              <Text style={styles.menuItemText}>Hỗ trợ</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={16} color="#EF4444" />
           <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -496,6 +566,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 5,
     elevation: 2,
+  },
+  teamEntryBtn: {
+    marginTop: 4,
+    marginBottom: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    backgroundColor: "#FFF7ED",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  teamEntryText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#C2410C",
   },
   sectionTitle: {
     fontSize: 14,
@@ -648,6 +737,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   saveBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
+  menuItem: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
   logoutBtn: {
     borderRadius: 14,
     borderWidth: 1,

@@ -113,15 +113,7 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Mật khẩu</Text>
-
-                <TouchableOpacity
-                  onPress={() => router.push("/(auth)/forgot-password")}
-                >
-                <Text style={styles.forgotText}>Quên mật khẩu?</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.label}>Mật khẩu</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -150,6 +142,13 @@ export default function LoginScreen() {
                 />
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={styles.forgotWrap}
+              onPress={() => router.push("/(auth)/forgot-password")}
+            >
+              <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Login Button */}
@@ -284,10 +283,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  labelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
+  forgotWrap: {
+    alignSelf: "flex-end",
+    marginTop: 8,
   },
 
   forgotText: {

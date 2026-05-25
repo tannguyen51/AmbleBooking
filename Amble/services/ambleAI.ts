@@ -71,22 +71,35 @@ export const DEFAULT_SESSION: AISession = {
 
 // ─── Gọi Gemini qua BE proxy (key bảo mật trong BE/.env) ───────────────────
 
-const BE_URL = "http://10.0.2.2:5000/api"; // Android emulator
-// const BE_URL = 'http://localhost:5000/api'; // iOS simulator
+const BE_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000/api";
 
 async function callClaude(
   systemPrompt: string,
   history: { role: "user" | "assistant"; content: string }[],
   userMessage: string,
 ): Promise<string> {
-  const res = await fetch(`${BE_URL}/ai/chat`, {
+  const payload = {
+    system: systemPrompt,
+    messages: [...history, { role: "user", content: userMessage }],
+  };
+
+  let res = await fetch(`${BE_URL}/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system: systemPrompt,
-      messages: [...history, { role: "user", content: userMessage }],
-    }),
+    body: JSON.stringify(payload),
   });
+
+  // Fallback cho backend cũ dùng route conversation
+  if (res.status === 404) {
+    res = await fetch(`${BE_URL}/booking/conversation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: userMessage,
+        sessionId: "",
+      }),
+    });
+  }
 
   if (res.status === 429) {
     return "⏳ AI đang bận, bạn đợi khoảng 20 giây rồi thử lại nhé!";
@@ -105,8 +118,10 @@ async function callClaude(
   }
 
   const data = await res.json();
-  if (!data.success || !data.text) throw new Error("Empty AI response");
-  return data.text.trim();
+  const text =
+    data?.text || data?.reply || data?.message || data?.data?.text || "";
+  if (!text) throw new Error("Empty AI response");
+  return String(text).trim();
 }
 
 // ─── System prompt ────────────────────────────────────────────────────────────
