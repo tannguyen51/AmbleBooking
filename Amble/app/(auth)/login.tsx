@@ -16,7 +16,6 @@ import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
 import { Ionicons } from "@expo/vector-icons";
-import { GoogleSigninButton } from "@react-native-google-signin/google-signin";
 import AmbleLogo from "../../components/AmbleLogo";
 import { API_BASE_URL } from "../../services/api";
 
@@ -235,13 +234,16 @@ export default function LoginScreen() {
           </View>
 
           {/* Google Login */}
-          <GoogleSigninButton
+          <TouchableOpacity
             onPress={handleGoogleLogin}
-            size={GoogleSigninButton.Size.Wide}
-            color={GoogleSigninButton.Color.Light}
             disabled={isLoading}
             style={[styles.googleBtn, isLoading && { opacity: 0.75 }]}
-          />
+          >
+            <View style={styles.googleBtnInner}>
+              <Ionicons name="logo-google" size={18} color="#DB4437" />
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

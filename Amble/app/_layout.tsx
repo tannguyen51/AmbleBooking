@@ -4,12 +4,6 @@ import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-GoogleSignin.configure({
-  iosClientId: "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
-  webClientId: "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
-  profileImageSize: 120,
-});
 export default function RootLayout() {
   const { isAuthenticated, loadUser, user } = useAuthStore();
   const { isAuthenticated: isPartnerAuthenticated, loadPartner } =

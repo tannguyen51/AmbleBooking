@@ -15,7 +15,7 @@ Example (`.env`):
 
 ```env
 APP_ENV=staging
-EXPO_PUBLIC_API_URL=https://api-staging.amble.vn/api
+EXPO_PUBLIC_API_URL=https://amblebooking-production.up.railway.app/api
 ```
 
 ## EAS Build Commands

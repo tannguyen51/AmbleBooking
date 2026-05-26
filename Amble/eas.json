@@ -20,7 +20,7 @@
       },
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://api.amble.vn/api"
+        "EXPO_PUBLIC_API_URL": "https://amblebooking-production.up.railway.app/api"
       }
     }
   },
