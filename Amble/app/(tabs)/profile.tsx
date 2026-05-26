@@ -560,7 +560,6 @@ export default function ProfileScreen() {
       <Modal visible={logoutVisible} animationType="fade" transparent>
         <View style={lo.overlay}>
           <View style={lo.card}>
-            <Text style={{ fontSize: 52, textAlign: "center" }}></Text>
             <Text style={lo.title}>Đăng xuất?</Text>
             <Text style={lo.sub}>Bạn có chắc muốn đăng xuất không?</Text>
             <View style={lo.row}>
