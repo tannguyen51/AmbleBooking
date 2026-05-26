@@ -793,7 +793,7 @@ const s = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
-  drawerImg: { width: "100%", height: 200},
+  drawerImg: { width: "100%", height: 200 },
   drawerBody: { padding: 20 },
   drawerTopRow: {
     flexDirection: "row",
