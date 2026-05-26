@@ -1,9 +1,14 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
-const BASE_URL = "http://10.0.2.2:5000/api"; // Android emulator
-// const BASE_URL = 'http://localhost:5000/api'; // iOS simulator
-// const BASE_URL = 'http://192.168.x.x:5000/api'; // Real device — đổi IP
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Platform.OS === "android"
+    ? "http://10.0.2.2:5000/api"
+    : "http://localhost:5000/api"); // EXPO_PUBLIC_API_URL is required for production builds
+
+export const API_BASE_URL = BASE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -120,8 +125,28 @@ export const bookingAPI = {
   getById: (bookingId: string) => api.get(`/booking/${bookingId}`),
 
   // Hủy booking
-  cancel: (bookingId: string, reason?: string) =>
-    api.delete(`/booking/${bookingId}/cancel`, { data: { reason } }),
+  cancel: (
+    bookingId: string,
+    payload?:
+      | string
+      | {
+          reason?: string;
+          refundAccount?: {
+            bankName: string;
+            accountNumber: string;
+            accountName: string;
+          };
+        },
+  ) => {
+    const data =
+      typeof payload === "string" || !payload
+        ? { reason: payload }
+        : payload;
+    return api.delete(`/booking/${bookingId}/cancel`, { data });
+  },
+
+  getRefundPreview: (bookingId: string) =>
+    api.get(`/booking/${bookingId}/refund-preview`),
 
   // Partner xác nhận booking
   confirm: (bookingId: string) => api.put(`/booking/${bookingId}/confirm`),
@@ -189,6 +214,115 @@ export const partnerDashboardAPI = {
     tiktok?: string;
     website?: string;
   }) => api.put("/partner/restaurant-profile", data),
+};
+
+export const partnerStaffAPI = {
+  getMembers: () => api.get("/partner/staff"),
+  createMember: (data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    role: "manager" | "staff";
+    sendMethod?: "email" | "sms" | "both";
+  }) => api.post("/partner/staff", data),
+  updateMember: (
+    staffId: string,
+    data: {
+      fullName?: string;
+      phone?: string;
+      role?: "manager" | "staff";
+      isActive?: boolean;
+    },
+  ) => api.put(`/partner/staff/${staffId}`, data),
+  resendCredentials: (
+    staffId: string,
+    data?: { sendMethod?: "email" | "sms" | "both" },
+  ) => api.post(`/partner/staff/${staffId}/resend-credentials`, data || {}),
+};
+
+// ── Admin ──────────────────────────────────────────────
+export const adminAPI = {
+  getDashboard: () => api.get("/admin/dashboard"),
+  getAuditLogs: (params?: { action?: string; targetType?: string; targetId?: string; limit?: number }) =>
+    api.get("/admin/audit", { params }),
+
+  getUsers: (params?: {
+    search?: string;
+    role?: "customer" | "admin";
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  }) => api.get("/admin/users", { params }),
+  getUser: (id: string) => api.get(`/admin/users/${id}`),
+  setUserActive: (id: string, isActive: boolean) =>
+    api.put(`/admin/users/${id}/active`, { isActive }),
+  setUserRole: (id: string, role: "customer" | "admin") =>
+    api.put(`/admin/users/${id}/role`, { role }),
+  adjustUserRewards: (
+    id: string,
+    data: { points: number; title: string; type: "earn" | "redeem" },
+  ) => api.post(`/admin/users/${id}/rewards`, data),
+
+  getPartners: (params?: {
+    status?: "pending" | "active" | "expired" | "cancelled";
+    search?: string;
+    isActive?: boolean;
+  }) => api.get("/admin/partners", { params }),
+  approvePartner: (
+    id: string,
+    data?: { subscriptionPackage?: "basic" | "pro" | "premium"; subscriptionExpiry?: string; note?: string },
+  ) => api.put(`/admin/partners/${id}/approve`, data || {}),
+  rejectPartner: (id: string, reason: string) =>
+    api.put(`/admin/partners/${id}/reject`, { reason }),
+  setPartnerActive: (id: string, isActive: boolean) =>
+    api.put(`/admin/partners/${id}/active`, { isActive }),
+
+  getRestaurants: (params?: {
+    search?: string;
+    city?: string;
+    cuisine?: string;
+    isActive?: boolean;
+    isFeatured?: boolean;
+    page?: number;
+    limit?: number;
+  }) => api.get("/admin/restaurants", { params }),
+  updateRestaurant: (id: string, data: any) =>
+    api.put(`/admin/restaurants/${id}`, data),
+  setRestaurantFeatured: (id: string, isFeatured: boolean) =>
+    api.put(`/admin/restaurants/${id}/featured`, { isFeatured }),
+  setRestaurantActive: (id: string, isActive: boolean) =>
+    api.put(`/admin/restaurants/${id}/active`, { isActive }),
+
+  getBookings: (params?: {
+    status?: string;
+    search?: string;
+    date?: string;
+    restaurantId?: string;
+    userId?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get("/admin/bookings", { params }),
+  updateBookingStatus: (
+    id: string,
+    data: { status: string; reason?: string; paymentMethod?: string; transactionId?: string },
+  ) => api.put(`/admin/bookings/${id}/status`, data),
+
+  getRoutes: () => api.get("/admin/routes"),
+  createRoute: (data: {
+    name: string;
+    description?: string;
+    location: string;
+    distance: number;
+    duration: number;
+    difficulty?: "easy" | "moderate" | "hard";
+    image?: string;
+    tags?: string[];
+    isPopular?: boolean;
+    rating?: number;
+    reviewCount?: number;
+  }) => api.post("/admin/routes", data),
+  updateRoute: (id: string, data: any) => api.put(`/admin/routes/${id}`, data),
+  deleteRoute: (id: string) => api.delete(`/admin/routes/${id}`),
 };
 
 // ── Routes ──────────────────────────────────────────────

@@ -25,8 +25,10 @@ const COPY = {
     customerSubtitle: "Tìm kiếm & đặt bàn nhà hàng",
     partnerTitle: "Đối Tác Nhà Hàng",
     partnerSubtitle: "Quản lý nhà hàng & đặt bàn",
+    adminTitle: "Quản Trị",
+    adminSubtitle: "Giám sát hệ thống & đối tác",
     or: "hoặc",
-    register: "Đăng Ký miễn phí",
+    register: "Đăng Ký cho khách hàng mới",
   },
   en: {
     changeLanguage: "Change language",
@@ -37,6 +39,8 @@ const COPY = {
     customerSubtitle: "Find and reserve restaurants",
     partnerTitle: "Restaurant Partner",
     partnerSubtitle: "Manage your venue & bookings",
+    adminTitle: "Admin",
+    adminSubtitle: "Operate platform & partners",
     or: "or",
     register: "Sign up for free",
   },
@@ -117,6 +121,32 @@ export default function WelcomeScreen() {
           </View>
 
           <Text style={[styles.cardArrow, { color: "#999" }]}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.cardAdmin}
+          onPress={() => router.push("/admin/login")}
+          activeOpacity={0.85}
+        >
+          <View style={styles.cardIconWrap}>
+            <LinearGradient
+              colors={["#0F172A", "#1E293B"]}
+              style={styles.cardIconGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="shield-checkmark" size={20} color="#ffffff" />
+            </LinearGradient>
+          </View>
+
+          <View style={styles.cardText}>
+            <Text style={[styles.cardTitle, { color: "#0F172A" }]}>
+              {copy.adminTitle}
+            </Text>
+            <Text style={styles.cardSubtitle}>{copy.adminSubtitle}</Text>
+          </View>
+
+          <Text style={[styles.cardArrow, { color: "#0F172A" }]}>›</Text>
         </TouchableOpacity>
 
         <View style={styles.dividerRow}>
@@ -260,6 +290,16 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     backgroundColor: "#F7F7F7",
+  },
+  cardAdmin: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#0F172A",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: "#EEF2FF",
   },
 
   cardIconWrap: {

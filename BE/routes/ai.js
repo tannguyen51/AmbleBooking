@@ -5,7 +5,7 @@ const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const MODEL_CANDIDATES = (
   process.env.AI_MODELS ||
-  "google/gemini-2.5-flash,openai/gpt-4o-mini,anthropic/claude-3.5-haiku"
+  "openai/gpt-4o-mini,anthropic/claude-3.5-haiku"
 )
   .split(",")
   .map((m) => m.trim())
@@ -15,7 +15,6 @@ function getAIKey() {
   return (
     process.env.OPENROUTER_API_KEY ||
     process.env.AI_API_KEY ||
-    process.env.GEMINI_API_KEY ||
     ""
   );
 }

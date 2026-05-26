@@ -30,7 +30,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      Alert.alert("Loi", "Vui long nhap email");
+      Alert.alert("Lỗi", "Vui lòng nhập email");
       return;
     }
     setLoading(true);
@@ -39,8 +39,8 @@ export default function ForgotPasswordScreen() {
         email: email.trim().toLowerCase(),
       });
       Alert.alert(
-        "Thanh cong",
-        "Neu email ton tai, he thong da gui link dat lai mat khau.",
+        "Thành công",
+        "Nếu email tồn tại, hệ thống đã gửi link đặt lại mật khẩu.",
       );
       router.push({
         pathname: "/(auth)/reset-password",
@@ -48,8 +48,8 @@ export default function ForgotPasswordScreen() {
       });
     } catch (error: any) {
       const message =
-        error.response?.data?.message || "Khong gui duoc email dat lai";
-      Alert.alert("Loi", message);
+        error.response?.data?.message || "Không gửi được email đặt lại";
+      Alert.alert("Lỗi", message);
     } finally {
       setLoading(false);
     }
@@ -65,14 +65,14 @@ export default function ForgotPasswordScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Quen mat khau</Text>
+          <Text style={styles.headerTitle}>Quên mật khẩu</Text>
           <Text style={styles.headerSubtitle}>
-            Nhap email de nhan link dat lai mat khau
+            Nhập email để nhận link đặt lại mật khẩu
           </Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Email da dang ky</Text>
+          <Text style={styles.label}>Email đã đăng ký</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="mail-outline" size={18} color={TEXT_MUTED} />
             <TextInput
@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Gui link dat lai</Text>
+                <Text style={styles.submitText}>Gửi link đặt lại</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

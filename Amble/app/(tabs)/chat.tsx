@@ -334,7 +334,7 @@ export default function ChatScreen() {
     }
   };
 
-  const handleQuickReply = (reply: QuickReply) => sendMessage(reply.text);
+  const handleQuickReply = (reply: QuickReply) => sendMessage(reply.value);
 
   const handleBookTable = (card: TableCard, draft: any) => {
     router.push({

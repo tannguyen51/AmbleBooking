@@ -53,4 +53,4 @@ const routeSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('Route', routeSchema);
+module.exports = mongoose.models.Route || mongoose.model('Route', routeSchema);

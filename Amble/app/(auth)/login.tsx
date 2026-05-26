@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
 import { Ionicons } from "@expo/vector-icons";
 import AmbleLogo from "../../components/AmbleLogo";
+import { API_BASE_URL } from "../../services/api";
 
 // ─── Design tokens ───
 const PRIMARY = "#FF6B35";
@@ -34,7 +36,40 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
 
-  const { login, isLoading } = useAuthStore();
+  const { login, loginWithToken, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    let isHandling = false;
+    const handleUrl = async (url: string) => {
+      if (isHandling) return;
+      const parsed = Linking.parse(url);
+      const token = parsed.queryParams?.token;
+      const error = parsed.queryParams?.error;
+
+      if (typeof token === "string") {
+        try {
+          isHandling = true;
+          await loginWithToken(token);
+        } catch (err: any) {
+          Alert.alert("Đăng nhập Google thất bại", err.message);
+        } finally {
+          isHandling = false;
+        }
+      } else if (typeof error === "string") {
+        Alert.alert("Đăng nhập Google thất bại", error);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl(url);
+    });
+
+    const sub = Linking.addEventListener("url", (event) => {
+      handleUrl(event.url);
+    });
+
+    return () => sub.remove();
+  }, [loginWithToken]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -47,6 +82,22 @@ export default function LoginScreen() {
     } catch (error: any) {
       Alert.alert("Đăng nhập thất bại", error.message);
     }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!__DEV__ && API_BASE_URL.includes("localhost")) {
+      Alert.alert(
+        "Thiếu cấu hình production",
+        "Bạn cần set EXPO_PUBLIC_API_URL trỏ đến API public trước khi build release.",
+      );
+      return;
+    }
+
+    const redirectUri = Linking.createURL("auth/google");
+    const url = `${API_BASE_URL}/auth/google?redirect=${encodeURIComponent(
+      redirectUri,
+    )}`;
+    await Linking.openURL(url);
   };
 
   return (
@@ -113,15 +164,7 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Mật khẩu</Text>
-
-                <TouchableOpacity
-                  onPress={() => router.push("/(auth)/forgot-password")}
-                >
-                <Text style={styles.forgotText}>Quên mật khẩu?</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.label}>Mật khẩu</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -150,6 +193,13 @@ export default function LoginScreen() {
                 />
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={styles.forgotWrap}
+              onPress={() => router.push("/(auth)/forgot-password")}
+            >
+              <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Login Button */}
@@ -182,6 +232,18 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </Link>
           </View>
+
+          {/* Google Login */}
+          <TouchableOpacity
+            onPress={handleGoogleLogin}
+            disabled={isLoading}
+            style={[styles.googleBtn, isLoading && { opacity: 0.75 }]}
+          >
+            <View style={styles.googleBtnInner}>
+              <Ionicons name="logo-google" size={18} color="#DB4437" />
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -284,10 +346,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  labelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
+  forgotWrap: {
+    alignSelf: "flex-end",
+    marginTop: 8,
   },
 
   forgotText: {
@@ -334,6 +395,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "800",
+  },
+
+  googleBtn: {
+    marginTop: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: "#FFF",
+  },
+
+  googleBtnInner: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: TEXT,
   },
 
   registerRow: {

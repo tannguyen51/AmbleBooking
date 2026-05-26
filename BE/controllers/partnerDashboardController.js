@@ -57,9 +57,9 @@ exports.getOverview = async (req, res) => {
 
     const pendingBookingItems = pendingBookings.map((booking) => ({
       id: booking._id,
-      userName: booking.userId?.fullName || "Khach hang",
+      userName: booking.userId?.fullName || "Khách hàng",
       userPhone: booking.userId?.phone || "",
-      tableNumber: booking.tableId?.name || "Ban",
+      tableNumber: booking.tableId?.name || "Bàn",
       date: booking.bookingDetails?.date || "",
       time: booking.bookingDetails?.time || "",
       guests: booking.bookingDetails?.partySize || 0,
@@ -80,7 +80,7 @@ exports.getOverview = async (req, res) => {
     });
   } catch (err) {
     console.error("[getOverview]", err);
-    return res.status(500).json({ success: false, message: "Loi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -116,9 +116,9 @@ exports.getOrders = async (req, res) => {
       id: booking._id,
       bookingNumber: booking.bookingNumber,
       status: booking.status,
-      userName: booking.userId?.fullName || "Khach hang",
+      userName: booking.userId?.fullName || "Khách hàng",
       userPhone: booking.userId?.phone || "",
-      tableNumber: booking.tableId?.name || "Ban",
+      tableNumber: booking.tableId?.name || "Bàn",
       tableType: booking.tableId?.type || "regular",
       date: booking.bookingDetails?.date || "",
       time: booking.bookingDetails?.time || "",
@@ -138,7 +138,7 @@ exports.getOrders = async (req, res) => {
     return res.json({ success: true, orders, counts });
   } catch (err) {
     console.error("[getOrders]", err);
-    return res.status(500).json({ success: false, message: "Loi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -185,7 +185,7 @@ exports.getTables = async (req, res) => {
               date: currentBooking.bookingDetails?.date || "",
               time: currentBooking.bookingDetails?.time || "",
               guests: currentBooking.bookingDetails?.partySize || 0,
-              customerName: currentBooking.userId?.fullName || "Khach hang",
+              customerName: currentBooking.userId?.fullName || "Khách hàng",
               customerPhone: currentBooking.userId?.phone || "",
             }
           : null,
@@ -195,7 +195,7 @@ exports.getTables = async (req, res) => {
     return res.json({ success: true, tables: tableItems });
   } catch (err) {
     console.error("[getTables]", err);
-    return res.status(500).json({ success: false, message: "Loi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -222,8 +222,8 @@ exports.getNotifications = async (req, res) => {
     ]);
 
     const notifications = recentBookings.map((booking) => {
-      const customerName = booking.userId?.fullName || "Khach hang";
-      const tableName = booking.tableId?.name || "Ban";
+      const customerName = booking.userId?.fullName || "Khách hàng";
+      const tableName = booking.tableId?.name || "Bàn";
       const date = booking.bookingDetails?.date || "";
       const time = booking.bookingDetails?.time || "";
 
@@ -273,7 +273,7 @@ exports.getNotifications = async (req, res) => {
     return res.json({ success: true, pendingCount, notifications });
   } catch (err) {
     console.error("[getNotifications]", err);
-    return res.status(500).json({ success: false, message: "Loi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -352,7 +352,7 @@ exports.createTable = async (req, res) => {
     return res.status(201).json({ success: true, table: newTable });
   } catch (err) {
     console.error("[createTable]", err);
-    return res.status(500).json({ success: false, message: "Loi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -510,9 +510,15 @@ exports.deleteTable = async (req, res) => {
 // GET /api/partner/restaurant-profile
 exports.getRestaurantProfile = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({
-      partnerId: req.partner._id,
-    }).lean();
+    const restaurantId = req.partner.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner chưa liên kết với nhà hàng.",
+      });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId).lean();
 
     if (!restaurant) {
       return res.status(404).json({
@@ -552,6 +558,14 @@ exports.getRestaurantProfile = async (req, res) => {
 // PUT /api/partner/restaurant-profile
 exports.updateRestaurantProfile = async (req, res) => {
   try {
+    const restaurantId = req.partner.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner chưa liên kết với nhà hàng.",
+      });
+    }
+
     const {
       coverImage,
       name,
@@ -595,9 +609,7 @@ exports.updateRestaurantProfile = async (req, res) => {
       });
     }
 
-    const currentRestaurant = await Restaurant.findOne({
-      partnerId: req.partner._id,
-    }).lean();
+    const currentRestaurant = await Restaurant.findById(restaurantId).lean();
 
     if (!currentRestaurant) {
       return res.status(404).json({
@@ -660,7 +672,7 @@ exports.updateRestaurantProfile = async (req, res) => {
     };
 
     const restaurant = await Restaurant.findOneAndUpdate(
-      { partnerId: req.partner._id },
+      { _id: restaurantId },
       { $set: updateData },
       { new: true },
     ).lean();
