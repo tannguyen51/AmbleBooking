@@ -333,4 +333,22 @@ export const routesAPI = {
   getById: (id: string) => api.get(`/routes/${id}`),
 };
 
+// ── Availability (by specific date) ─────────────────────
+export const availabilityAPI = {
+  getByDate: (date: string) =>
+    api.get("/availability/date", { params: { date } }),
+  getRestaurantAvailability: (restaurantId: string, date: string) =>
+    api.get(`/availability/restaurant/${restaurantId}`, { params: { date } }),
+  checkHoliday: (date: string) =>
+    api.get("/availability/holidays", { params: { date } }),
+  getSpecialHours: (restaurantId: string, startDate: string, endDate: string) =>
+    api.get(`/availability/special-hours/${restaurantId}`, {
+      params: { startDate, endDate },
+    }),
+  getCalendarEvents: (restaurantId: string, month: string, year: string) =>
+    api.get(`/availability/calendar/${restaurantId}`, {
+      params: { month, year },
+    }),
+};
+
 export default api;
