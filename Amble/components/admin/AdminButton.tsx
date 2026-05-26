@@ -24,11 +24,7 @@ const styles = StyleSheet.create({
     borderRadius: adminTheme.radius.md,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: adminTheme.shadow.color,
-    shadowOffset: adminTheme.shadow.offset,
-    shadowOpacity: adminTheme.shadow.opacity,
-    shadowRadius: adminTheme.shadow.radius,
-    elevation: 3,
+    ...adminTheme.shadow.card,
   },
   text: {
     color: adminTheme.colors.onPrimary,

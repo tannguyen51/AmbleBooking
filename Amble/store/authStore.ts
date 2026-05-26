@@ -23,6 +23,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   register: (data: {
     fullName: string;
     email: string;
@@ -52,6 +53,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       const message =
         error.response?.data?.message || 'Login failed. Please try again.';
+      throw new Error(message);
+    }
+  },
+
+  loginWithToken: async (token) => {
+    set({ isLoading: true });
+    try {
+      await AsyncStorage.setItem('amble_token', token);
+      const res = await authAPI.getMe();
+      set({ user: res.data.user, token, isAuthenticated: true, isLoading: false });
+    } catch (error: any) {
+      set({ isLoading: false });
+      await AsyncStorage.removeItem('amble_token');
+      const message =
+        error.response?.data?.message || 'Google login failed.';
       throw new Error(message);
     }
   },

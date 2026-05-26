@@ -1,8 +1,14 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000/api"; // Set EXPO_PUBLIC_API_URL for production
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Platform.OS === "android"
+    ? "http://10.0.2.2:5000/api"
+    : "http://localhost:5000/api"); // EXPO_PUBLIC_API_URL is required for production builds
+
+export const API_BASE_URL = BASE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,

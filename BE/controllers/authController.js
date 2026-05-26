@@ -9,6 +9,31 @@ const signToken = (id) => {
   });
 };
 
+const buildGoogleStateToken = (redirectUri) => {
+  return jwt.sign(
+    { redirect: redirectUri, type: "google_oauth" },
+    process.env.JWT_SECRET,
+    { expiresIn: "10m" },
+  );
+};
+
+const getGoogleAppRedirect = (req) => {
+  const configured =
+    process.env.GOOGLE_APP_REDIRECT || "amble://auth/google";
+  const requested = req.query.redirect;
+  if (!requested) return configured;
+  if (configured && requested !== configured) return configured;
+  return requested;
+};
+
+const buildRedirectUrl = (baseUrl, params) => {
+  const url = new URL(baseUrl);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+};
+
 const buildResetToken = () => {
   // Tạo mã 6 chữ số (000000-999999)
   const rawToken = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
@@ -74,6 +99,12 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ email }).select('+password');
     if (!user || !(await user.comparePassword(password))) {
+      if (user && !user.password) {
+        return res.status(401).json({
+          success: false,
+          message: "Account uses Google login. Please sign in with Google.",
+        });
+      }
       return res.status(401).json({
         success: false,
         message: "Invalid email or password.",
@@ -202,5 +233,175 @@ exports.getMe = async (req, res) => {
     return res.status(200).json({ success: true, user });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── Google OAuth ─────────────────────────────────────────
+exports.googleAuthStart = async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const callbackUrl =
+      process.env.GOOGLE_CALLBACK_URL ||
+      "http://localhost:5000/api/auth/google/callback";
+
+    if (!clientId) {
+      return res.status(500).json({
+        success: false,
+        message: "Missing GOOGLE_CLIENT_ID",
+      });
+    }
+
+    const appRedirect = getGoogleAppRedirect(req);
+    const state = buildGoogleStateToken(appRedirect);
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: callbackUrl,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      prompt: "select_account",
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    return res.redirect(authUrl);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to start Google login.",
+    });
+  }
+};
+
+exports.googleAuthCallback = async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+    if (error) {
+      return res.redirect(
+        buildRedirectUrl(
+          process.env.GOOGLE_APP_REDIRECT || "amble://auth/google",
+          { error },
+        ),
+      );
+    }
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing code or state",
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(state, process.env.JWT_SECRET);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid state",
+      });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const callbackUrl =
+      process.env.GOOGLE_CALLBACK_URL ||
+      "http://localhost:5000/api/auth/google/callback";
+
+    if (!clientId || !clientSecret) {
+      return res.status(500).json({
+        success: false,
+        message: "Missing Google OAuth credentials",
+      });
+    }
+
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: callbackUrl,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    const idToken = tokenData.id_token;
+
+    if (!idToken) {
+      return res.status(502).json({
+        success: false,
+        message: "Failed to fetch Google token",
+      });
+    }
+
+    const infoRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+    );
+    const info = await infoRes.json();
+
+    if (!info.email || info.aud !== clientId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Google token",
+      });
+    }
+
+    const email = String(info.email).toLowerCase();
+    const fullName = info.name || email.split("@")[0];
+    const googleId = info.sub;
+    const avatar = info.picture || "";
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        fullName,
+        email,
+        googleId,
+        avatar,
+        authProvider: "google",
+        role: "customer",
+      });
+    } else {
+      let changed = false;
+      if (!user.googleId) {
+        user.googleId = googleId;
+        changed = true;
+      }
+      if (!user.avatar && avatar) {
+        user.avatar = avatar;
+        changed = true;
+      }
+      if (!user.fullName && fullName) {
+        user.fullName = fullName;
+        changed = true;
+      }
+      if (!user.authProvider) {
+        user.authProvider = "local";
+        changed = true;
+      }
+      if (changed) await user.save();
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account has been deactivated.",
+      });
+    }
+
+    const token = signToken(user._id);
+    const redirectUri = decoded?.redirect || getGoogleAppRedirect(req);
+
+    return res.redirect(
+      buildRedirectUrl(redirectUri, { token, provider: "google" }),
+    );
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Google login failed.",
+    });
   }
 };

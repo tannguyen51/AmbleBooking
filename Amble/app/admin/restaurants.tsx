@@ -78,7 +78,8 @@ export default function AdminRestaurantsScreen() {
       const total = Number(res.data?.total || 0);
       const mergedBase = reset ? list : [...restaurants, ...list];
       const merged = mergedBase.filter(
-        (item, index, arr) => arr.findIndex((x) => x._id === item._id) === index
+        (item: RestaurantItem, index: number, arr: RestaurantItem[]) =>
+          arr.findIndex((x: RestaurantItem) => x._id === item._id) === index,
       );
       setRestaurants(merged);
       setPage(nextPage);
