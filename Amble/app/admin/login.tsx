@@ -18,7 +18,10 @@ import { useRouter, type Href } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import AmbleLogo from "../../components/AmbleLogo";
 
-const GRAD: [string, string] = [adminTheme.colors.primary, adminTheme.colors.accent];
+const GRAD: [string, string] = [
+  adminTheme.colors.primary,
+  adminTheme.colors.accent,
+];
 const SURFACE = adminTheme.colors.surface;
 const BG = adminTheme.colors.background;
 const TEXT = adminTheme.colors.onSurface;
@@ -70,18 +73,22 @@ export default function AdminLoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-          <LinearGradient
-            colors={GRAD}
-            style={styles.header}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        <LinearGradient
+          colors={GRAD}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.replace("/welcome")}
           >
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => router.replace("/welcome")}
-            >
-              <Ionicons name="arrow-back" size={22} color={adminTheme.colors.onPrimary} />
-            </TouchableOpacity>
+            <Ionicons
+              name="arrow-back"
+              size={22}
+              color={adminTheme.colors.onPrimary}
+            />
+          </TouchableOpacity>
 
           <View style={styles.decCircle1} />
           <View style={styles.decCircle2} />
@@ -100,14 +107,10 @@ export default function AdminLoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons
-                name="mail-outline"
-                size={18}
-                color={TEXT_MUTED}
-              />
+              <Ionicons name="mail-outline" size={18} color={TEXT_MUTED} />
               <TextInput
                 style={styles.input}
-                placeholder="admin@amble.com"
+                placeholder="admin@munchmap.com"
                 placeholderTextColor={TEXT_MUTED}
                 autoCapitalize="none"
                 keyboardType="email-address"

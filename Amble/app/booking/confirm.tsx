@@ -142,15 +142,15 @@ export default function ConfirmBookingScreen() {
   };
 
   const handleConfirm = async () => {
-    console.log('[DEBUG] User object:', user);
-    console.log('[DEBUG] User ID:', user?._id);
+    console.log("[DEBUG] User object:", user);
+    console.log("[DEBUG] User ID:", user?._id);
     if (!user?._id) {
       Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt bàn");
       return;
     }
     setLoading(true);
     try {
-      console.log('[DEBUG] Booking data:', {
+      console.log("[DEBUG] Booking data:", {
         userId: user._id,
         restaurantId,
         tableId,
@@ -204,8 +204,8 @@ export default function ConfirmBookingScreen() {
         },
       });
     } catch (err: any) {
-      console.error('[DEBUG] Booking error:', err);
-      console.error('[DEBUG] Error details:', err.response?.data);
+      console.error("[DEBUG] Booking error:", err);
+      console.error("[DEBUG] Error details:", err.response?.data);
       Alert.alert(
         "Lỗi",
         err.response?.data?.message || "Đặt bàn thất bại. Vui lòng thử lại.",
@@ -317,7 +317,7 @@ export default function ConfirmBookingScreen() {
           <View style={s.voucherRow}>
             <TextInput
               style={s.voucherInput}
-              placeholder="AMBLE10, GENZ2025..."
+              placeholder="MUNCHMAP10, GENZ2025..."
               placeholderTextColor="#9CA3AF"
               value={voucherInput}
               onChangeText={(v) => {
@@ -457,8 +457,8 @@ export default function ConfirmBookingScreen() {
             style={{ marginTop: 1 }}
           />
           <Text style={s.infoTxt}>
-            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được:
-            hoàn tiền cọc.
+            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3
+            ngày sẽ được: hoàn tiền cọc.
           </Text>
         </View>
         <View style={{ height: 100 }} />

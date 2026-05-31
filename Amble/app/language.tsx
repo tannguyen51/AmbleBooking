@@ -286,7 +286,7 @@ export default function LanguageScreen() {
       <View style={styles.contentWrap}>
         <View style={styles.headerWrap}>
           <AmbleLogo size="xl" showText={false} textColor="#FFFFFF" />
-          <Text style={styles.brandText}>Amble</Text>
+          <Text style={styles.brandText}>Munch Map</Text>
           <Text style={styles.headerText}>{copy.title}</Text>
         </View>
 

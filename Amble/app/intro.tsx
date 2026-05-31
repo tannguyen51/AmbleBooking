@@ -49,7 +49,7 @@ export default function IntroScreen() {
       <View style={styles.content}>
         <View style={styles.logoWrap}>
           <AmbleLogo size="xl" showText={false} />
-          <Text style={styles.brand}>Amble</Text>
+          <Text style={styles.brand}>Munch Map</Text>
         </View>
 
         <Text style={styles.headline}>{copy.headline}</Text>

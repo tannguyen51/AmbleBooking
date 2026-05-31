@@ -271,7 +271,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
-      text: "Xin chào! Mình là **Amble AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
+      text: "Xin chào! Mình là **Munch Map AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -506,7 +506,7 @@ export default function ChatScreen() {
               </Svg>
             </View>
             <View>
-              <Text style={s.headerTitle}>Amble AI</Text>
+              <Text style={s.headerTitle}>Munch Map AI</Text>
               <View style={s.headerOnline}>
                 <View style={s.onlineDot} />
                 <Text style={s.headerSub}>Luôn sẵn sàng hỗ trợ</Text>
@@ -584,7 +584,7 @@ export default function ChatScreen() {
           <View style={s.inputWrap}>
             <TextInput
               style={s.input}
-              placeholder="Nhắn Amble AI..."
+              placeholder="Nhắn Munch Map AI..."
               placeholderTextColor="#9CA3AF"
               value={inputText}
               onChangeText={setInputText}

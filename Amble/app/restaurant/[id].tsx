@@ -179,14 +179,17 @@ export default function DetailScreen() {
 
   // ── Fetch từ BE: GET /api/restaurants/:id ─────────────────
   const fetchDetail = useCallback(async () => {
-    if (!id) return;   
+    if (!id) return;
     setLoading(true);
     setError("");
     try {
       const res = await restaurantAPI.getById(id as string);
       setRestaurant(res.data.restaurant);
     } catch (err: any) {
-      console.error('[RestaurantDetail] Error:', err.response?.data || err.message);
+      console.error(
+        "[RestaurantDetail] Error:",
+        err.response?.data || err.message,
+      );
       setError(
         err.response?.data?.message || "Không thể tải thông tin nhà hàng",
       );
@@ -217,11 +220,11 @@ export default function DetailScreen() {
     try {
       await Share.share({
         message:
-          `Amble Restaurant\n\n` +
+          `Munch Map Restaurant\n\n` +
           `Name: ${restaurant.name}\n` +
           `Address: ${restaurant.address || restaurant.location}\n` +
           `Rating: ${restaurant.rating} (${restaurant.reviewCount} reviews)\n\n` +
-          `Discover this restaurant on Amble!`,
+          `Discover this restaurant on Munch Map!`,
       });
     } catch {
       /* silent */
@@ -325,7 +328,9 @@ export default function DetailScreen() {
           <SafeAreaView style={s.heroTop} pointerEvents="box-none">
             <TouchableOpacity
               style={s.heroBtn}
-              onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/(tabs)")
+              }
               activeOpacity={0.85}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
@@ -460,44 +465,44 @@ export default function DetailScreen() {
             restaurant.instagram ||
             restaurant.tiktok ||
             restaurant.website) && (
-              <View style={[s.section, { marginTop: -2 }]}>
-                <Text style={s.sectionTitle}>Mạng xã hội</Text>
-                <View style={s.socialRow}>
-                  {restaurant.facebook && (
-                    <SocialBtn
-                      icon="logo-facebook"
-                      label="Facebook"
-                      url={restaurant.facebook}
-                      color="#1877F2"
-                    />
-                  )}
-                  {restaurant.instagram && (
-                    <SocialBtn
-                      icon="logo-instagram"
-                      label="Instagram"
-                      url={restaurant.instagram}
-                      color="#E1306C"
-                    />
-                  )}
-                  {restaurant.tiktok && (
-                    <SocialBtn
-                      icon="logo-tiktok"
-                      label="TikTok"
-                      url={restaurant.tiktok}
-                      color="#010101"
-                    />
-                  )}
-                  {restaurant.website && (
-                    <SocialBtn
-                      icon="globe-outline"
-                      label="Website"
-                      url={restaurant.website}
-                      color={PRIMARY}
-                    />
-                  )}
-                </View>
+            <View style={[s.section, { marginTop: -2 }]}>
+              <Text style={s.sectionTitle}>Mạng xã hội</Text>
+              <View style={s.socialRow}>
+                {restaurant.facebook && (
+                  <SocialBtn
+                    icon="logo-facebook"
+                    label="Facebook"
+                    url={restaurant.facebook}
+                    color="#1877F2"
+                  />
+                )}
+                {restaurant.instagram && (
+                  <SocialBtn
+                    icon="logo-instagram"
+                    label="Instagram"
+                    url={restaurant.instagram}
+                    color="#E1306C"
+                  />
+                )}
+                {restaurant.tiktok && (
+                  <SocialBtn
+                    icon="logo-tiktok"
+                    label="TikTok"
+                    url={restaurant.tiktok}
+                    color="#010101"
+                  />
+                )}
+                {restaurant.website && (
+                  <SocialBtn
+                    icon="globe-outline"
+                    label="Website"
+                    url={restaurant.website}
+                    color={PRIMARY}
+                  />
+                )}
               </View>
-            )}
+            </View>
+          )}
 
           {/* ── Tags ── */}
           {restaurant.tags?.length > 0 && (
@@ -513,7 +518,6 @@ export default function DetailScreen() {
               ))}
             </ScrollView>
           )}
-
 
           {/* ── Quick stats strip ── */}
           <View style={s.statsStrip}>

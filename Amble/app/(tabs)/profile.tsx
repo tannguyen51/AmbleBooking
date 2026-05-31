@@ -312,7 +312,7 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
             </View>
-            <Text style={s.sub2}>{user?.email || "user@amble.app"}</Text>
+            <Text style={s.sub2}>{user?.email || "user@munchmap.app"}</Text>
             <View style={s.rankBadge}>
               <Text style={s.rankEmoji}>🥈</Text>
               <Text style={s.rankText}>Silver</Text>

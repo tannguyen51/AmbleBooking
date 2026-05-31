@@ -70,7 +70,7 @@ export default function PartnerLoginScreen() {
             containerStyle={styles.partnerLogo}
           />
 
-          <Text style={styles.appName}>Amble Partner</Text>
+          <Text style={styles.appName}>Munch Map Partner</Text>
           <Text style={styles.tagline}>Quản lý nhà hàng của bạn</Text>
         </LinearGradient>
 
@@ -170,7 +170,6 @@ export default function PartnerLoginScreen() {
           </View>
 
           {/* Demo account */}
-       
 
           {/* Packages */}
           {/* <View style={styles.packagesRow}>

@@ -225,7 +225,7 @@ export default function PartnerProfileScreen() {
   };
 
   const openSupport = () => {
-    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@amble.vn");
+    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@munchmap.vn");
   };
 
   return (
@@ -242,7 +242,11 @@ export default function PartnerProfileScreen() {
           >
             <Ionicons name="people-outline" size={16} color="#FF6B35" />
             <Text style={styles.teamEntryText}>Quản lý nhân sự nhà hàng</Text>
-            <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
+            <Ionicons
+              name="chevron-forward-outline"
+              size={16}
+              color="#9CA3AF"
+            />
           </TouchableOpacity>
         )}
 
@@ -512,7 +516,11 @@ export default function PartnerProfileScreen() {
 
           <TouchableOpacity style={styles.menuItem} onPress={openTerms}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="document-text-outline" size={18} color="#374151" />
+              <Ionicons
+                name="document-text-outline"
+                size={18}
+                color="#374151"
+              />
               <Text style={styles.menuItemText}>Điều khoản</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />

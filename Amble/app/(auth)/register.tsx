@@ -73,8 +73,12 @@ export default function RegisterScreen() {
 
     if (Array.isArray(apiData?.errors) && apiData.errors.length > 0) {
       const firstError = apiData.errors[0];
-      if (typeof firstError === "string" && firstError.trim()) return firstError;
-      if (typeof firstError?.message === "string" && firstError.message.trim()) {
+      if (typeof firstError === "string" && firstError.trim())
+        return firstError;
+      if (
+        typeof firstError?.message === "string" &&
+        firstError.message.trim()
+      ) {
         return firstError.message;
       }
     }
@@ -319,7 +323,8 @@ export default function RegisterScreen() {
             <Text style={styles.termsText}>
               Tôi đồng ý với{" "}
               <Text style={styles.termsLink}>Điều khoản sử dụng</Text> và{" "}
-              <Text style={styles.termsLink}>Chính sách bảo mật</Text> của Amble
+              <Text style={styles.termsLink}>Chính sách bảo mật</Text> của Munch
+              Map
             </Text>
           </TouchableOpacity>
 
