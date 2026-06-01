@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { restaurantAPI } from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const MAX_IMAGES = 6;
@@ -23,6 +24,7 @@ const MAX_IMAGES = 6;
 export default function BookingReviewScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const { restaurantId, restaurantName, bookingId } = useLocalSearchParams<{
     restaurantId: string;
     restaurantName?: string;
@@ -66,12 +68,12 @@ export default function BookingReviewScreen() {
 
   const submitReview = async () => {
     if (!user?._id) {
-      Alert.alert("Thông báo", "Vui lòng đăng nhập để gửi đánh giá.");
+      Alert.alert(t("common.notification"), t("booking.review.loginRequired"));
       return;
     }
 
     if (!restaurantId || !bookingId) {
-      Alert.alert("Lỗi", "Thiếu thông tin đặt bàn để đánh giá.");
+      Alert.alert(t("common.error"), t("booking.review.missingInfo"));
       return;
     }
 
@@ -87,12 +89,12 @@ export default function BookingReviewScreen() {
       const msg = earned
         ? `Đánh giá của bạn đã được gửi. Bạn nhận được +${earned} điểm thưởng!`
         : "Đánh giá của bạn đã được gửi.";
-      Alert.alert("Cảm ơn", msg);
+      Alert.alert(t("booking.review.thanks"), msg);
       router.replace(`/restaurant/${restaurantId}` as any);
     } catch (error: any) {
       Alert.alert(
-        "Lỗi",
-        error?.response?.data?.message || "Không thể gửi đánh giá.",
+        t("common.error"),
+        error?.response?.data?.message || t("booking.review.failed"),
       );
     } finally {
       setSubmitting(false);
@@ -105,16 +107,16 @@ export default function BookingReviewScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đánh giá nhà hàng</Text>
+        <Text style={styles.headerTitle}>{t("booking.review.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{restaurantName || "Nhà hàng"}</Text>
-        <Text style={styles.subtitle}>Chia sẻ cảm nhận của bạn.</Text>
+        <Text style={styles.subtitle}>{t("booking.review.subtitle")}</Text>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Chấm điểm</Text>
+          <Text style={styles.sectionTitle}>{t("booking.review.rating")}</Text>
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((n) => (
               <TouchableOpacity
@@ -133,10 +135,10 @@ export default function BookingReviewScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Nhận xét</Text>
+          <Text style={styles.sectionTitle}>{t("booking.review.comment")}</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Hãy chia sẻ trải nghiệm của bạn..."
+            placeholder={t("booking.review.commentPlaceholder")}
             placeholderTextColor="#9CA3AF"
             value={comment}
             onChangeText={setComment}
@@ -146,12 +148,12 @@ export default function BookingReviewScreen() {
 
         <View style={styles.card}>
           <View style={styles.imageHeader}>
-            <Text style={styles.sectionTitle}>Hình ảnh</Text>
+            <Text style={styles.sectionTitle}>{t("booking.review.images")}</Text>
             <Text style={styles.imageCount}>{images.length}/{MAX_IMAGES}</Text>
           </View>
           <TouchableOpacity style={styles.addImageBtn} onPress={addImages}>
             <Ionicons name="images-outline" size={16} color="#111827" />
-            <Text style={styles.addImageText}>Thêm ảnh</Text>
+            <Text style={styles.addImageText}>{t("booking.review.addImages")}</Text>
           </TouchableOpacity>
           {images.length > 0 && (
             <View style={styles.imageGrid}>
@@ -178,7 +180,7 @@ export default function BookingReviewScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitText}>Gửi đánh giá</Text>
+            <Text style={styles.submitText}>{t("booking.review.submit")}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

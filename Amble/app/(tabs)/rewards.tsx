@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { userAPI } from "../../services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const BG = "#F8FAFC";
@@ -61,38 +62,6 @@ type RedeemItem = {
   cost: number;
 };
 
-const REDEEM_ITEMS: RedeemItem[] = [
-  {
-    id: "drink",
-    icon: "wine-outline",
-    title: "Voucher Đồ Uống",
-    desc: "Voucher đồ uống hoặc tráng miệng tại nhà hàng đối tác",
-    cost: 7500,
-  },
-  {
-    id: "50k",
-    icon: "cash-outline",
-    title: "Giảm 50k",
-    desc: "Giảm 50,000đ cho hóa đơn từ 300k",
-    cost: 15000,
-  },
-  {
-    id: "100k",
-    icon: "gift-outline",
-    title: "Giảm 100k",
-    desc: "Giảm 100,000đ cho hóa đơn từ 600k",
-    cost: 25000,
-  },
-];
-
-const EARN_RULES = [
-  { label: "Nhà hàng mới (lần đầu)", value: "+5,000 + 1 stamp" },
-  { label: "Hoàn tất đặt bàn", value: "+200" },
-  { label: "Review có ảnh", value: "+500" },
-  { label: "Đi nhóm (bill lớn)", value: "+1,000" },
-  { label: "Tuần sinh nhật", value: "x1.2 điểm" },
-];
-
 function formatPoints(value: number) {
   return value.toLocaleString("vi-VN");
 }
@@ -114,6 +83,39 @@ function getTierColor(tierId: string): string {
 export default function RewardsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  const REDEEM_ITEMS: RedeemItem[] = [
+    {
+      id: "drink",
+      icon: "wine-outline",
+      title: t("rewards.voucherDrink"),
+      desc: t("rewards.voucherDrinkDesc"),
+      cost: 7500,
+    },
+    {
+      id: "50k",
+      icon: "cash-outline",
+      title: t("rewards.voucher50k"),
+      desc: t("rewards.voucher50kDesc"),
+      cost: 15000,
+    },
+    {
+      id: "100k",
+      icon: "gift-outline",
+      title: t("rewards.voucher100k"),
+      desc: t("rewards.voucher100kDesc"),
+      cost: 25000,
+    },
+  ];
+
+  const EARN_RULES = [
+    { label: t("rewards.earnNewRestaurant"), value: "+5,000 + 1 " + t("rewards.earnStamp") },
+    { label: t("rewards.earnBookingComplete"), value: t("rewards.earn200") },
+    { label: t("rewards.earnReviewPhoto"), value: t("rewards.earn500") },
+    { label: t("rewards.earnLargeGroup"), value: t("rewards.earn1000") },
+    { label: t("rewards.earnBirthdayWeek"), value: t("rewards.earnBonus") },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -150,10 +152,10 @@ export default function RewardsScreen() {
   const confirmRedeem = () => {
     if (!selectedRedeem) return;
     if (myPoints < selectedRedeem.cost) {
-      Alert.alert("Chưa đủ điểm", "Bạn chưa đủ điểm để đổi ưu đãi này.");
+      Alert.alert(t("rewards.insufficientPoints"), t("rewards.insufficientMessage"));
       return;
     }
-    Alert.alert("Thành công", `Đã đổi ${selectedRedeem.title}.`);
+    Alert.alert(t("common.success"), t("rewards.redeemSuccess", { title: selectedRedeem.title }));
     setSelectedRedeem(null);
   };
 
@@ -165,7 +167,7 @@ export default function RewardsScreen() {
             <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <Text style={s.headerTitle}>Phần thưởng</Text>
+            <Text style={s.headerTitle}>{t("rewards.title")}</Text>
             <View style={{ width: 40 }} />
           </View>
         </View>
@@ -195,17 +197,17 @@ export default function RewardsScreen() {
             <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <Text style={s.headerTitle}>Phần thưởng</Text>
+            <Text style={s.headerTitle}>{t("rewards.title")}</Text>
             <View style={{ width: 40 }} />
           </View>
 
           <Text style={s.pointsBig}>{formatPoints(myPoints)}</Text>
-          <Text style={s.pointsSub}>điểm tích lũy</Text>
+          <Text style={s.pointsSub}>{t("rewards.points")}</Text>
 
           <View style={s.memberRow}>
             <Ionicons name="ribbon-outline" size={16} color="#93C5FD" />
             <Text style={s.memberText}>
-              {data?.currentTier?.label || "Bronze"} Member
+              {data?.currentTier?.label || t("rewards.tierBronze")} {t("rewards.member")}
             </Text>
           </View>
 
@@ -218,7 +220,7 @@ export default function RewardsScreen() {
                   color="#9CA3AF"
                 />
                 <Text style={s.progressTierText}>
-                  {data?.currentTier?.label || "Bronze"}
+                  {data?.currentTier?.label || t("rewards.tierBronze")}
                 </Text>
               </View>
 
@@ -229,7 +231,7 @@ export default function RewardsScreen() {
                   color="#F59E0B"
                 />
                 <Text style={s.progressTierText}>
-                  {data?.nextTier?.label || "Max"}
+                  {data?.nextTier?.label || t("rewards.tierMax")}
                 </Text>
               </View>
             </View>
@@ -240,8 +242,8 @@ export default function RewardsScreen() {
 
             <Text style={s.progressNote}>
               {data?.nextTier
-                ? `Còn ${formatPoints(data.neededToNextTier)} điểm -> ${data.nextTier.label}`
-                : "Bạn đã đạt hạng cao nhất"}
+                ? t("rewards.progress", { needed: formatPoints(data.neededToNextTier), nextTier: data.nextTier.label })
+                : t("rewards.maxTier")}
             </Text>
           </View>
         </View>
@@ -256,7 +258,7 @@ export default function RewardsScreen() {
               <Text
                 style={[s.tabText, activeTab === "journey" && s.tabTextActive]}
               >
-                Hành trình
+                {t("rewards.tabJourney")}
               </Text>
             </TouchableOpacity>
 
@@ -268,7 +270,7 @@ export default function RewardsScreen() {
               <Text
                 style={[s.tabText, activeTab === "redeem" && s.tabTextActive]}
               >
-                Đổi quà
+                {t("rewards.tabRedeem")}
               </Text>
             </TouchableOpacity>
 
@@ -280,14 +282,14 @@ export default function RewardsScreen() {
               <Text
                 style={[s.tabText, activeTab === "earn" && s.tabTextActive]}
               >
-                Kiếm điểm
+                {t("rewards.tabEarn")}
               </Text>
             </TouchableOpacity>
           </View>
 
           {activeTab === "journey" && (
             <>
-              <Text style={s.sectionTitle}>Hạng thành viên</Text>
+              <Text style={s.sectionTitle}>{t("rewards.journeyTitle")}</Text>
               {tiers.map((tier) => {
                 const active = tier.id === data?.currentTier?.id;
                 return (
@@ -339,10 +341,10 @@ export default function RewardsScreen() {
                 );
               })}
 
-              <Text style={s.sectionTitle}>Lịch sử điểm</Text>
+              <Text style={s.sectionTitle}>{t("rewards.journeyHistory")}</Text>
               {history.length === 0 ? (
                 <View style={s.emptyCard}>
-                  <Text style={s.emptyText}>Chưa có giao dịch điểm</Text>
+                  <Text style={s.emptyText}>{t("rewards.journeyEmpty")}</Text>
                 </View>
               ) : (
                 history.map((item, idx) => (
@@ -373,10 +375,7 @@ export default function RewardsScreen() {
           {activeTab === "redeem" && (
             <>
               <Text style={s.sectionTitle}>
-                Điểm của bạn:{" "}
-                <Text style={[s.pointsHighlight, { color: rewardPointColor }]}>
-                  {formatPoints(myPoints)}
-                </Text>
+                {t("rewards.redeemYourPoints", { points: formatPoints(myPoints) })}
               </Text>
               {REDEEM_ITEMS.map((item) => {
                 const canRedeem = myPoints >= item.cost;
@@ -429,7 +428,7 @@ export default function RewardsScreen() {
 
           {activeTab === "earn" && (
             <>
-              <Text style={s.sectionTitle}>Cách kiếm điểm</Text>
+              <Text style={s.sectionTitle}>{t("rewards.earnTitle")}</Text>
               {EARN_RULES.map((rule) => (
                 <View key={rule.label} style={s.ruleItem}>
                   <Text style={s.ruleLabel}>{rule.label}</Text>
@@ -438,19 +437,11 @@ export default function RewardsScreen() {
               ))}
 
               <View style={s.rulesNote}>
-                <Text style={s.rulesNoteTitle}>Quy tắc tích điểm</Text>
-                <Text style={s.rulesNoteText}>
-                  • Tối đa 1 lần nhận 5,000 điểm/ngày
-                </Text>
-                <Text style={s.rulesNoteText}>
-                  • Bill phải khớp với nhà hàng và thời gian
-                </Text>
-                <Text style={s.rulesNoteText}>
-                  • Review chỉ tính khi gắn với booking hợp lệ
-                </Text>
-                <Text style={s.rulesNoteText}>
-                  • Điểm hết hạn sau 12 tháng không hoạt động
-                </Text>
+                <Text style={s.rulesNoteTitle}>{t("rewards.earnRules")}</Text>
+                <Text style={s.rulesNoteText}>{t("rewards.earnMaxPerDay")}</Text>
+                <Text style={s.rulesNoteText}>{t("rewards.earnBillMatch")}</Text>
+                <Text style={s.rulesNoteText}>{t("rewards.earnReviewBooking")}</Text>
+                <Text style={s.rulesNoteText}>{t("rewards.earnExpiry")}</Text>
               </View>
             </>
           )}
@@ -472,13 +463,13 @@ export default function RewardsScreen() {
 
             <View style={s.modalInfoBox}>
               <View style={s.modalInfoRow}>
-                <Text style={s.modalInfoLabel}>Chi phí</Text>
+                <Text style={s.modalInfoLabel}>{t("rewards.cost")}</Text>
                 <Text style={s.modalCost}>
                   {formatPoints(selectedRedeem?.cost || 0)} điểm
                 </Text>
               </View>
               <View style={s.modalInfoRow}>
-                <Text style={s.modalInfoLabel}>Điểm còn lại</Text>
+                <Text style={s.modalInfoLabel}>{t("rewards.remaining")}</Text>
                 <Text style={s.modalRemain}>
                   {formatPoints(
                     Math.max(0, myPoints - (selectedRedeem?.cost || 0)),
@@ -493,14 +484,14 @@ export default function RewardsScreen() {
                 style={s.modalCancelBtn}
                 onPress={() => setSelectedRedeem(null)}
               >
-                <Text style={s.modalCancelText}>Hủy</Text>
+                <Text style={s.modalCancelText}>{t("common.close")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={s.modalConfirmBtn}
                 onPress={confirmRedeem}
               >
-                <Text style={s.modalConfirmText}>Đổi ngay!</Text>
+                <Text style={s.modalConfirmText}>{t("rewards.redeemButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>

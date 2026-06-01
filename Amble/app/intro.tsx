@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   StatusBar,
   StyleSheet,
@@ -9,28 +9,11 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import MunchMapLogo from "../components/AmbleLogo";
-import { useLanguageStore } from "../store/languageStore";
-
-const COPY = {
-  vi: {
-    headline: "Không chỉ ăn uống \nTrải nghiệm của bạn",
-    tagline: "vn Vietnam's smartest restaurant booking app",
-    start: "Bắt Đầu Khám Phá",
-    language: "Chọn Ngôn Ngữ",
-  },
-  en: {
-    headline: "More than dining.\nYour experience.",
-    tagline: "vn Vietnam's smartest restaurant booking app",
-    start: "Start Exploring",
-    language: "Choose Language",
-  },
-} as const;
+import { useTranslation } from "../i18n/useTranslation";
 
 export default function IntroScreen() {
   const router = useRouter();
-  const { language } = useLanguageStore();
-  const copyLanguage = language === "en" ? "en" : "vi";
-  const copy = useMemo(() => COPY[copyLanguage], [copyLanguage]);
+  const { t, isEnglish, language } = useTranslation();
 
   return (
     <View style={styles.root}>
@@ -49,11 +32,16 @@ export default function IntroScreen() {
       <View style={styles.content}>
         <View style={styles.logoWrap}>
           <MunchMapLogo size="xl" showText={false} />
-          <Text style={styles.brand}>munchmap</Text>
+          <Text style={styles.brand}>Munchmap</Text>
         </View>
 
-        <Text style={styles.headline}>{copy.headline}</Text>
-        <Text style={styles.tagline}>{copy.tagline}</Text>
+        <Text style={styles.headline}>{
+          language === "zh" ? "不仅是美食。\n您的体验。" :
+          language === "ko" ? "단순한 식사가 아닌.\n당신의 경험." :
+          language === "ja" ? "食事だけではない。\nあなたの体験。" :
+          isEnglish ? t("intro.headlineEn") : t("intro.headlineVi")
+        }</Text>
+        <Text style={styles.tagline}>{t("intro.tagline")}</Text>
 
         <View style={styles.buttonStack}>
           <TouchableOpacity
@@ -61,7 +49,7 @@ export default function IntroScreen() {
             activeOpacity={0.88}
             onPress={() => router.push("/welcome")}
           >
-            <Text style={styles.primaryBtnText}>{copy.start}</Text>
+            <Text style={styles.primaryBtnText}>{t("intro.startExploring")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -69,7 +57,7 @@ export default function IntroScreen() {
             activeOpacity={0.88}
             onPress={() => router.replace("/language")}
           >
-            <Text style={styles.secondaryBtnText}>{copy.language}</Text>
+            <Text style={styles.secondaryBtnText}>{t("intro.chooseLanguage")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -112,9 +100,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.14 }],
   },
   brand: {
-    marginTop: 8,
+    marginTop: 12,
     fontSize: 42,
-    lineHeight: 46,
+    lineHeight: 54,
     fontFamily: "TAN-NIMBUS",
     color: "#FFFFFF",
     textShadowColor: "rgba(0,0,0,0.15)",

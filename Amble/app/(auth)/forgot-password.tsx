@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { authAPI } from "@/services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -27,10 +28,11 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email");
+      Alert.alert(t("common.error"), t("auth.forgot.emptyFields"));
       return;
     }
     setLoading(true);
@@ -39,8 +41,8 @@ export default function ForgotPasswordScreen() {
         email: email.trim().toLowerCase(),
       });
       Alert.alert(
-        "Thành công",
-        "Nếu email tồn tại, hệ thống đã gửi link đặt lại mật khẩu.",
+        t("common.success"),
+        t("auth.forgot.successMessage"),
       );
       router.push({
         pathname: "/(auth)/reset-password",
@@ -48,8 +50,8 @@ export default function ForgotPasswordScreen() {
       });
     } catch (error: any) {
       const message =
-        error.response?.data?.message || "Không gửi được email đặt lại";
-      Alert.alert("Lỗi", message);
+        error.response?.data?.message || t("auth.forgot.failedMessage");
+      Alert.alert(t("common.error"), message);
     } finally {
       setLoading(false);
     }
@@ -65,14 +67,14 @@ export default function ForgotPasswordScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Quên mật khẩu</Text>
+          <Text style={styles.headerTitle}>{t("auth.forgot.title")}</Text>
           <Text style={styles.headerSubtitle}>
-            Nhập email để nhận link đặt lại mật khẩu
+            {t("auth.forgot.subtitle")}
           </Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Email đã đăng ký</Text>
+          <Text style={styles.label}>{t("auth.forgot.emailLabel")}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="mail-outline" size={18} color={TEXT_MUTED} />
             <TextInput
@@ -100,7 +102,7 @@ export default function ForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Gửi link đặt lại</Text>
+                <Text style={styles.submitText}>{t("auth.forgot.sendButton")}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

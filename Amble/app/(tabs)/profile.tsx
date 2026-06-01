@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import { userAPI, bookingAPI } from "../../services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -160,6 +161,7 @@ const fo = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, updateUser, logout } = useAuthStore();
 
@@ -174,9 +176,9 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [bookingCount, setBookingCount] = useState(0);
   const [rewardPoints, setRewardPoints] = useState(0);
-  const [rewardTier, setRewardTier] = useState("silver");
-  const [rewardNextTier, setRewardNextTier] = useState("Gold");
-  const [rewardNeeded, setRewardNeeded] = useState(0);
+  const [rewardTier, setRewardTier] = useState("Bronze");
+  const [rewardNextTier, setRewardNextTier] = useState("Silver");
+  const [rewardNeeded, setRewardNeeded] = useState(10000);
   const [rewardProgress, setRewardProgress] = useState(0);
   const [favoriteRestaurants, setFavoriteRestaurants] = useState<
     FavoriteRestaurant[]
@@ -224,7 +226,7 @@ export default function ProfileScreen() {
         const data = res.data || {};
         setRewardPoints(Number(data.points ?? 0));
         setRewardTier(
-          String(data.currentTier?.label || data.currentTier?.id || "Silver"),
+          String(data.currentTier?.label || data.currentTier?.id || "Bronze"),
         );
         setRewardNextTier(String(data.nextTier?.label || "MAX"));
         setRewardNeeded(Number(data.neededToNextTier ?? 0));
@@ -237,16 +239,16 @@ export default function ProfileScreen() {
 
   const handleSaveProfile = async () => {
     if (!editForm.fullName.trim()) {
-      Alert.alert("Lỗi", "Họ tên không được để trống");
+      Alert.alert(t("common.error"), t("profile.nameRequired"));
       return;
     }
     setSaving(true);
     try {
       await updateUser(editForm);
       setEditVisible(false);
-      Alert.alert("Thành công", "Hồ sơ đã được cập nhật!");
+      Alert.alert(t("common.success"), t("profile.updateSuccess"));
     } catch (e: any) {
-      Alert.alert("Lỗi", e.message);
+      Alert.alert(t("common.error"), e.message);
     } finally {
       setSaving(false);
     }
@@ -254,11 +256,11 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     if (!pwForm.currentPassword || !pwForm.newPassword) {
-      Alert.alert("Lỗi", "Vui lòng điền đầy đủ");
+      Alert.alert(t("common.error"), t("profile.fillRequired"));
       return;
     }
     if (pwForm.newPassword !== pwForm.confirmPassword) {
-      Alert.alert("Lỗi", "Mật khẩu không khớp");
+      Alert.alert(t("common.error"), t("profile.passwordMismatch"));
       return;
     }
     setSaving(true);
@@ -269,9 +271,9 @@ export default function ProfileScreen() {
       });
       setPwVisible(false);
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      Alert.alert("Thành công", "Đổi mật khẩu thành công!");
+      Alert.alert(t("common.success"), t("profile.passwordChangeSuccess"));
     } catch (e: any) {
-      Alert.alert("Lỗi", e.message);
+      Alert.alert(t("common.error"), e.message);
     } finally {
       setSaving(false);
     }
@@ -307,7 +309,7 @@ export default function ProfileScreen() {
           <View style={{ flex: 1 }}>
             <View style={s.nameRow}>
               <Text style={s.name} numberOfLines={1}>
-                {user?.fullName || "Người dùng"}
+                {user?.fullName || t("profile.userFallback")}
               </Text>
               <TouchableOpacity onPress={() => setEditVisible(true)}>
                 <Ionicons
@@ -319,18 +321,23 @@ export default function ProfileScreen() {
             </View>
             <Text style={s.sub2}>{user?.email || "user@munchmap.app"}</Text>
             <View style={s.rankBadge}>
-              <Text style={s.rankEmoji}>🥈</Text>
-              <Text style={s.rankText}>Silver</Text>
+              <Text style={s.rankEmoji}>{
+                rewardTier.toLowerCase() === "platinum" ? "🏆" :
+                rewardTier.toLowerCase() === "gold" ? "🥇" :
+                rewardTier.toLowerCase() === "silver" ? "🥈" :
+                "🥉"
+              }</Text>
+              <Text style={s.rankText}>{rewardTier}</Text>
             </View>
           </View>
         </View>
 
         <View style={s.statsRow}>
-          <StatCard label="Đặt bàn" value={bookingCount} />
+          <StatCard label={t("profile.statsBookings")} value={bookingCount} />
           <View style={{ width: 8 }} />
-          <StatCard label="Yêu Thích" value={favoriteRestaurants.length} />
+          <StatCard label={t("profile.statsFavorites")} value={favoriteRestaurants.length} />
           <View style={{ width: 8 }} />
-          <StatCard label="Đánh giá" value={reviewsCount} />
+          <StatCard label={t("profile.statsReviews")} value={reviewsCount} />
         </View>
       </LinearGradient>
 
@@ -339,21 +346,26 @@ export default function ProfileScreen() {
           <View style={s.rowBetween}>
             <View style={s.sectionHeadLeft}>
               <Ionicons name="ribbon-outline" size={17} color={PRIMARY} />
-              <Text style={s.rewardsTitle}>Điểm tích lũy</Text>
+              <Text style={s.rewardsTitle}>{t("profile.rewardsPoints")}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/rewards" as any)}>
-              <Text style={s.moreText}>Xem chi tiết</Text>
+              <Text style={s.moreText}>{t("profile.rewardsDetail")}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={s.rewardsMain}>
             <View>
               <Text style={s.pointsValue}>{formattedPoints}</Text>
-              <Text style={s.pointsSub}>điểm hiện có</Text>
+              <Text style={s.pointsSub}>{t("profile.rewardsPointsEarned")}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <View style={s.rowBetween}>
-                <Text style={s.tierLeft}>🥈 {rewardTier}</Text>
+                <Text style={s.tierLeft}>{
+                  rewardTier.toLowerCase() === "platinum" ? "🏆" :
+                  rewardTier.toLowerCase() === "gold" ? "🥇" :
+                  rewardTier.toLowerCase() === "silver" ? "🥈" :
+                  "🥉"
+                } {rewardTier}</Text>
                 <Text style={s.tierRight}>{rewardNextTier}</Text>
               </View>
               <View style={s.progressTrack}>
@@ -370,10 +382,10 @@ export default function ProfileScreen() {
 
         <View style={s.rowBetweenSection}>
           <View style={s.sectionHeadLeft}>
-            <Text style={s.favoriteTitle}>Yêu thích</Text>
+            <Text style={s.favoriteTitle}>{t("profile.favoritesTitle")}</Text>
           </View>
           <TouchableOpacity onPress={() => router.push("/favorites" as any)}>
-            <Text style={s.moreText}>Xem tất cả</Text>
+            <Text style={s.moreText}>{t("common.viewAll")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -401,7 +413,7 @@ export default function ProfileScreen() {
           ))}
           {favoritePreview.length === 0 && (
             <View style={s.emptyFavCard}>
-              <Text style={s.emptyFavText}>Bạn chưa có nhà hàng yêu thích</Text>
+              <Text style={s.emptyFavText}>{t("profile.favoritesEmpty")}</Text>
             </View>
           )}
         </View>
@@ -415,11 +427,11 @@ export default function ProfileScreen() {
             <View style={s.menuIcon}>
               <Text style={{ fontSize: 16 }}>🏆</Text>
             </View>
-            <Text style={s.menuLabel}>Phần thưởng & Điểm</Text>
+            <Text style={s.menuLabel}>{t("profile.menuRewards")}</Text>
           </View>
           <View style={s.menuRight}>
             <View style={s.newBadge}>
-              <Text style={s.newBadgeText}>New</Text>
+              <Text style={s.newBadgeText}>{t("profile.menuNew")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={MUTED} />
           </View>
@@ -428,17 +440,17 @@ export default function ProfileScreen() {
         <View style={{ marginTop: 12, marginBottom: 40, gap: 8 }}>
           <MenuItem
             icon="📋"
-            label="Lịch sử đặt bàn"
+            label={t("profile.menuHistory")}
             onPress={() => router.push("/history" as any)}
           />
           <MenuItem
             icon="🔒"
-            label="Đổi mật khẩu"
+            label={t("profile.menuChangePassword")}
             onPress={() => setPwVisible(true)}
           />
           <MenuItem
             icon="🚪"
-            label="Đăng xuất"
+            label={t("profile.menuLogout")}
             onPress={() => setLogoutVisible(true)}
             danger
           />
@@ -453,18 +465,18 @@ export default function ProfileScreen() {
         >
           <View style={mo.sheet}>
             <View style={mo.handle} />
-            <Text style={mo.title}>Chỉnh sửa hồ sơ</Text>
+            <Text style={mo.title}>{t("profile.editTitle")}</Text>
             <Field
-              label="Họ tên"
-              placeholder="Nhập họ tên"
+              label={t("profile.nameLabel")}
+              placeholder={t("profile.namePlaceholder")}
               value={editForm.fullName}
               onChangeText={(v: string) =>
                 setEditForm({ ...editForm, fullName: v })
               }
             />
             <Field
-              label="Số điện thoại"
-              placeholder="Nhập số điện thoại"
+              label={t("profile.phoneLabel")}
+              placeholder={t("profile.phonePlaceholder")}
               value={editForm.phone}
               onChangeText={(v: string) =>
                 setEditForm({ ...editForm, phone: v })
@@ -472,8 +484,8 @@ export default function ProfileScreen() {
               keyboardType="phone-pad"
             />
             <Field
-              label="Địa chỉ"
-              placeholder="Nhập địa chỉ"
+              label={t("profile.addressLabel")}
+              placeholder={t("profile.addressPlaceholder")}
               value={editForm.location}
               onChangeText={(v: string) =>
                 setEditForm({ ...editForm, location: v })
@@ -484,7 +496,7 @@ export default function ProfileScreen() {
                 style={mo.cancelBtn}
                 onPress={() => setEditVisible(false)}
               >
-                <Text style={mo.cancelText}>Huỷ</Text>
+                <Text style={mo.cancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={mo.saveBtn}
@@ -494,7 +506,7 @@ export default function ProfileScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={mo.saveText}>Lưu</Text>
+                  <Text style={mo.saveText}>{t("common.save")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -510,10 +522,10 @@ export default function ProfileScreen() {
         >
           <View style={mo.sheet}>
             <View style={mo.handle} />
-            <Text style={mo.title}>Đổi mật khẩu</Text>
+            <Text style={mo.title}>{t("profile.menuChangePassword")}</Text>
             <Field
-              label="Mật khẩu hiện tại"
-              placeholder="Nhập mật khẩu hiện tại"
+              label={t("profile.currentPasswordLabel")}
+              placeholder={t("profile.currentPasswordPlaceholder")}
               value={pwForm.currentPassword}
               onChangeText={(v: string) =>
                 setPwForm({ ...pwForm, currentPassword: v })
@@ -521,8 +533,8 @@ export default function ProfileScreen() {
               secureTextEntry
             />
             <Field
-              label="Mật khẩu mới"
-              placeholder="Nhập mật khẩu mới"
+              label={t("profile.newPasswordLabel")}
+              placeholder={t("profile.newPasswordPlaceholder")}
               value={pwForm.newPassword}
               onChangeText={(v: string) =>
                 setPwForm({ ...pwForm, newPassword: v })
@@ -530,8 +542,8 @@ export default function ProfileScreen() {
               secureTextEntry
             />
             <Field
-              label="Xác nhận mật khẩu mới"
-              placeholder="Nhập lại mật khẩu mới"
+              label={t("profile.confirmNewPasswordLabel")}
+              placeholder={t("profile.confirmNewPasswordPlaceholder")}
               value={pwForm.confirmPassword}
               onChangeText={(v: string) =>
                 setPwForm({ ...pwForm, confirmPassword: v })
@@ -543,7 +555,7 @@ export default function ProfileScreen() {
                 style={mo.cancelBtn}
                 onPress={() => setPwVisible(false)}
               >
-                <Text style={mo.cancelText}>Huỷ</Text>
+                <Text style={mo.cancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={mo.saveBtn}
@@ -553,7 +565,7 @@ export default function ProfileScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={mo.saveText}>Lưu</Text>
+                  <Text style={mo.saveText}>{t("common.save")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -566,14 +578,14 @@ export default function ProfileScreen() {
         <View style={lo.overlay}>
           <View style={lo.card}>
             <Text style={{ fontSize: 52, textAlign: "center" }}>👋</Text>
-            <Text style={lo.title}>Đăng xuất?</Text>
-            <Text style={lo.sub}>Bạn có chắc muốn đăng xuất không?</Text>
+            <Text style={lo.title}>{t("profile.logoutTitle")}</Text>
+            <Text style={lo.sub}>{t("profile.logoutConfirm")}</Text>
             <View style={lo.row}>
               <TouchableOpacity
                 style={lo.stayBtn}
                 onPress={() => setLogoutVisible(false)}
               >
-                <Text style={lo.stayText}>Ở lại</Text>
+                <Text style={lo.stayText}>{t("profile.logoutStay")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={lo.leaveBtn}
@@ -582,7 +594,7 @@ export default function ProfileScreen() {
                   logout();
                 }}
               >
-                <Text style={lo.leaveText}>Đăng xuất</Text>
+                <Text style={lo.leaveText}>{t("profile.logoutConfirmButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>

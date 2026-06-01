@@ -2,26 +2,24 @@ import React from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-
 type LogoSize = "sm" | "md" | "lg" | "xl";
 
 type SizeConfig = {
   ring: number;
   text: number;
   gap: number;
-  letterScale: number;
 };
 
 const SIZES: Record<LogoSize, SizeConfig> = {
-  sm: { ring: 24, text: 15, gap: 5, letterScale: 0.5 },
-  md: { ring: 34, text: 20, gap: 7, letterScale: 0.48 },
-  lg: { ring: 42, text: 25, gap: 8, letterScale: 0.47 },
-  xl: { ring: 60, text: 34, gap: 10, letterScale: 0.46 },
+  sm: { ring: 24, text: 15, gap: 5 },
+  md: { ring: 34, text: 20, gap: 7 },
+  lg: { ring: 42, text: 25, gap: 8 },
+  xl: { ring: 60, text: 34, gap: 10 },
 };
 
 interface MunchMapLogoProps {
@@ -38,26 +36,23 @@ export default function MunchMapLogo({
   containerStyle,
 }: MunchMapLogoProps) {
   const config = SIZES[size];
-  const letterSize = Math.round(config.ring * config.letterScale);
 
   return (
     <View style={[styles.row, { gap: config.gap }, containerStyle]}>
       <View style={[styles.ring, { width: config.ring, height: config.ring }]}>
-        <LinearGradient
-          colors={["#FF6B35", "#FFD700", "#FF6B9D", "#6B4FFF", "#00D2FF"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.inner}
-        >
-          <Text style={[styles.letter, { fontSize: letterSize }]}>M</Text>
-        </LinearGradient>
+        <View style={styles.innerWrap}>
+          <Image
+            source={require("../assets/images/android-icon-background.png")}
+            style={styles.inner}
+          />
+        </View>
       </View>
 
       {showText && (
         <Text
           style={[styles.brand, { fontSize: config.text, color: textColor }]}
         >
-          munchmap
+          Munchmap
         </Text>
       )}
     </View>
@@ -80,14 +75,18 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   inner: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 999,
+    resizeMode: "cover",
+    position: "absolute",
+  },
+  innerWrap: {
     flex: 1,
     borderRadius: 999,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-  },
-  letter: {
-    color: "#FFFFFF",
-    fontWeight: "900",
   },
   brand: {
     letterSpacing: 0.2,

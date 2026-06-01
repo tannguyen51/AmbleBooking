@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../components/AmbleLogo";
 import { AppLanguage, useLanguageStore } from "../store/languageStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 type LanguageOption = {
   id: AppLanguage;
@@ -88,6 +89,7 @@ const COPY = {
 } as const;
 
 export default function LanguageScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setLanguage } = useLanguageStore();
 
@@ -286,7 +288,7 @@ export default function LanguageScreen() {
       <View style={styles.contentWrap}>
         <View style={styles.headerWrap}>
           <MunchMapLogo size="xl" showText={false} textColor="#FFFFFF" />
-          <Text style={styles.brandText}>munchmap</Text>
+          <Text style={styles.brandText}>Munchmap</Text>
           <Text style={styles.headerText}>{copy.title}</Text>
         </View>
 
@@ -382,12 +384,11 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   brandText: {
-    marginTop: 10,
+    marginTop: 14,
     fontSize: 46,
-    lineHeight: 48,
+    lineHeight: 60,
     fontFamily: "TAN-NIMBUS",
     color: "#FFFFFF",
-    letterSpacing: 0.2,
     textShadowColor: "rgba(0,0,0,0.16)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,

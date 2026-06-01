@@ -16,6 +16,7 @@ import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
+import { useTranslation } from "../../i18n/useTranslation";
 
 /** Chỉ các trạng thái còn được admin thao tác */
 const MANAGEABLE_STATUSES = new Set([
@@ -47,23 +48,6 @@ interface BookingItem {
 const formatVnd = (amount?: number) =>
   `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
 
-const copyRefundInfo = async (item: BookingItem) => {
-  const r = item.refund;
-  if (!r?.accountNumber) {
-    Alert.alert("Thông báo", "Không có số tài khoản để sao chép");
-    return;
-  }
-  const text = [
-    `Mã: ${item.bookingNumber}`,
-    `Ngân hàng: ${r.bankName || "—"}`,
-    `STK: ${r.accountNumber}`,
-    `Chủ TK: ${r.accountName || "—"}`,
-    `Số tiền: ${formatVnd(r.refundAmount)}`,
-  ].join("\n");
-  await Clipboard.setStringAsync(text);
-  Alert.alert("Đã sao chép", "Thông tin hoàn tiền đã được copy");
-};
-
 const getStatusTone = (
   status: string,
 ): "warning" | "success" | "danger" | "info" | "default" => {
@@ -74,30 +58,32 @@ const getStatusTone = (
   return "default";
 };
 
-const BOOKING_FILTERS = [
-  { value: "all", label: "Tất cả" },
-  { value: "pending", label: "Chờ xác nhận" },
-  { value: "confirmed", label: "Đã xác nhận" },
-  { value: "paid", label: "Đã thanh toán" },
-  { value: "refund_pending", label: "Chờ hoàn tiền" },
-  { value: "refunded", label: "Đã hoàn tiền" },
-  { value: "cancelled", label: "Đã hủy" },
-  { value: "completed", label: "Hoàn thành" },
-] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  "pending": "Chờ Xác Nhận",
-  "pending_payment": "Chờ Thanh Toán",
-  "confirmed": "Đã Xác Nhận",
-  "paid": "Đã Thanh Toán",
-  "completed": "Hoàn Thành",
-  "cancelled": "Đã Hủy",
-  "refund_pending": "Chờ Hoàn Tiền",
-  "refunded": "Đã Hoàn Tiền",
-  "all": "Tất Cả",
-};
-
 export default function AdminBookingsScreen() {
+  const { t } = useTranslation();
+
+  const BOOKING_FILTERS = [
+    { value: "all", label: t("admin.bookings.all") },
+    { value: "pending", label: t("admin.bookings.statusPending") },
+    { value: "confirmed", label: t("admin.bookings.statusConfirmed") },
+    { value: "paid", label: t("admin.bookings.statusPaid") },
+    { value: "refund_pending", label: t("admin.bookings.statusRefundPending") },
+    { value: "refunded", label: t("admin.bookings.statusRefunded") },
+    { value: "cancelled", label: t("admin.bookings.statusCancelled") },
+    { value: "completed", label: t("admin.bookings.statusCompleted") },
+  ] as const;
+
+  const STATUS_LABELS: Record<string, string> = {
+    "pending": t("admin.bookings.statusPending"),
+    "pending_payment": t("admin.bookings.statusUnpaid"),
+    "confirmed": t("admin.bookings.statusConfirmed"),
+    "paid": t("admin.bookings.statusPaid"),
+    "completed": t("admin.bookings.statusCompleted"),
+    "cancelled": t("admin.bookings.statusCancelled"),
+    "refund_pending": t("admin.bookings.statusRefundPending"),
+    "refunded": t("admin.bookings.statusRefunded"),
+    "all": t("admin.bookings.all"),
+  };
+
   const [status, setStatus] = useState<
     "all" | "pending" | "confirmed" | "paid" | "refund_pending" | "refunded" | "cancelled" | "completed"
   >("all");
@@ -155,12 +141,29 @@ export default function AdminBookingsScreen() {
       await adminAPI.updateBookingStatus(item._id, { status: actualStatus });
       await loadBookings(true);
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
     }
   };
 
   const applyFilters = () => {
     loadBookings(true);
+  };
+
+  const copyRefundInfo = async (item: BookingItem) => {
+    const r = item.refund;
+    if (!r?.accountNumber) {
+      Alert.alert(t("common.notification"), t("admin.bookings.missingBankInfo"));
+      return;
+    }
+    const text = [
+      `Mã: ${item.bookingNumber}`,
+      `Ngân hàng: ${r.bankName || "—"}`,
+      `STK: ${r.accountNumber}`,
+      `Chủ TK: ${r.accountName || "—"}`,
+      `Số tiền: ${formatVnd(r.refundAmount)}`,
+    ].join("\n");
+    await Clipboard.setStringAsync(text);
+    Alert.alert(t("common.notification"), t("admin.bookings.copyInfo"));
   };
 
   const resetFilters = () => {
@@ -172,15 +175,15 @@ export default function AdminBookingsScreen() {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Đơn Hàng" subtitle="Theo dõi và cập nhật" showBack={false} />
+      <AdminHeader title={t("admin.bookings.title")} subtitle={t("admin.bookings.subtitle")} showBack={false} />
 
       <View style={styles.filterPanel}>
-        <Text style={styles.filterPanelTitle}>Bộ lọc đơn hàng</Text>
+        <Text style={styles.filterPanelTitle}>{t("admin.bookings.quickFilter")}</Text>
         <View style={styles.searchRow}>
           <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Mã đơn (VD: BK-20260525-1234)"
+            placeholder={t("admin.bookings.searchPlaceholder")}
             placeholderTextColor={adminTheme.colors.muted}
             value={search}
             onChangeText={setSearch}
@@ -191,7 +194,7 @@ export default function AdminBookingsScreen() {
           <Ionicons name="calendar-outline" size={16} color={adminTheme.colors.muted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Ngày đặt (YYYY-MM-DD)"
+            placeholder={t("admin.bookings.datePlaceholder")}
             placeholderTextColor={adminTheme.colors.muted}
             value={date}
             onChangeText={setDate}
@@ -200,16 +203,16 @@ export default function AdminBookingsScreen() {
         </View>
         <View style={styles.filterActions}>
           <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
-            <Text style={styles.resetBtnText}>Xóa lọc</Text>
+            <Text style={styles.resetBtnText}>{t("admin.bookings.clearFilter")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.applyBtn} onPress={applyFilters}>
-            <Text style={styles.applyBtnText}>Lọc</Text>
+            <Text style={styles.applyBtnText}>{t("admin.bookings.filterButton")}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>Trạng thái nhanh</Text>
+        <Text style={styles.filterLabel}>{t("admin.bookings.quickFilter")}</Text>
         <View style={styles.quickFilterRow}>
           {BOOKING_FILTERS.map((item) => {
             const active = status === item.value;
@@ -233,7 +236,7 @@ export default function AdminBookingsScreen() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -247,7 +250,7 @@ export default function AdminBookingsScreen() {
                 onPress={() => loadBookings(false)}
                 disabled={loading}
               >
-                <Text style={styles.loadMoreText}>Tải thêm</Text>
+                <Text style={styles.loadMoreText}>{t("common.loading")}</Text>
               </TouchableOpacity>
             ) : null
           }
@@ -261,10 +264,10 @@ export default function AdminBookingsScreen() {
                 />
               </View>
               <Text style={styles.meta}>
-                {item.restaurantId?.name || "Nhà hàng"} • {item.tableId?.name || "Bàn"}
+                {item.restaurantId?.name || t("admin.restaurants.title")} • {item.tableId?.name || t("common.noData")}
               </Text>
               <Text style={styles.meta}>
-                {item.userId?.fullName || "Khách hàng"}
+                {item.userId?.fullName || t("common.noData")}
                 {item.userId?.phone ? ` • ${item.userId.phone}` : ""}
                 {" • "}
                 {item.bookingDetails?.date || ""} {item.bookingDetails?.time || ""}
@@ -272,9 +275,9 @@ export default function AdminBookingsScreen() {
 
               {item.status === "refund_pending" || item.status === "refunded" ? (
                 <View style={styles.refundBox}>
-                  <Text style={styles.refundTitle}>Thông tin hoàn tiền</Text>
+                  <Text style={styles.refundTitle}>{t("admin.bookings.refundTitle")}</Text>
                   <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>Số tiền: </Text>
+                    <Text style={styles.refundLabel}>{t("admin.bookings.refundAmount")}</Text>
                     <Text style={styles.refundValue}>
                       {formatVnd(item.refund?.refundAmount)}
                       {item.refund?.refundPercent != null
@@ -283,19 +286,19 @@ export default function AdminBookingsScreen() {
                     </Text>
                   </Text>
                   <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>Ngân hàng: </Text>
+                    <Text style={styles.refundLabel}>{t("admin.bookings.refundBank")}</Text>
                     <Text style={styles.refundValue}>
                       {item.refund?.bankName?.trim() || "—"}
                     </Text>
                   </Text>
                   <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>Số TK: </Text>
+                    <Text style={styles.refundLabel}>{t("admin.bookings.refundAccount")}</Text>
                     <Text style={styles.refundValueMono}>
                       {item.refund?.accountNumber?.trim() || "—"}
                     </Text>
                   </Text>
                   <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>Chủ TK: </Text>
+                    <Text style={styles.refundLabel}>{t("admin.bookings.refundHolder")}</Text>
                     <Text style={styles.refundValue}>
                       {item.refund?.accountName?.trim() || "—"}
                     </Text>
@@ -311,14 +314,14 @@ export default function AdminBookingsScreen() {
                         size={14}
                         color={adminTheme.colors.onSurface}
                       />
-                      <Text style={styles.copyBtnText}>Sao chép thông tin</Text>
+                      <Text style={styles.copyBtnText}>{t("admin.bookings.copyInfo")}</Text>
                     </TouchableOpacity>
                   ) : null}
                   {item.status === "refund_pending" &&
                   !item.refund?.bankName?.trim() &&
                   !item.refund?.accountNumber?.trim() ? (
                     <Text style={styles.refundWarning}>
-                      Khách chưa gửi thông tin ngân hàng khi hủy.
+                      {t("admin.bookings.missingBankInfo")}
                     </Text>
                   ) : null}
                 </View>
@@ -330,19 +333,19 @@ export default function AdminBookingsScreen() {
                     style={[styles.actionBtn, styles.actionPrimary]}
                     onPress={() =>
                       Alert.alert(
-                        "Xác nhận hoàn tiền",
-                        `Đã chuyển ${formatVnd(item.refund?.refundAmount)} cho ${item.refund?.accountName || "khách"}?`,
+                        t("admin.bookings.refundTitle"),
+                        `Đã chuyển ${formatVnd(item.refund?.refundAmount)} cho ${item.refund?.accountName || t("common.noData")}?`,
                         [
-                          { text: "Hủy", style: "cancel" },
+                          { text: t("common.cancel"), style: "cancel" },
                           {
-                            text: "Đã hoàn",
+                            text: t("admin.bookings.markRefunded"),
                             onPress: () => setStatusAction(item, "refunded"),
                           },
                         ],
                       )
                     }
                   >
-                    <Text style={styles.actionTextPrimary}>Đã Hoàn</Text>
+                    <Text style={styles.actionTextPrimary}>{t("admin.bookings.markRefunded")}</Text>
                   </TouchableOpacity>
                 </View>
               ) : false && MANAGEABLE_STATUSES.has(item.status) ? (
@@ -352,7 +355,7 @@ export default function AdminBookingsScreen() {
                       style={[styles.actionBtn, styles.actionGhost]}
                       onPress={() => setStatusAction(item, "confirmed")}
                     >
-                      <Text style={styles.actionText}>Xác Nhận</Text>
+                      <Text style={styles.actionText}>{t("admin.bookings.confirm")}</Text>
                     </TouchableOpacity>
                   ) : null}
                   {item.status === "confirmed" ? (
@@ -360,14 +363,14 @@ export default function AdminBookingsScreen() {
                       style={[styles.actionBtn, styles.actionPrimary]}
                       onPress={() => setStatusAction(item, "paid")}
                     >
-                      <Text style={styles.actionTextPrimary}>Thanh Toán</Text>
+                      <Text style={styles.actionTextPrimary}>{t("admin.bookings.markPaid")}</Text>
                     </TouchableOpacity>
                   ) : null}
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionDanger]}
                     onPress={() => setStatusAction(item, "cancelled")}
                   >
-                    <Text style={styles.actionTextDanger}>Hủy Bỏ</Text>
+                    <Text style={styles.actionTextDanger}>{t("admin.bookings.cancel")}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}

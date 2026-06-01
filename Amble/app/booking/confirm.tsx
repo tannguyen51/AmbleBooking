@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI } from "@/services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
@@ -40,15 +41,16 @@ interface VoucherItem {
 }
 
 const TABLE_TYPE_LABELS: Record<string, string> = {
-  vip: "✨ Bàn VIP",
-  view: "🌆 Bàn View Đẹp",
-  regular: "🪑 Bàn Thường",
-  standard: "🪑 Bàn Thường",
+  vip: "booking.select.typeVIP",
+  view: "booking.select.typeView",
+  regular: "booking.select.typeRegular",
+  standard: "booking.select.typeRegular",
 };
 
 export default function ConfirmBookingScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const {
     restaurantId,
     restaurantName,
@@ -120,7 +122,7 @@ export default function ConfirmBookingScreen() {
         setVoucherError(
           `Hóa đơn tối thiểu: ${(found.minBill / 1000).toFixed(0)}k`,
         );
-    } else setVoucherError("Mã voucher không hợp lệ");
+    } else setVoucherError(t("booking.confirm.invalidVoucher"));
   };
 
   const bookingData = {
@@ -145,7 +147,7 @@ export default function ConfirmBookingScreen() {
     console.log('[DEBUG] User object:', user);
     console.log('[DEBUG] User ID:', user?._id);
     if (!user?._id) {
-      Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt bàn");
+      Alert.alert(t("common.error"), t("booking.confirm.loginRequired"));
       return;
     }
     setLoading(true);
@@ -157,7 +159,7 @@ export default function ConfirmBookingScreen() {
 
       if (!latestTable || !latestTable.isAvailable) {
         Alert.alert(
-          "Bàn đã được đặt",
+          t("booking.confirm.tableTakenTitle"),
           "Bàn này vừa được người khác giữ chỗ. Vui lòng chọn bàn khác.",
         );
         router.replace({
@@ -230,7 +232,7 @@ export default function ConfirmBookingScreen() {
       console.error('[DEBUG] Booking error:', err);
       console.error('[DEBUG] Error details:', err.response?.data);
       Alert.alert(
-        "Lỗi",
+        t("common.error"),
         err.response?.data?.message || "Đặt bàn thất bại. Vui lòng thử lại.",
       );
     } finally {
@@ -250,14 +252,14 @@ export default function ConfirmBookingScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Xác nhận đặt bàn</Text>
+        <Text style={s.headerTitle}>{t("booking.confirm.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Nhà hàng */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Nhà hàng</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.restaurant")}</Text>
           <View style={s.card}>
             <Image
               source={{
@@ -276,7 +278,7 @@ export default function ConfirmBookingScreen() {
 
         {/* Bàn */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Bàn đã chọn</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.selectedTable")}</Text>
           <View style={s.card}>
             <Image
               source={{
@@ -289,7 +291,7 @@ export default function ConfirmBookingScreen() {
             <View style={s.tableInfo}>
               <Text style={s.tableName}>{tableName}</Text>
               <Text style={s.tableFeatures}>
-                {TABLE_TYPE_LABELS[tableType || ""] || "🪑 Bàn"}
+                {t(TABLE_TYPE_LABELS[tableType || ""] || "booking.select.typeRegular")}
               </Text>
             </View>
           </View>
@@ -297,34 +299,34 @@ export default function ConfirmBookingScreen() {
 
         {/* Chi tiết */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Chi tiết đặt bàn</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.details")}</Text>
           <View style={s.detailsCard}>
             <View style={s.detailRow}>
               <Ionicons name="calendar-outline" size={20} color="#666" />
-              <Text style={s.detailLabel}>Ngày</Text>
+              <Text style={s.detailLabel}>{t("booking.confirm.date")}</Text>
               <Text style={s.detailValue}>{formatDate(bookingData.date)}</Text>
             </View>
             <View style={s.divider} />
             <View style={s.detailRow}>
               <Ionicons name="time-outline" size={20} color="#666" />
-              <Text style={s.detailLabel}>Giờ</Text>
+              <Text style={s.detailLabel}>{t("booking.confirm.time")}</Text>
               <Text style={s.detailValue}>{bookingData.time}</Text>
             </View>
             <View style={s.divider} />
             <View style={s.detailRow}>
               <Ionicons name="people-outline" size={20} color="#666" />
-              <Text style={s.detailLabel}>Số người</Text>
-              <Text style={s.detailValue}>{bookingData.partySize} người</Text>
+              <Text style={s.detailLabel}>{t("booking.confirm.guests")}</Text>
+              <Text style={s.detailValue}>{bookingData.partySize} {t("booking.select.unitGuest")}</Text>
             </View>
           </View>
         </View>
 
         {/* Ghi chú */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Ghi chú (tuỳ chọn)</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.notes")}</Text>
           <TextInput
             style={s.noteInput}
-            placeholder="Yêu cầu đặc biệt, dị ứng thực phẩm..."
+            placeholder={t("booking.confirm.notesPlaceholder")}
             placeholderTextColor="#9CA3AF"
             value={note}
             onChangeText={setNote}
@@ -336,11 +338,11 @@ export default function ConfirmBookingScreen() {
 
         {/* Voucher */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Mã voucher</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.voucher")}</Text>
           <View style={s.voucherRow}>
             <TextInput
               style={s.voucherInput}
-              placeholder="AMBLE10, GENZ2025..."
+              placeholder={t("booking.confirm.voucherPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={voucherInput}
               onChangeText={(v) => {
@@ -360,7 +362,7 @@ export default function ConfirmBookingScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={s.applyBtnTxt}>Áp dụng</Text>
+                <Text style={s.applyBtnTxt}>{t("booking.confirm.apply")}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -376,7 +378,7 @@ export default function ConfirmBookingScreen() {
                   setVoucherInput("");
                 }}
               >
-                <Text style={{ fontSize: 11, color: "#EF4444" }}>Xóa</Text>
+                <Text style={{ fontSize: 11, color: "#EF4444" }}>{t("booking.confirm.remove")}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -404,7 +406,7 @@ export default function ConfirmBookingScreen() {
 
         {/* Phương thức thanh toán */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Phương thức thanh toán</Text>
+          <Text style={s.sectionTitle}>{t("booking.confirm.paymentMethod")}</Text>
           <TouchableOpacity
             style={s.pmSelector}
             onPress={() => setShowPayments((v) => !v)}
@@ -450,7 +452,7 @@ export default function ConfirmBookingScreen() {
         <View style={s.section}>
           <View style={s.priceCard}>
             <View style={s.priceRow}>
-              <Text style={s.priceLabel}>Tiền cọc bàn</Text>
+              <Text style={s.priceLabel}>{t("booking.confirm.depositLabel")}</Text>
               <Text style={s.priceValue}>
                 {depositAmt.toLocaleString("vi-VN")}đ
               </Text>
@@ -458,7 +460,7 @@ export default function ConfirmBookingScreen() {
             {discount > 0 && (
               <View style={s.priceRow}>
                 <Text style={[s.priceLabel, { color: "#22C55E" }]}>
-                  Voucher giảm
+                  {t("booking.confirm.discount")}
                 </Text>
                 <Text style={[s.priceValue, { color: "#22C55E" }]}>
                   -{discount.toLocaleString("vi-VN")}đ
@@ -466,7 +468,7 @@ export default function ConfirmBookingScreen() {
               </View>
             )}
             <View style={[s.priceRow, s.totalRow]}>
-              <Text style={s.totalLabel}>Tổng thanh toán</Text>
+              <Text style={s.totalLabel}>{t("booking.confirm.total")}</Text>
               <Text style={s.totalValue}>{total.toLocaleString("vi-VN")}đ</Text>
             </View>
           </View>
@@ -504,7 +506,7 @@ export default function ConfirmBookingScreen() {
               <>
                 <ActivityIndicator color="#999" />
                 <Text style={[s.confirmBtnText, { color: "#999" }]}>
-                  Đang xử lý...
+                  {t("booking.confirm.processing")}
                 </Text>
               </>
             ) : (
@@ -514,7 +516,7 @@ export default function ConfirmBookingScreen() {
                   size={22}
                   color="#fff"
                 />
-                <Text style={s.confirmBtnText}>Xác nhận & Thanh toán</Text>
+                <Text style={s.confirmBtnText}>{t("booking.confirm.submitButton")}</Text>
               </>
             )}
           </LinearGradient>

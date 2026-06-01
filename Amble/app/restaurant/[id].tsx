@@ -21,6 +21,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { bookingAPI, restaurantAPI } from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 // ─── Design tokens ────────────────────────────────────────
 const PRIMARY = "#FF6B35";
@@ -86,16 +87,6 @@ interface ReviewItem {
 }
 
 // ─── Helpers ──────────────────────────────────────────────
-const DAY_LABEL: Record<string, string> = {
-  mon: "T2",
-  tue: "T3",
-  wed: "T4",
-  thu: "T5",
-  fri: "T6",
-  sat: "T7",
-  sun: "CN",
-};
-
 const FALLBACK =
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80";
 const MAX_REVIEW_IMAGES = 6;
@@ -185,6 +176,7 @@ const SocialBtn = ({
 
 //  DETAIL SCREEN
 export default function DetailScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, isAuthenticated } = useAuthStore();
@@ -215,7 +207,7 @@ export default function DetailScreen() {
     } catch (err: any) {
       console.error('[RestaurantDetail] Error:', err.response?.data || err.message);
       setError(
-        err.response?.data?.message || "Không thể tải thông tin nhà hàng",
+        err.response?.data?.message || t("restaurant.error"),
       );
     } finally {
       setLoading(false);
@@ -289,7 +281,7 @@ export default function DetailScreen() {
   const addReviewImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Thông báo", "Vui lòng cấp quyền thư viện ảnh.");
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
       return;
     }
 
@@ -335,13 +327,13 @@ export default function DetailScreen() {
       await fetchReviews();
       const earned = res.data?.rewardPoints;
       const msg = earned
-        ? `Đánh giá của bạn đã được gửi. Bạn nhận được +${earned} điểm thưởng!`
-        : "Đánh giá của bạn đã được gửi.";
-      Alert.alert("Thành công", msg);
+        ? t("restaurant.reviewSuccessWithPoints", { earned })
+        : t("restaurant.reviewSuccess");
+      Alert.alert(t("common.success"), msg);
     } catch (error: any) {
       Alert.alert(
-        "Lỗi",
-        error?.response?.data?.message || "Không thể gửi đánh giá.",
+        t("common.error"),
+        error?.response?.data?.message || t("restaurant.reviewFailed"),
       );
     } finally {
       setSubmittingReview(false);
@@ -388,7 +380,7 @@ export default function DetailScreen() {
         />
         <View style={s.loadingWrap}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={s.loadingText}>Đang tải nhà hàng...</Text>
+          <Text style={s.loadingText}>{t("restaurant.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -401,10 +393,10 @@ export default function DetailScreen() {
         <StatusBar barStyle="dark-content" />
         <View style={s.errorWrap}>
           <Text style={{ fontSize: 52 }}>😕</Text>
-          <Text style={s.errorTitle}>Không tìm thấy</Text>
-          <Text style={s.errorText}>{error || "Nhà hàng không tồn tại"}</Text>
+          <Text style={s.errorTitle}>{t("restaurant.notFoundTitle")}</Text>
+          <Text style={s.errorText}>{error || t("restaurant.notFoundText")}</Text>
           <TouchableOpacity style={s.retryBtn} onPress={fetchDetail}>
-            <Text style={s.retryText}>Thử lại</Text>
+            <Text style={s.retryText}>{t("common.retry")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.backLink} onPress={() => router.back()}>
             <Text style={s.backLinkText}>← Quay lại</Text>
@@ -514,7 +506,7 @@ export default function DetailScreen() {
               end={{ x: 1, y: 0 }}
               pointerEvents="none"
             >
-              <Text style={s.heroBadgeText}>Được yêu thích</Text>
+              <Text style={s.heroBadgeText}>{t("restaurant.featured")}</Text>
             </LinearGradient>
           )}
 
@@ -551,7 +543,7 @@ export default function DetailScreen() {
                     { color: open ? "#22C55E" : "#EF4444" },
                   ]}
                 >
-                  {open ? "Đang mở" : "Đã đóng"}
+                  {open ? t("restaurant.open") : t("restaurant.closed")}
                 </Text>
               </View>
             </View>
@@ -599,7 +591,7 @@ export default function DetailScreen() {
               </View>
               <Text style={s.ratingNum}>{restaurant.rating.toFixed(1)}</Text>
               <Text style={s.ratingCount}>
-                ({restaurant.reviewCount} đánh giá)
+                ({restaurant.reviewCount} {t("restaurant.reviewCount")})
               </Text>
             </View>
           </View>
@@ -610,7 +602,7 @@ export default function DetailScreen() {
             restaurant.tiktok ||
             restaurant.website) && (
               <View style={[s.section, { marginTop: -2 }]}>
-                <Text style={s.sectionTitle}>Mạng xã hội</Text>
+                <Text style={s.sectionTitle}>{t("restaurant.social")}</Text>
                 <View style={s.socialRow}>
                   {restaurant.facebook && (
                     <SocialBtn
@@ -669,7 +661,7 @@ export default function DetailScreen() {
             <View style={s.statItem}>
               <Ionicons name="star" size={18} color="#F59E0B" />
               <Text style={s.statValue}>{restaurant.rating.toFixed(1)}</Text>
-              <Text style={s.statLabel}>Đánh giá</Text>
+              <Text style={s.statLabel}>{t("restaurant.rating")}</Text>
             </View>
 
             <View style={s.statDivider} />
@@ -681,7 +673,7 @@ export default function DetailScreen() {
                 color="#6B7280"
               />
               <Text style={s.statValue}>{restaurant.reviewCount}</Text>
-              <Text style={s.statLabel}>Lượt bình luận</Text>
+              <Text style={s.statLabel}>{t("restaurant.reviewCount")}</Text>
             </View>
 
             <View style={s.statDivider} />
@@ -689,7 +681,7 @@ export default function DetailScreen() {
             <View style={s.statItem}>
               <Ionicons name="time-outline" size={18} color="#6B7280" />
               <Text style={s.statValue}>{restaurant.openTime}</Text>
-              <Text style={s.statLabel}>Mở cửa</Text>
+              <Text style={s.statLabel}>{t("restaurant.openTime")}</Text>
             </View>
 
             {restaurant.hasParking && (
@@ -698,7 +690,7 @@ export default function DetailScreen() {
                 <View style={s.statItem}>
                   <Ionicons name="car-outline" size={18} color="#6B7280" />
                   <Text style={s.statValue}>Có</Text>
-                  <Text style={s.statLabel}>Bãi xe</Text>
+                  <Text style={s.statLabel}>{t("restaurant.parking")}</Text>
                 </View>
               </>
             )}
@@ -707,14 +699,14 @@ export default function DetailScreen() {
           {/* ── Mô tả ── */}
           {restaurant.description ? (
             <View style={s.section}>
-              <Text style={s.sectionTitle}>Giới thiệu</Text>
+              <Text style={s.sectionTitle}>{t("restaurant.intro")}</Text>
               <Text style={s.descText}>{restaurant.description}</Text>
             </View>
           ) : null}
 
           {/* ── Đánh giá ── */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Đánh giá từ khách</Text>
+            <Text style={s.sectionTitle}>{t("restaurant.reviews")}</Text>
             {checkingEligibility ? (
               <View style={s.reviewLoading}>
                 <ActivityIndicator size="small" color={PRIMARY} />
@@ -722,7 +714,7 @@ export default function DetailScreen() {
               </View>
             ) : canWriteReview ? (
               <View style={s.writeReviewCard}>
-                <Text style={s.writeReviewTitle}>Viết đánh giá của bạn</Text>
+                <Text style={s.writeReviewTitle}>{t("restaurant.writeReview")}</Text>
                 <View style={s.writeStarsRow}>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <TouchableOpacity
@@ -740,7 +732,7 @@ export default function DetailScreen() {
                 </View>
                 <TextInput
                   style={s.writeReviewInput}
-                  placeholder="Chia sẻ trải nghiệm của bạn..."
+                  placeholder={t("restaurant.reviewPlaceholder")}
                   placeholderTextColor="#9CA3AF"
                   value={draftComment}
                   onChangeText={setDraftComment}
@@ -749,7 +741,7 @@ export default function DetailScreen() {
                 <TouchableOpacity style={s.addReviewImageBtn} onPress={addReviewImages}>
                   <Ionicons name="images-outline" size={16} color="#374151" />
                   <Text style={s.addReviewImageText}>
-                    Thêm ảnh ({draftImages.length}/{MAX_REVIEW_IMAGES})
+                    {t("restaurant.addImages", { current: draftImages.length, max: MAX_REVIEW_IMAGES })}
                   </Text>
                 </TouchableOpacity>
                 {draftImages.length > 0 ? (
@@ -775,7 +767,7 @@ export default function DetailScreen() {
                   {submittingReview ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={s.submitReviewBtnText}>Gửi đánh giá</Text>
+                    <Text style={s.submitReviewBtnText}>{t("restaurant.submitReview")}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -786,14 +778,14 @@ export default function DetailScreen() {
                 <Text style={s.reviewLoadingText}>Đang tải đánh giá...</Text>
               </View>
             ) : reviews.length === 0 ? (
-              <Text style={s.emptyReviewText}>Chưa có đánh giá nào.</Text>
+              <Text style={s.emptyReviewText}>{t("restaurant.noReviews")}</Text>
             ) : (
               <View style={s.reviewList}>
                 {reviews.map((review) => (
                   <View key={review._id} style={s.reviewCard}>
                     <View style={s.reviewHeader}>
                       <Text style={s.reviewName}>
-                        {review.userId?.fullName || "Khách hàng"}
+                        {review.userId?.fullName || t("restaurant.customer")}
                       </Text>
                       <View style={s.reviewStars}>
                         {[1, 2, 3, 4, 5].map((n) => (
@@ -832,11 +824,11 @@ export default function DetailScreen() {
 
           {/* ── Thông tin liên hệ ── */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Thông tin</Text>
+            <Text style={s.sectionTitle}>{t("restaurant.info")}</Text>
             <View style={s.infoCard}>
               <InfoRow
                 icon="location-sharp"
-                label="Địa chỉ"
+                label={t("restaurant.address")}
                 value={
                   restaurant.address || restaurant.location || restaurant.city
                 }
@@ -845,7 +837,7 @@ export default function DetailScreen() {
               <View style={s.divider} />
               <InfoRow
                 icon="time-outline"
-                label="Giờ mở cửa"
+                label={t("restaurant.openingHours")}
                 value={`${restaurant.openTime} – ${restaurant.closeTime}`}
                 valueColor={open ? "#22C55E" : "#EF4444"}
               />
@@ -854,7 +846,7 @@ export default function DetailScreen() {
                   <View style={s.divider} />
                   <InfoRow
                     icon="call-outline"
-                    label="Điện thoại"
+                    label={t("restaurant.phone")}
                     value={restaurant.phone}
                     onPress={callPhone}
                   />
@@ -865,7 +857,7 @@ export default function DetailScreen() {
                   <View style={s.divider} />
                   <InfoRow
                     icon="business-outline"
-                    label="Thành phố"
+                    label={t("restaurant.city")}
                     value={restaurant.city}
                   />
                 </>
@@ -876,9 +868,9 @@ export default function DetailScreen() {
           {/* ── Ngày mở cửa ── */}
           {restaurant.openDays?.length > 0 && (
             <View style={s.section}>
-              <Text style={s.sectionTitle}>Ngày mở cửa</Text>
+              <Text style={s.sectionTitle}>{t("restaurant.openDays")}</Text>
               <View style={s.daysRow}>
-                {["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((d) => {
+                {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((d) => {
                   const active = restaurant.openDays.includes(d);
                   return (
                     <View
@@ -891,7 +883,7 @@ export default function DetailScreen() {
                           active ? s.dayTextOpen : s.dayTextClosed,
                         ]}
                       >
-                        {DAY_LABEL[d]}
+                        {t(`partner.dashboard.${d}` as any)}
                       </Text>
                     </View>
                   );
@@ -934,7 +926,7 @@ export default function DetailScreen() {
             end={{ x: 1, y: 0 }}
           >
             <Ionicons name="navigate-outline" size={20} color="#fff" />
-            <Text style={s.mapBtnText}>Chỉ đường</Text>
+            <Text style={s.mapBtnText}>{t("restaurant.directions")}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -959,7 +951,7 @@ export default function DetailScreen() {
             end={{ x: 1, y: 0 }}
           >
             <Ionicons name="calendar-outline" size={20} color="#fff" />
-            <Text style={s.mapBtnText}>Đặt bàn</Text>
+            <Text style={s.mapBtnText}>{t("restaurant.bookTable")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

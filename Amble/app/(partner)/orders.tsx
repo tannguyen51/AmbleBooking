@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type OrderStatus = "all" | "pending" | "completed" | "cancelled";
 
@@ -48,15 +49,6 @@ const EMPTY_COUNTS: OrderCounts = {
   cancelled: 0,
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Chờ partner duyệt",
-  pending_payment: "Chờ thanh toán",
-  confirmed: "Hoàn thành",
-  cancelled: "Đã hủy",
-  paid: "Đã thanh toán",
-  completed: "Hoàn thành",
-};
-
 const STATUS_STYLES: Record<
   string,
   { color: string; backgroundColor: string; borderColor?: string }
@@ -73,6 +65,7 @@ const STATUS_STYLES: Record<
 };
 
 export default function PartnerOrdersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<OrderStatus>("all");
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
@@ -80,6 +73,18 @@ export default function PartnerOrdersScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [searchCode, setSearchCode] = useState("");
+
+  const getStatusLabel = (status: string): string => {
+    const statusKeys: Record<string, string> = {
+      pending: t("partner.orders.statusPending"),
+      pending_payment: t("partner.orders.statusPendingPayment"),
+      confirmed: t("partner.orders.statusCompleted"),
+      cancelled: t("partner.orders.statusCancelled"),
+      paid: t("partner.orders.statusPaid"),
+      completed: t("partner.orders.statusCompleted"),
+    };
+    return statusKeys[status] || status;
+  };
 
   const loadOrders = async (status: OrderStatus) => {
     try {
@@ -89,7 +94,7 @@ export default function PartnerOrdersScreen() {
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không tải được đơn đặt bàn";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     } finally {
       setIsLoading(false);
       setSubmittingId(null);
@@ -101,15 +106,12 @@ export default function PartnerOrdersScreen() {
     loadOrders(activeFilter);
   }, [activeFilter]);
 
-  const filterTabs = useMemo(
-    () => [
-      { key: "all" as OrderStatus, label: `Tất cả (${counts.all})` },
-      { key: "pending" as OrderStatus, label: `Chờ duyệt (${counts.pending})` },
-      { key: "completed" as OrderStatus, label: `Hoàn thành (${counts.completed})` },
-      { key: "cancelled" as OrderStatus, label: `Đã hủy (${counts.cancelled})` },
-    ],
-    [counts],
-  );
+  const filterTabs = [
+    { key: "all" as OrderStatus, label: `${t("partner.orders.tabAll")} (${counts.all})` },
+    { key: "pending" as OrderStatus, label: `${t("partner.orders.tabPending")} (${counts.pending})` },
+    { key: "completed" as OrderStatus, label: `${t("partner.orders.tabCompleted")} (${counts.completed})` },
+    { key: "cancelled" as OrderStatus, label: `${t("partner.orders.tabCancelled")} (${counts.cancelled})` },
+  ];
 
   const pendingCount = counts.pending || 0;
   const filteredOrders = useMemo(() => {
@@ -128,16 +130,16 @@ export default function PartnerOrdersScreen() {
     } catch (error: any) {
       setSubmittingId(null);
       const message =
-        error?.response?.data?.message || "Không thể xác nhận đơn";
-      Alert.alert("Lỗi", message);
+        error?.response?.data?.message || t("partner.orders.confirmError");
+      Alert.alert(t("common.error"), message);
     }
   };
 
   const handleReject = (orderId: string) => {
-    Alert.alert("Từ chối đơn", "Bạn chắc chắn muốn từ chối đơn này?", [
-      { text: "Không", style: "cancel" },
+    Alert.alert(t("partner.orders.rejectTitle"), t("partner.orders.rejectConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Từ chối",
+        text: t("partner.dashboard.reject"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -147,8 +149,8 @@ export default function PartnerOrdersScreen() {
           } catch (error: any) {
             setSubmittingId(null);
             const message =
-              error?.response?.data?.message || "Không thể từ chối đơn";
-            Alert.alert("Lỗi", message);
+              error?.response?.data?.message || t("partner.orders.rejectError");
+            Alert.alert(t("common.error"), message);
           }
         },
       },
@@ -159,8 +161,8 @@ export default function PartnerOrdersScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerWrap}>
         <View>
-          <Text style={styles.headerTitle}>Đơn đặt bàn</Text>
-          <Text style={styles.headerSub}>Duyệt và quản lý đơn hàng</Text>
+          <Text style={styles.headerTitle}>{t("partner.orders.title")}</Text>
+          <Text style={styles.headerSub}>{t("partner.orders.subtitle")}</Text>
         </View>
         <TouchableOpacity
           style={styles.backBtn}
@@ -215,7 +217,7 @@ export default function PartnerOrdersScreen() {
           <Ionicons name="search-outline" size={18} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm mã đơn (VD: BK-20260528-1234)"
+            placeholder={t("partner.orders.searchPlaceholder")}
             placeholderTextColor="#9CA3AF"
             value={searchCode}
             onChangeText={setSearchCode}
@@ -237,18 +239,18 @@ export default function PartnerOrdersScreen() {
         {isLoading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.helperText}>Đang tải đơn đặt bàn...</Text>
+            <Text style={styles.helperText}>{t("common.loading")}</Text>
           </View>
         ) : filteredOrders.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Không có đơn phù hợp</Text>
+            <Text style={styles.emptyTitle}>{t("partner.orders.emptyTitle")}</Text>
             <Text style={styles.helperText}>
-              Thử đổi từ khóa mã đơn hoặc chọn bộ lọc khác.
+              {t("partner.orders.emptySubtitle")}
             </Text>
           </View>
         ) : (
           filteredOrders.map((order) => {
-            const statusLabel = STATUS_LABELS[order.status] || order.status;
+            const statusLabel = getStatusLabel(order.status);
             const isPending = order.status === "pending";
             const isSubmitting = submittingId === order.id;
             const statusStyle = STATUS_STYLES[order.status];
@@ -272,13 +274,13 @@ export default function PartnerOrdersScreen() {
                 </View>
 
                 <View style={styles.metaGrid}>
-                  <Text style={styles.metaText}>Mã: {order.bookingNumber}</Text>
-                  <Text style={styles.metaText}>SĐT: {order.userPhone || "--"}</Text>
+                  <Text style={styles.metaText}>{t("partner.orders.code", { code: order.bookingNumber })}</Text>
+                  <Text style={styles.metaText}>{t("partner.orders.phone", { phone: order.userPhone || "--" })}</Text>
                   <Text style={styles.metaText}>
                     {order.tableNumber} • {order.date} • {order.time}
                   </Text>
                   <Text style={styles.metaTextStrong}>
-                    {order.guests} khách • Cọc {order.depositAmount.toLocaleString("vi-VN")}đ
+                    {t("partner.orders.metadata", { guests: order.guests, deposit: order.depositAmount.toLocaleString("vi-VN") })}
                   </Text>
                 </View>
 
@@ -292,7 +294,7 @@ export default function PartnerOrdersScreen() {
                       onPress={() => handleReject(order.id)}
                       disabled={isSubmitting}
                     >
-                      <Text style={styles.rejectText}>Từ chối</Text>
+                      <Text style={styles.rejectText}>{t("partner.dashboard.reject")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
@@ -303,7 +305,7 @@ export default function PartnerOrdersScreen() {
                       disabled={isSubmitting}
                     >
                       <Text style={styles.confirmText}>
-                        {isSubmitting ? "Đang xử lý..." : "Xác nhận"}
+                        {isSubmitting ? t("partner.orders.processing") : t("partner.dashboard.confirm")}
                       </Text>
                     </TouchableOpacity>
                   </View>

@@ -16,6 +16,7 @@ import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface RewardUser {
   _id: string;
@@ -25,6 +26,7 @@ interface RewardUser {
 }
 
 export default function AdminRewardsScreen() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<RewardUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,11 +64,11 @@ export default function AdminRewardsScreen() {
     if (!selectedUser) return;
     const points = Number(form.points);
     if (!Number.isFinite(points)) {
-      Alert.alert("Lỗi", "Điểm phải là số");
+      Alert.alert(t("common.error"), t("admin.rewards.pointsMustBeNumber"));
       return;
     }
     if (!form.title.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập lý do");
+      Alert.alert(t("common.error"), t("admin.rewards.reasonRequired"));
       return;
     }
 
@@ -79,19 +81,19 @@ export default function AdminRewardsScreen() {
       setModalVisible(false);
       await loadUsers();
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("admin.rewards.defaultError"));
     }
   };
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Điểm Thưởng" subtitle="Điều chỉnh điểm tích lũy" />
+      <AdminHeader title={t("admin.rewards.title")} subtitle={t("admin.rewards.subtitle")} />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm user"
+          placeholder={t("admin.rewards.searchPlaceholder")}
           placeholderTextColor={adminTheme.colors.muted}
           value={search}
           onChangeText={setSearch}
@@ -105,7 +107,7 @@ export default function AdminRewardsScreen() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -124,7 +126,7 @@ export default function AdminRewardsScreen() {
                 style={styles.actionBtn}
                 onPress={() => openAdjust(item)}
               >
-                <Text style={styles.actionText}>Điều chỉnh điểm</Text>
+                <Text style={styles.actionText}>{t("admin.rewards.adjust")}</Text>
               </TouchableOpacity>
             </AdminCard>
           )}
@@ -134,14 +136,14 @@ export default function AdminRewardsScreen() {
       <Modal transparent visible={modalVisible} animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Điều chỉnh điểm</Text>
+            <Text style={styles.modalTitle}>{t("admin.rewards.modalTitle")}</Text>
             <Text style={styles.modalSubtitle}>
               {selectedUser?.fullName || ""}
             </Text>
 
             <TextInput
               style={styles.modalInput}
-              placeholder="Số điểm (+/-)"
+              placeholder={t("admin.rewards.pointsPlaceholder")}
               placeholderTextColor="#94A3B8"
               keyboardType="numeric"
               value={form.points}
@@ -151,7 +153,7 @@ export default function AdminRewardsScreen() {
             />
             <TextInput
               style={styles.modalInput}
-              placeholder="Lý do"
+              placeholder={t("admin.rewards.reasonPlaceholder")}
               placeholderTextColor="#94A3B8"
               value={form.title}
               onChangeText={(value) =>
@@ -160,7 +162,7 @@ export default function AdminRewardsScreen() {
             />
             <View style={styles.typeRow}>
               {(["earn", "redeem"] as const).map((type) => {
-                const typeLabel = type === "earn" ? "Cộng Điểm" : "Dùng Điểm";
+                const typeLabel = type === "earn" ? t("admin.rewards.earn") : t("admin.rewards.redeem");
                 const isActive = form.type === type;
                 return (
                   <TouchableOpacity
@@ -188,13 +190,13 @@ export default function AdminRewardsScreen() {
                 style={[styles.modalBtn, styles.modalGhost]}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.modalGhostText}>Hủy</Text>
+                <Text style={styles.modalGhostText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalPrimary]}
                 onPress={submitAdjust}
               >
-                <Text style={styles.modalPrimaryText}>Lưu</Text>
+                <Text style={styles.modalPrimaryText}>{t("common.save")}</Text>
               </TouchableOpacity>
             </View>
           </View>

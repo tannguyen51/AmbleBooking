@@ -18,6 +18,7 @@ import { useAuthStore } from "../../store/authStore";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../../components/AmbleLogo";
 import { API_BASE_URL } from "../../services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 // ─── Design tokens ───
 const PRIMARY = "#FF6B35";
@@ -31,6 +32,7 @@ const BORDER = "#E5E7EB";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,12 +53,12 @@ export default function LoginScreen() {
           isHandling = true;
           await loginWithToken(token);
         } catch (err: any) {
-          Alert.alert("Đăng nhập Google thất bại", err.message);
+          Alert.alert(t("auth.login.googleFail"), err.message);
         } finally {
           isHandling = false;
         }
       } else if (typeof error === "string") {
-        Alert.alert("Đăng nhập Google thất bại", error);
+        Alert.alert(t("auth.login.googleFail"), error);
       }
     };
 
@@ -73,22 +75,22 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu");
+      Alert.alert(t("common.error"), t("auth.login.emptyFields"));
       return;
     }
 
     try {
       await login(email.trim().toLowerCase(), password);
     } catch (error: any) {
-      Alert.alert("Đăng nhập thất bại", error.message);
+      Alert.alert(t("auth.login.failed"), error.message);
     }
   };
 
   const handleGoogleLogin = async () => {
     if (!__DEV__ && API_BASE_URL.includes("localhost")) {
       Alert.alert(
-        "Thiếu cấu hình production",
-        "Bạn cần set EXPO_PUBLIC_API_URL trỏ đến API public trước khi build release.",
+        t("auth.login.missingConfig"),
+        t("auth.login.missingConfig"),
       );
       return;
     }
@@ -133,19 +135,19 @@ export default function LoginScreen() {
             textColor="#FFFFFF"
             containerStyle={styles.appLogo}
           />
-          <Text style={styles.tagline}>Khám phá hành trình của bạn</Text>
+          <Text style={styles.tagline}>{t("auth.login.tagline")}</Text>
         </LinearGradient>
 
         {/* ─── Form Card ─── */}
         <View style={styles.formCard}>
-          <Text style={styles.welcomeTitle}>Chào mừng trở lại!</Text>
+          <Text style={styles.welcomeTitle}>{t("auth.login.title")}</Text>
           <Text style={styles.welcomeSubtitle}>
-            Đăng nhập để tiếp tục hành trình của bạn
+                        {t("auth.login.subtitle")}
           </Text>
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t("auth.login.emailLabel")}</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={18} color={TEXT_MUTED} />
@@ -164,7 +166,7 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu</Text>
+            <Text style={styles.label}>{t("auth.login.passwordLabel")}</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -175,7 +177,7 @@ export default function LoginScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="Nhập mật khẩu"
+                placeholder={t("auth.login.passwordPlaceholder")}
                 placeholderTextColor={TEXT_MUTED}
                 value={password}
                 onChangeText={setPassword}
@@ -198,7 +200,7 @@ export default function LoginScreen() {
               style={styles.forgotWrap}
               onPress={() => router.push("/(auth)/forgot-password")}
             >
-              <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+              <Text style={styles.forgotText}>{t("auth.login.forgotPassword")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -217,18 +219,18 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.loginBtnText}>Đăng nhập</Text>
+                <Text style={styles.loginBtnText}>{t("auth.login.loginButton")}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
 
           {/* Register */}
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <Text style={styles.registerText}>{t("auth.login.noAccount")}</Text>
 
             <Link href="/(auth)/register" asChild>
               <TouchableOpacity>
-                <Text style={styles.registerLink}>Đăng ký ngay</Text>
+                <Text style={styles.registerLink}>{t("auth.login.registerNow")}</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -241,7 +243,7 @@ export default function LoginScreen() {
           >
             <View style={styles.googleBtnInner}>
               <Ionicons name="logo-google" size={18} color="#DB4437" />
-              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              <Text style={styles.googleBtnText}>{t("auth.login.googleSignIn")}</Text>
             </View>
           </TouchableOpacity>
         </View>

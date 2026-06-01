@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { bookingAPI } from "@/services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -52,28 +53,28 @@ const TABLE_TYPE_CONFIG: Record<
   }
 > = {
   standard: {
-    label: "Bàn Thường",
+    label: "booking.select.typeRegular",
     icon: "restaurant-outline",
     color: "#22C55E",
     bg: "#F0FDF4",
     border: "#86EFAC",
   },
   view: {
-    label: "Bàn View Đẹp",
+    label: "booking.select.typeView",
     icon: "eye-outline",
     color: "#3B82F6",
     bg: "#EFF6FF",
     border: "#93C5FD",
   },
   vip: {
-    label: "Bàn VIP",
+    label: "booking.select.typeVIP",
     icon: "diamond-outline",
     color: "#9333EA",
     bg: "#FAF5FF",
     border: "#C4B5FD",
   },
   regular: {
-    label: "Bàn Thường",
+    label: "booking.select.typeRegular",
     icon: "restaurant-outline",
     color: "#22C55E",
     bg: "#F0FDF4",
@@ -108,6 +109,8 @@ export default function SelectTableScreen() {
     restaurantId: string;
     restaurantName: string;
   }>();
+
+  const { t } = useTranslation();
 
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +220,7 @@ export default function SelectTableScreen() {
       <SafeAreaView style={s.container}>
         <View style={s.center}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={s.loadTxt}>Đang tải bàn...</Text>
+          <Text style={s.loadTxt}>{t("booking.select.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -230,7 +233,7 @@ export default function SelectTableScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <View style={{ alignItems: "center" }}>
-          <Text style={s.headerTitle}>Chọn bàn</Text>
+          <Text style={s.headerTitle}>{t("booking.select.title")}</Text>
           <Text style={s.headerSub}>{restaurantName}</Text>
         </View>
         <View style={{ width: 40 }} />
@@ -246,7 +249,7 @@ export default function SelectTableScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="calendar-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>Ngày</Text>
+            <Text style={s.dtgLabel}>{t("booking.select.date")}</Text>
             <Text style={s.dtgVal}>{formatDateVN(date)}</Text>
           </TouchableOpacity>
 
@@ -257,14 +260,14 @@ export default function SelectTableScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="time-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>Giờ</Text>
+            <Text style={s.dtgLabel}>{t("booking.select.time")}</Text>
             <Text style={s.dtgVal}>{time}</Text>
           </TouchableOpacity>
 
           {/* Khách — stepper */}
           <View style={s.dtgBox}>
             <Ionicons name="people-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>Khách</Text>
+            <Text style={s.dtgLabel}>{t("booking.select.guests")}</Text>
             <View style={s.stepper}>
               <TouchableOpacity
                 onPress={() => setGuests((g) => Math.max(1, g - 1))}
@@ -303,16 +306,16 @@ export default function SelectTableScreen() {
             style={s.iosDoneBtn}
             onPress={() => setShowDatePicker(false)}
           >
-            <Text style={s.iosDoneTxt}>Xong</Text>
+            <Text style={s.iosDoneTxt}>{t("common.confirm")}</Text>
           </TouchableOpacity>
         )}
 
         {/* ── Legend ──────────────────────────────── */}
         <View style={s.legend}>
           {[
-            ["#22C55E", "Còn trống"],
-            ["#EF4444", "Đã đặt"],
-            [PRIMARY, "Đang chọn"],
+            ["#22C55E", t("booking.select.legendAvailable")],
+            ["#EF4444", t("booking.select.legendBooked")],
+            [PRIMARY, t("booking.select.legendSelected")],
           ].map(([c, l]) => (
             <View key={l} style={s.legendItem}>
               <View style={[s.legendDot, { backgroundColor: c }]} />
@@ -338,10 +341,10 @@ export default function SelectTableScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={s.chipTxtActive}>Tất cả ({availableTables.length})</Text>
+                <Text style={s.chipTxtActive}>{t("booking.select.all")} ({availableTables.length})</Text>
               </LinearGradient>
             ) : (
-              <Text style={s.chipTxt}>Tất cả ({availableTables.length})</Text>
+              <Text style={s.chipTxt}>{t("booking.select.all")} ({availableTables.length})</Text>
             )}
           </TouchableOpacity>
           {Object.entries(TABLE_TYPE_CONFIG).map(([type, cfg]) => {
@@ -372,7 +375,7 @@ export default function SelectTableScreen() {
                   />
 
                   <Text style={[s.chipTxt, active && { color: cfg.color }]}>
-                    {cfg.label} ({avail}/{total})
+                    {t(cfg.label)} ({avail}/{total})
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -385,9 +388,9 @@ export default function SelectTableScreen() {
           {availableTables.length === 0 ? (
             <View style={s.emptyWrap}>
               <Ionicons name="time-outline" size={28} color="#9CA3AF" />
-              <Text style={s.emptyTitle}>Tạm thời chưa có bàn trống</Text>
+              <Text style={s.emptyTitle}>{t("booking.select.emptyTitle")}</Text>
               <Text style={s.emptyText}>
-                Bạn có thể thử lại sau hoặc đổi khung giờ đặt bàn.
+                {t("booking.select.emptySubtitle")}
               </Text>
             </View>
           ) : (
@@ -397,10 +400,10 @@ export default function SelectTableScreen() {
                 <View key={type} style={{ marginBottom: 24 }}>
                   <View style={s.groupHeader}>
                     <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                    <Text style={s.groupTitle}>{cfg.label}</Text>
+                    <Text style={s.groupTitle}>{t(cfg.label)}</Text>
                     <View style={[s.groupBadge, { backgroundColor: cfg.bg }]}>
                       <Text style={[s.groupBadgeTxt, { color: cfg.color }]}>
-                        {typeTables.length} trống
+                        {typeTables.length} {t("booking.select.available")}
                       </Text>
                     </View>
                   </View>
@@ -429,7 +432,7 @@ export default function SelectTableScreen() {
                             {table.name}
                           </Text>
                           <Text style={[s.cellStatus, { color: "#9CA3AF" }]}>
-                            Trống
+                            {t("booking.select.available")}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -538,7 +541,7 @@ export default function SelectTableScreen() {
                             {cfg.icon} {selectedTable.name}
                           </Text>
                           <Text style={[s.drawerType, { color: cfg.color }]}>
-                            {cfg.label}
+                            {t(cfg.label)}
                           </Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
@@ -548,18 +551,18 @@ export default function SelectTableScreen() {
                             )}
                             .000đ
                           </Text>
-                          <Text style={s.drawerDepositLbl}>Tiền cọc</Text>
+                          <Text style={s.drawerDepositLbl}>{t("booking.select.deposit")}</Text>
                         </View>
                       </View>
                       <View style={s.drawerBadges}>
                         <View style={s.badge}>
                           <Text style={s.badgeTxt}>
                             👥 {selectedTable.capacity.min}–
-                            {selectedTable.capacity.max} người
+                            {selectedTable.capacity.max} {t("booking.select.unitGuest")}
                           </Text>
                         </View>
                         <View style={s.badge}>
-                          <Text style={s.badgeTxt}>✅ Còn trống</Text>
+                          <Text style={s.badgeTxt}>✅ {t("booking.select.legendAvailable")}</Text>
                         </View>
                       </View>
                       {(selectedTable.description ||
@@ -580,7 +583,7 @@ export default function SelectTableScreen() {
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                         >
-                          <Text style={s.contBtnTxt}>Tiếp tục đặt bàn</Text>
+                          <Text style={s.contBtnTxt}>{t("booking.select.continue")}</Text>
                           <Ionicons
                             name="chevron-forward"
                             size={18}

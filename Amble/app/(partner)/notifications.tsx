@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { partnerDashboardAPI } from "../../services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface PartnerNotification {
   id: string;
@@ -60,6 +61,7 @@ function getNotificationTone(item: PartnerNotification): NotificationTone {
 }
 
 export default function PartnerNotificationsScreen() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<PartnerNotification[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function PartnerNotificationsScreen() {
       } catch (error: any) {
         const message =
           error?.response?.data?.message || "Không tải được thông báo";
-        Alert.alert("Lỗi", message);
+        Alert.alert(t("common.error"), message);
       } finally {
         setIsLoading(false);
       }
@@ -85,17 +87,17 @@ export default function PartnerNotificationsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Thông báo</Text>
+        <Text style={styles.title}>{t("partner.notifications.title")}</Text>
         {isLoading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.helperText}>Đang tải thông báo...</Text>
+            <Text style={styles.helperText}>{t("common.loading")}</Text>
           </View>
         ) : items.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Chưa có thông báo</Text>
+            <Text style={styles.emptyTitle}>{t("partner.notifications.emptyTitle")}</Text>
             <Text style={styles.helperText}>
-              Các cập nhật booking sẽ hiển thị tại đây.
+              {t("partner.notifications.emptySubtitle")}
             </Text>
           </View>
         ) : (

@@ -14,14 +14,10 @@ import {
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  Typography,
-} from "../../constants/theme";
+import { Colors, Spacing, BorderRadius, Typography } from "../../constants/theme";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import MunchMapLogo from "../../components/AmbleLogo";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PARTNER_PRIMARY = "#FF6B35";
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -31,12 +27,13 @@ export default function PartnerLoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const { t } = useTranslation();
   const { login, isLoading } = usePartnerAuthStore();
   const router = useRouter();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu");
+      Alert.alert(t("common.error"), t("partnerAuth.login.emptyFields"));
       return;
     }
 
@@ -44,7 +41,7 @@ export default function PartnerLoginScreen() {
       await login(email.trim().toLowerCase(), password);
       router.replace("/dashboard");
     } catch (error: any) {
-      Alert.alert("Đăng nhập thất bại", error.message);
+      Alert.alert(t("common.error"), error.message);
     }
   };
 
@@ -70,20 +67,20 @@ export default function PartnerLoginScreen() {
             containerStyle={styles.partnerLogo}
           />
 
-          <Text style={styles.appName}>munchmap Partner</Text>
-          <Text style={styles.tagline}>Quản lý nhà hàng của bạn</Text>
+          <Text style={styles.appName}>{t("partnerAuth.login.title")}</Text>
+          <Text style={styles.tagline}>{t("partnerAuth.login.tagline")}</Text>
         </LinearGradient>
 
         {/* Form */}
         <View style={styles.formContainer}>
-          <Text style={styles.welcomeTitle}>Chào mừng trở lại!</Text>
+          <Text style={styles.welcomeTitle}>{t("partnerAuth.login.welcome")}</Text>
           <Text style={styles.welcomeSubtitle}>
-            Đăng nhập vào tài khoản đối tác
+            {t("partnerAuth.login.subtitle")}
           </Text>
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email đối tác</Text>
+            <Text style={styles.label}>{t("partnerAuth.login.emailLabel")}</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -95,7 +92,7 @@ export default function PartnerLoginScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="partner@restaurant.vn"
+                placeholder={t("partnerAuth.login.emailPlaceholder")}
                 placeholderTextColor={Colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -108,7 +105,7 @@ export default function PartnerLoginScreen() {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu</Text>
+            <Text style={styles.label}>{t("partnerAuth.login.passwordLabel")}</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -120,7 +117,7 @@ export default function PartnerLoginScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="Nhập mật khẩu"
+                placeholder={t("partnerAuth.login.passwordPlaceholder")}
                 placeholderTextColor={Colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
@@ -157,7 +154,7 @@ export default function PartnerLoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.loginBtnText}>Đăng nhập</Text>
+                <Text style={styles.loginBtnText}>{t("partnerAuth.login.loginButton")}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -165,7 +162,7 @@ export default function PartnerLoginScreen() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>hoặc</Text>
+            <Text style={styles.dividerText}>{t("partnerAuth.login.divider")}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -195,11 +192,11 @@ export default function PartnerLoginScreen() {
 
           {/* Register */}
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <Text style={styles.registerText}>{t("partnerAuth.login.noAccount")}</Text>
 
             <Link href="/(partner-auth)/partner-register" asChild>
               <TouchableOpacity>
-                <Text style={styles.registerLink}>Đăng ký ngay</Text>
+                <Text style={styles.registerLink}>{t("partnerAuth.login.registerNow")}</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -211,7 +208,7 @@ export default function PartnerLoginScreen() {
           >
             <View style={styles.backRow}>
               <Ionicons name="arrow-back" size={16} color={Colors.textMuted} />
-              <Text style={styles.backText}>Quay lại đăng nhập khách hàng</Text>
+              <Text style={styles.backText}>{t("partnerAuth.login.backToCustomer")}</Text>
             </View>
           </TouchableOpacity>
         </View>

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { partnerDashboardAPI } from "../../services/api";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type OpenDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -47,6 +48,7 @@ const FALLBACK_COVER =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
 
 export default function PartnerProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { logout, partner } = usePartnerAuthStore();
   const canManageStaff = hasPartnerPermission(partner?.role, "staff:view");
@@ -56,7 +58,7 @@ export default function PartnerProfileScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAccountCenterMenu, setShowAccountCenterMenu] = useState(false);
-  
+
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -80,6 +82,20 @@ export default function PartnerProfileScreen() {
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
   const [website, setWebsite] = useState("");
+
+  const getCuisineDisplay = (cuisineValue: string): string => {
+    const cuisineMap: Record<string, string> = {
+      "Việt Nam": t("partner.profile.cuisineVietnamese"),
+      "Nhật Bản": t("partner.profile.cuisineJapanese"),
+      "Hàn Quốc": t("partner.profile.cuisineKorean"),
+      "Âu": t("partner.profile.cuisineWestern"),
+      "Fusion": t("partner.profile.cuisineFusion"),
+      "BBQ": t("partner.profile.cuisineBBQ"),
+      "Hải sản": t("partner.profile.cuisineSeafood"),
+      "Cafe": t("partner.profile.cuisineCafe"),
+    };
+    return cuisineMap[cuisineValue] || cuisineValue;
+  };
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -128,7 +144,7 @@ export default function PartnerProfileScreen() {
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền thư viện ảnh.");
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
       return;
     }
 
@@ -146,7 +162,7 @@ export default function PartnerProfileScreen() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền camera.");
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền camera.");
       return;
     }
 
@@ -162,7 +178,7 @@ export default function PartnerProfileScreen() {
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
-      Alert.alert("Thiếu thông tin", "Tên nhà hàng là bắt buộc.");
+      Alert.alert(t("common.notification"), t("partner.profile.nameRequired"));
       return;
     }
 
@@ -191,11 +207,11 @@ export default function PartnerProfileScreen() {
         website,
       });
 
-      Alert.alert("Thành công", "Đã cập nhật hồ sơ nhà hàng.");
+      Alert.alert(t("common.success"), t("partner.profile.updateSuccess"));
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không thể cập nhật hồ sơ nhà hàng";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     } finally {
       setIsSaving(false);
     }
@@ -203,49 +219,49 @@ export default function PartnerProfileScreen() {
 
   const handleChangePassword = async () => {
     if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert("Thiếu thông tin", "Vui lòng điền đầy đủ thông tin.");
+      Alert.alert(t("common.notification"), "Vui lòng điền đầy đủ thông tin.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Lỗi", "Mật khẩu mới không khớp.");
+      Alert.alert(t("common.error"), "Mật khẩu mới không khớp.");
       return;
     }
 
     try {
       setIsSaving(true);
       // TODO: Gọi API đổi mật khẩu
-      Alert.alert("Thành công", "Đã đổi mật khẩu thành công.");
+      Alert.alert(t("common.success"), t("partner.profile.changePasswordSuccess"));
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setShowChangePassword(false);
     } catch (error: any) {
       const message = error?.response?.data?.message || "Không thể đổi mật khẩu";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     } finally {
       setIsSaving(false);
     }
   };
 
   const openSubscription = () => {
-    Alert.alert("Gói đăng ký", `Gói hiện tại: ${partner?.subscriptionPackage || "basic"}`);
+    Alert.alert(t("partner.profile.subscription"), t("partner.profile.subscriptionInfo", { package: partner?.subscriptionPackage || "basic" }));
   };
   const openVoucher = () => {
-    Alert.alert("Voucher nhà hàng", "Tính năng quản lý voucher sẽ được bật trong bản cập nhật tiếp theo.");
+    Alert.alert(t("partner.profile.voucher"), t("partner.profile.voucherComingSoon"));
   };
   const openTerms = () => {
     router.push("/partner-terms");
   };
   const openSupport = () => {
-    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@munchmap.vn");
+    Alert.alert(t("partner.profile.support"), t("partner.profile.supportInfo"));
   };
 
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn muốn đăng xuất tài khoản đối tác?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert(t("partner.profile.logout"), t("partner.profile.logoutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Đăng xuất",
+        text: t("partner.profile.logout"),
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -261,13 +277,13 @@ export default function PartnerProfileScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentInner}
       >
-        <Text style={styles.title}>Hồ sơ nhà hàng</Text>
+        <Text style={styles.title}>{t("partner.profile.title")}</Text>
 
         <TouchableOpacity style={[styles.card, styles.accountCenterCard]} onPress={() => setShowAccountCenterMenu(!showAccountCenterMenu)}>
           <View style={[styles.menuItem, styles.accountCenterMenuItem]}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="settings-outline" size={18} color="#374151" />
-              <Text style={[styles.menuItemText, styles.accountCenterMenuText]}>Trung tâm tài khoản</Text>
+              <Text style={[styles.menuItemText, styles.accountCenterMenuText]}>{t("partner.profile.accountCenter")}</Text>
             </View>
             <Ionicons name={showAccountCenterMenu ? "chevron-up" : "chevron-down"} size={16} color="#9CA3AF" />
           </View>
@@ -282,7 +298,7 @@ export default function PartnerProfileScreen() {
               onPress={() => router.push("/partner-team")}
             >
               <Ionicons name="people-outline" size={16} color="#FF6B35" />
-              <Text style={styles.teamEntryText}>Quản lý nhân sự nhà hàng</Text>
+              <Text style={styles.teamEntryText}>{t("partner.profile.staffManagement")}</Text>
               <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
             </TouchableOpacity>
 
@@ -291,7 +307,7 @@ export default function PartnerProfileScreen() {
         )}
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Ảnh bìa nhà hàng</Text>
+          <Text style={styles.sectionTitle}>{t("partner.profile.coverImage")}</Text>
           <Image
             source={{ uri: coverImage || FALLBACK_COVER }}
             style={styles.coverImage}
@@ -299,11 +315,11 @@ export default function PartnerProfileScreen() {
           <View style={styles.coverActions}>
             <TouchableOpacity style={styles.coverBtn} onPress={takePhoto}>
               <Ionicons name="camera-outline" size={16} color="#374151" />
-              <Text style={styles.coverBtnText}>Chụp ảnh</Text>
+              <Text style={styles.coverBtnText}>{t("partner.tables.camera")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.coverBtn} onPress={pickFromLibrary}>
               <Ionicons name="images-outline" size={16} color="#374151" />
-              <Text style={styles.coverBtnText}>Thư viện</Text>
+              <Text style={styles.coverBtnText}>{t("partner.tables.library")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -313,12 +329,12 @@ export default function PartnerProfileScreen() {
 
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Dịch vụ & Chính sách</Text>
+          <Text style={styles.sectionTitle}>{t("partner.profile.services")}</Text>
 
           <TouchableOpacity style={styles.menuItem} onPress={openSubscription}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="diamond-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Gói đăng ký</Text>
+              <Text style={styles.menuItemText}>{t("partner.profile.subscription")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
           </TouchableOpacity>
@@ -326,7 +342,7 @@ export default function PartnerProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="ticket-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Voucher</Text>
+              <Text style={styles.menuItemText}>{t("partner.profile.voucher")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
           </TouchableOpacity>
@@ -334,7 +350,7 @@ export default function PartnerProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={openTerms}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="document-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Điều khoản</Text>
+              <Text style={styles.menuItemText}>{t("partner.profile.terms")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
           </TouchableOpacity>
@@ -342,7 +358,7 @@ export default function PartnerProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={openSupport}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="help-buoy-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Hỗ trợ</Text>
+              <Text style={styles.menuItemText}>{t("partner.profile.support")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
           </TouchableOpacity>
@@ -350,13 +366,13 @@ export default function PartnerProfileScreen() {
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-          <Text style={styles.logoutText}>Đăng xuất</Text>
+          <Text style={styles.logoutText}>{t("partner.profile.logout")}</Text>
         </TouchableOpacity>
 
         {isLoading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.loadingText}>Đang đồng bộ dữ liệu...</Text>
+            <Text style={styles.loadingText}>{t("partner.profile.syncing")}</Text>
           </View>
         )}
       </ScrollView>
@@ -371,7 +387,7 @@ export default function PartnerProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Trung tâm tài khoản</Text>
+              <Text style={styles.modalTitle}>{t("partner.profile.accountCenter")}</Text>
               <TouchableOpacity onPress={() => setShowAccountCenter(false)}>
                 <Ionicons name="close-outline" size={24} color="#1A1A1A" />
               </TouchableOpacity>
@@ -384,18 +400,18 @@ export default function PartnerProfileScreen() {
               }}
             >
               <Ionicons name="document-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>Hồ sơ nhà hàng</Text>
+              <Text style={styles.modalBtnText}>{t("partner.profile.title")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.modalBtn}
               onPress={() => {
                 setShowAccountCenter(false);
-                Alert.alert("Đổi mật khẩu", "Tính năng đổi mật khẩu sẽ được cập nhật trong phiên bản tiếp theo.");
+                Alert.alert(t("partner.profile.changePasswordTitle"), t("partner.profile.changePasswordComingSoon"));
               }}
             >
               <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>Đổi mật khẩu</Text>
+              <Text style={styles.modalBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
 
               {canManageStaff && (
               <TouchableOpacity
@@ -406,7 +422,7 @@ export default function PartnerProfileScreen() {
                 }}
               >
                 <Ionicons name='people-outline' size={18} color='#FF6B35' />
-                <Text style={styles.modalBtnText}>Quản lý nhân sự</Text>
+                <Text style={styles.modalBtnText}>{t("partner.profile.staffManagement")}</Text>
               </TouchableOpacity>
               )}
             </TouchableOpacity>
@@ -415,7 +431,7 @@ export default function PartnerProfileScreen() {
               style={styles.modalCloseBtn}
               onPress={() => setShowAccountCenter(false)}
             >
-              <Text style={styles.modalCloseBtnText}>Đóng</Text>
+              <Text style={styles.modalCloseBtnText}>{t("common.close")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -433,7 +449,7 @@ export default function PartnerProfileScreen() {
               <TouchableOpacity onPress={() => setShowEditProfile(false)}>
                 <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
               </TouchableOpacity>
-              <Text style={styles.modalTitle2}>Hồ sơ nhà hàng</Text>
+              <Text style={styles.modalTitle2}>{t("partner.profile.title")}</Text>
               <View style={{ width: 24 }} />
             </View>
 
@@ -444,71 +460,71 @@ export default function PartnerProfileScreen() {
             <View style={styles.coverActions}>
               <TouchableOpacity style={styles.coverBtn} onPress={takePhoto}>
                 <Ionicons name="camera-outline" size={16} color="#374151" />
-                <Text style={styles.coverBtnText}>Chụp ảnh</Text>
+                <Text style={styles.coverBtnText}>{t("partner.tables.camera")}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.coverBtn} onPress={pickFromLibrary}>
                 <Ionicons name="images-outline" size={16} color="#374151" />
-                <Text style={styles.coverBtnText}>Thư viện</Text>
+                <Text style={styles.coverBtnText}>{t("partner.tables.library")}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Tên nhà hàng</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.nameLabel")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập tên nhà hàng"
+              placeholder={t("partner.profile.namePlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={name}
               onChangeText={setName}
             />
 
-            <Text style={styles.inputLabel}>Địa chỉ</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.addressLabel")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập địa chỉ"
+              placeholder={t("partner.profile.addressPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={address}
               onChangeText={setAddress}
             />
 
-            <Text style={styles.inputLabel}>Thành phố</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.cityLabel")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập thành phố"
+              placeholder={t("partner.profile.cityPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={city}
               onChangeText={setCity}
             />
 
-            <Text style={styles.inputLabel}>Số điện thoại</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.phoneLabel")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập số điện thoại"
+              placeholder={t("partner.profile.phonePlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={phone}
               onChangeText={setPhone}
             />
 
-            <Text style={styles.inputLabel}>Mô tả nhà hàng</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.descriptionLabel")}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Mô tả tổng quan"
+              placeholder={t("partner.profile.descriptionPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={description}
               onChangeText={setDescription}
               multiline
             />
 
-            <Text style={styles.inputLabel}>Lời giới thiệu</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.introLabel")}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Thông điệp muốn gửi đến khách hàng"
+              placeholder={t("partner.profile.introPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={introduction}
               onChangeText={setIntroduction}
               multiline
             />
 
-            <Text style={styles.sectionTitle}>Loại ẩm thực</Text>
+            <Text style={styles.sectionTitle}>{t("partner.profile.cuisine")}</Text>
             <View style={styles.cuisineWrap}>
               {CUISINE_OPTIONS.map((item) => {
                 const active = cuisine === item;
@@ -527,16 +543,16 @@ export default function PartnerProfileScreen() {
                         active && styles.cuisineChipTextActive,
                       ]}
                     >
-                      {item}
+                      {getCuisineDisplay(item)}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={styles.sectionTitle}>Có bãi đậu xe</Text>
+            <Text style={styles.sectionTitle}>{t("partner.profile.parking")}</Text>
             <View style={styles.parkingRow}>
-              <Text style={styles.parkingLabel}>Có bãi đậu xe</Text>
+              <Text style={styles.parkingLabel}>{t("partner.profile.parking")}</Text>
               <TouchableOpacity
                 style={[
                   styles.parkingToggleTrack,
@@ -558,10 +574,10 @@ export default function PartnerProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>Giờ mở cửa</Text>
+            <Text style={styles.sectionTitle}>{t("partner.profile.openTime")}</Text>
             <View style={styles.timeRow}>
               <View style={styles.timeCol}>
-                <Text style={styles.inputLabel}>Giờ mở cửa</Text>
+                <Text style={styles.inputLabel}>{t("partner.profile.openTime")}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="08:00"
@@ -571,7 +587,7 @@ export default function PartnerProfileScreen() {
                 />
               </View>
               <View style={styles.timeCol}>
-                <Text style={styles.inputLabel}>Giờ đóng cửa</Text>
+                <Text style={styles.inputLabel}>{t("partner.profile.closeTime")}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="22:00"
@@ -582,7 +598,7 @@ export default function PartnerProfileScreen() {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Ngày mở cửa</Text>
+            <Text style={styles.sectionTitle}>{t("partner.profile.openDays")}</Text>
             <View style={styles.daysRow}>
               {DAY_OPTIONS.map((day) => {
                 const active = openDays.includes(day.key);
@@ -598,19 +614,19 @@ export default function PartnerProfileScreen() {
                         active && styles.dayChipTextActive,
                       ]}
                     >
-                      {day.label}
+                      {t(`partner.dashboard.${day.key}` as any)}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={styles.sectionTitle}>Mạng xã hội</Text>
+            <Text style={styles.sectionTitle}>{t("partner.profile.social")}</Text>
 
             <Text style={styles.inputLabel}>Facebook</Text>
             <TextInput
               style={styles.input}
-              placeholder="facebook.com/restaurant"
+              placeholder={t("partner.profile.facebookPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={facebook}
               onChangeText={setFacebook}
@@ -620,7 +636,7 @@ export default function PartnerProfileScreen() {
             <Text style={styles.inputLabel}>Instagram</Text>
             <TextInput
               style={styles.input}
-              placeholder="instagram.com/restaurant"
+              placeholder={t("partner.profile.instagramPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={instagram}
               onChangeText={setInstagram}
@@ -630,7 +646,7 @@ export default function PartnerProfileScreen() {
             <Text style={styles.inputLabel}>TikTok</Text>
             <TextInput
               style={styles.input}
-              placeholder="tiktok.com/@restaurant"
+              placeholder={t("partner.profile.tiktokPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={tiktok}
               onChangeText={setTiktok}
@@ -640,7 +656,7 @@ export default function PartnerProfileScreen() {
             <Text style={styles.inputLabel}>Website</Text>
             <TextInput
               style={styles.input}
-              placeholder="https://restaurant.com"
+              placeholder={t("partner.profile.websitePlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={website}
               onChangeText={setWebsite}
@@ -657,7 +673,7 @@ export default function PartnerProfileScreen() {
               ) : (
                 <>
                   <Ionicons name="save-outline" size={16} color="#fff" />
-                  <Text style={styles.saveBtnText}>Lưu hồ sơ nhà hàng</Text>
+                  <Text style={styles.saveBtnText}>{t("partner.profile.saveButton")}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -673,7 +689,7 @@ export default function PartnerProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, styles.accountCenterModalContent]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Trung tâm tài khoản</Text>
+              <Text style={styles.modalTitle}>{t("partner.profile.accountCenter")}</Text>
               <TouchableOpacity onPress={() => setShowAccountCenterMenu(false)}>
                 <Ionicons name="close-outline" size={24} color="#1A1A1A" />
               </TouchableOpacity>
@@ -687,7 +703,7 @@ export default function PartnerProfileScreen() {
               }}
             >
               <Ionicons name="document-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>Hồ sơ nhà hàng</Text>
+              <Text style={styles.modalBtnText}>{t("partner.profile.title")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -698,7 +714,7 @@ export default function PartnerProfileScreen() {
               }}
             >
               <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>Đổi mật khẩu</Text>
+              <Text style={styles.modalBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
             </TouchableOpacity>
 
             {canManageStaff && (
@@ -710,7 +726,7 @@ export default function PartnerProfileScreen() {
                 }}
               >
                 <Ionicons name="people-outline" size={18} color="#FF6B35" />
-                <Text style={styles.modalBtnText}>Quản lý nhân sự</Text>
+                <Text style={styles.modalBtnText}>{t("partner.profile.staffManagement")}</Text>
               </TouchableOpacity>
             )}
 
@@ -718,7 +734,7 @@ export default function PartnerProfileScreen() {
               style={styles.modalCloseBtn}
               onPress={() => setShowAccountCenterMenu(false)}
             >
-              <Text style={styles.modalCloseBtnText}>Đóng</Text>
+              <Text style={styles.modalCloseBtnText}>{t("common.close")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -733,36 +749,36 @@ export default function PartnerProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
+              <Text style={styles.modalTitle}>{t("partner.profile.changePasswordTitle")}</Text>
               <TouchableOpacity onPress={() => setShowChangePassword(false)}>
                 <Ionicons name="close-outline" size={24} color="#1A1A1A" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.currentPassword")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập mật khẩu hiện tại"
+              placeholder={t("partner.profile.currentPassword")}
               placeholderTextColor="#9CA3AF"
               value={oldPassword}
               onChangeText={setOldPassword}
               secureTextEntry
             />
 
-            <Text style={styles.inputLabel}>Mật khẩu mới</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.newPassword")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập mật khẩu mới"
+              placeholder={t("partner.profile.newPassword")}
               placeholderTextColor="#9CA3AF"
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
             />
 
-            <Text style={styles.inputLabel}>Xác nhận mật khẩu</Text>
+            <Text style={styles.inputLabel}>{t("partner.profile.confirmPassword")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Xác nhận mật khẩu mới"
+              placeholder={t("partner.profile.confirmPassword")}
               placeholderTextColor="#9CA3AF"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -779,7 +795,7 @@ export default function PartnerProfileScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                  <Text style={styles.saveBtnText}>Đổi mật khẩu</Text>
+                  <Text style={styles.saveBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -788,7 +804,7 @@ export default function PartnerProfileScreen() {
               style={styles.modalCloseBtn}
               onPress={() => setShowChangePassword(false)}
             >
-              <Text style={styles.modalCloseBtnText}>Hủy</Text>
+              <Text style={styles.modalCloseBtnText}>{t("common.cancel")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1042,8 +1058,8 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 14, fontWeight: "600", color: "#111827", lineHeight: 20 },
   editBtn: { marginTop: 16, backgroundColor: "#FF6B35", borderRadius: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
   editBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
-  accountCenterCard: { 
-    backgroundColor: "#FFF7ED", 
+  accountCenterCard: {
+    backgroundColor: "#FFF7ED",
     borderColor: "#FED7AA",
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -1053,10 +1069,10 @@ const styles = StyleSheet.create({
   },
   accountCenterMenuItem: { paddingVertical: 16, paddingHorizontal: 12, borderWidth: 0 },
   accountCenterMenuText: { fontSize: 14, fontWeight: "800" },
-  dropdownContainer: { 
-    backgroundColor: "#fff", 
-    borderRadius: 12, 
-    borderWidth: 1, 
+  dropdownContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: "#EEF0F3",
     marginHorizontal: 16,
     marginVertical: 8,
@@ -1067,10 +1083,10 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2
   },
-  dropdownItem: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    paddingHorizontal: 14, 
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#EEF0F3",
@@ -1079,34 +1095,3 @@ const styles = StyleSheet.create({
   dropdownItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
   accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -21,12 +21,14 @@ import {
   Typography,
 } from "../../constants/theme";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
 
 type Step = "account" | "restaurant" | "package";
 
 export default function PartnerRegisterScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { register, isLoading } = usePartnerAuthStore();
   const [step, setStep] = useState<Step>("account");
@@ -57,25 +59,19 @@ export default function PartnerRegisterScreen() {
         !form.phone.trim() ||
         !form.password
       ) {
-        Alert.alert(
-          "Thiếu thông tin",
-          "Vui lòng nhập đầy đủ thông tin tài khoản.",
-        );
+        Alert.alert(t("common.error"), t("partnerAuth.register.missingStep1"));
         return;
       }
       if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
-        Alert.alert(
-          "Email không hợp lệ",
-          "Vui lòng nhập email đúng định dạng.",
-        );
+        Alert.alert(t("common.error"), t("partnerAuth.register.invalidEmail"));
         return;
       }
       if (form.password.length < 6) {
-        Alert.alert("Mật khẩu yếu", "Mật khẩu cần ít nhất 6 ký tự.");
+        Alert.alert(t("common.error"), t("partnerAuth.register.weakPassword"));
         return;
       }
       if (form.password !== form.confirmPassword) {
-        Alert.alert("Mật khẩu không khớp", "Xác nhận mật khẩu chưa chính xác.");
+        Alert.alert(t("common.error"), t("partnerAuth.register.passwordMismatch"));
         return;
       }
       setStep("restaurant");
@@ -84,10 +80,7 @@ export default function PartnerRegisterScreen() {
 
     if (step === "restaurant") {
       if (!form.restaurantName.trim() || !form.restaurantCity.trim()) {
-        Alert.alert(
-          "Thiếu thông tin",
-          "Vui lòng nhập tên nhà hàng và thành phố.",
-        );
+        Alert.alert(t("common.error"), t("partnerAuth.register.missingRestaurantInfo"));
         return;
       }
       setStep("package");
@@ -102,14 +95,11 @@ export default function PartnerRegisterScreen() {
 
   const handleRegister = async () => {
     if (!form.ownerName.trim() || !form.email.trim() || !form.phone.trim()) {
-      Alert.alert(
-        "Thiếu thông tin",
-        "Vui lòng nhập đầy đủ thông tin bắt buộc.",
-      );
+      Alert.alert(t("common.error"), t("partnerAuth.register.missingStep1"));
       return;
     }
     if (!form.restaurantName.trim()) {
-      Alert.alert("Thiếu thông tin", "Vui lòng nhập tên nhà hàng.");
+      Alert.alert(t("common.error"), t("partnerAuth.register.missingName"));
       return;
     }
 
@@ -127,7 +117,7 @@ export default function PartnerRegisterScreen() {
       });
       router.replace("/dashboard");
     } catch (err: any) {
-      Alert.alert("Đăng ký thất bại", err.message);
+      Alert.alert(t("common.error"), err.message);
     }
   };
 
@@ -143,44 +133,44 @@ export default function PartnerRegisterScreen() {
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Đăng ký đối tác</Text>
+          <Text style={styles.headerTitle}>{t("partnerAuth.register.title")}</Text>
           <Text style={styles.headerSubtitle}>
-            Phát triển nhà hàng cùng munchmap
+            {t("partnerAuth.register.subtitle")}
           </Text>
         </LinearGradient>
 
         <View style={styles.formContainer}>
           {step === "account" && (
             <>
-              <Text style={styles.sectionTitle}>Thông tin tài khoản</Text>
+              <Text style={styles.sectionTitle}>{t("partnerAuth.register.step1Title")}</Text>
 
               <Field
-                label="Họ và tên"
+                label={t("partnerAuth.register.fullNameLabel")}
                 icon="person-outline"
                 value={form.ownerName}
                 onChangeText={(v) => update("ownerName", v)}
-                placeholder="Nguyễn Văn A"
+                placeholder={t("partnerAuth.register.fullNamePlaceholder")}
               />
 
               <Field
-                label="Email"
+                label={t("partnerAuth.register.emailLabel")}
                 icon="mail-outline"
                 value={form.email}
                 onChangeText={(v) => update("email", v)}
-                placeholder="partner@email.com"
+                placeholder={t("partnerAuth.register.emailPlaceholder")}
               />
 
               <Field
-                label="Số điện thoại"
+                label={t("partnerAuth.register.phoneLabel")}
                 icon="call-outline"
                 value={form.phone}
                 onChangeText={(v) => update("phone", v)}
-                placeholder="0901234567"
+                placeholder={t("partnerAuth.register.phonePlaceholder")}
               />
 
               {/* PASSWORD */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Mật khẩu</Text>
+                <Text style={styles.label}>{t("partnerAuth.register.passwordLabel")}</Text>
 
                 <View style={styles.inputWrapper}>
                   <Ionicons
@@ -193,7 +183,7 @@ export default function PartnerRegisterScreen() {
                   <TextInput
                     style={styles.input}
                     secureTextEntry={!showPassword}
-                    placeholder="Nhập mật khẩu"
+                    placeholder={t("partnerAuth.register.passwordPlaceholder")}
                     value={form.password}
                     onChangeText={(v) => update("password", v)}
                   />
@@ -211,7 +201,7 @@ export default function PartnerRegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Xác nhận mật khẩu</Text>
+                <Text style={styles.label}>{t("partnerAuth.register.confirmPasswordLabel")}</Text>
 
                 <View style={styles.inputWrapper}>
                   <Ionicons
@@ -224,7 +214,7 @@ export default function PartnerRegisterScreen() {
                   <TextInput
                     style={styles.input}
                     secureTextEntry={!showPassword}
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder={t("partnerAuth.register.confirmPasswordPlaceholder")}
                     value={form.confirmPassword}
                     onChangeText={(v) => update("confirmPassword", v)}
                   />
@@ -236,7 +226,7 @@ export default function PartnerRegisterScreen() {
                   colors={PARTNER_GRAD}
                   style={styles.btnGradient}
                 >
-                  <Text style={styles.btnText}>Tiếp theo</Text>
+                  <Text style={styles.btnText}>{t("partnerAuth.register.nextButton")}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </>
@@ -244,38 +234,38 @@ export default function PartnerRegisterScreen() {
 
           {step === "restaurant" && (
             <>
-              <Text style={styles.sectionTitle}>Thông tin nhà hàng</Text>
+              <Text style={styles.sectionTitle}>{t("partnerAuth.register.step2Title")}</Text>
 
               <Field
-                label="Tên nhà hàng"
+                label={t("partnerAuth.register.restaurantNameLabel")}
                 icon="storefront-outline"
                 value={form.restaurantName}
                 onChangeText={(v) => update("restaurantName", v)}
-                placeholder="Nhà hàng ABC"
+                placeholder={t("partnerAuth.register.restaurantNamePlaceholder")}
               />
 
               <Field
-                label="Địa chỉ"
+                label={t("partnerAuth.register.addressLabel")}
                 icon="location-outline"
                 value={form.restaurantAddress}
                 onChangeText={(v) => update("restaurantAddress", v)}
-                placeholder="123 Nguyễn Huệ"
+                placeholder={t("partnerAuth.register.addressPlaceholder")}
               />
 
               <Field
-                label="Thành phố"
+                label={t("partnerAuth.register.cityLabel")}
                 icon="business-outline"
                 value={form.restaurantCity}
                 onChangeText={(v) => update("restaurantCity", v)}
-                placeholder="Hồ Chí Minh"
+                placeholder={t("partnerAuth.register.cityPlaceholder")}
               />
 
               <Field
-                label="Ẩm thực"
+                label={t("partnerAuth.register.cuisineLabel")}
                 icon="restaurant-outline"
                 value={form.cuisine}
                 onChangeText={(v) => update("cuisine", v)}
-                placeholder="Việt Nam"
+                placeholder={t("partnerAuth.register.cuisinePlaceholder")}
               />
 
               <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
@@ -283,7 +273,7 @@ export default function PartnerRegisterScreen() {
                   colors={PARTNER_GRAD}
                   style={styles.btnGradient}
                 >
-                  <Text style={styles.btnText}>Tiếp theo</Text>
+                  <Text style={styles.btnText}>{t("partnerAuth.register.nextButton")}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </>
@@ -291,7 +281,7 @@ export default function PartnerRegisterScreen() {
 
           {step === "package" && (
             <>
-              <Text style={styles.sectionTitle}>Hoàn tất đăng ký</Text>
+              <Text style={styles.sectionTitle}>{t("partnerAuth.register.step3Title")}</Text>
 
               <TouchableOpacity
                 style={styles.nextBtn}
@@ -305,7 +295,7 @@ export default function PartnerRegisterScreen() {
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.btnText}>Đăng ký</Text>
+                    <Text style={styles.btnText}>{t("partnerAuth.register.registerButton")}</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -313,11 +303,11 @@ export default function PartnerRegisterScreen() {
           )}
 
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Đã có tài khoản? </Text>
+            <Text style={styles.loginText}>{t("partnerAuth.register.hasAccount")}</Text>
 
             <Link href="/(partner-auth)/partner-login" asChild>
               <TouchableOpacity>
-                <Text style={styles.loginLink}>Đăng nhập</Text>
+                <Text style={styles.loginLink}>{t("partnerAuth.register.loginLink")}</Text>
               </TouchableOpacity>
             </Link>
           </View>

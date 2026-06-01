@@ -14,6 +14,7 @@ import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { useAuthStore } from "../../store/authStore";
 import { adminTheme } from "../../constants/adminTheme";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const BG = adminTheme.colors.background;
 
@@ -37,18 +38,19 @@ const EMPTY_STATS: DashboardStats = {
   pendingPayments: 0,
 };
 
-const ACTIONS = [
-  { label: "Đối Tác", icon: "business", path: "/admin/partners" },
-  { label: "Nhà Hàng", icon: "restaurant", path: "/admin/restaurants" },
-  { label: "Đơn Hàng", icon: "calendar", path: "/admin/bookings" },
-  { label: "Tuyến Đường", icon: "map", path: "/admin/routes" },
-];
-
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { logout } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
+
+  const ACTIONS = [
+    { label: t("admin.dashboard.partners"), icon: "business", path: "/admin/partners" },
+    { label: t("admin.dashboard.restaurants"), icon: "restaurant", path: "/admin/restaurants" },
+    { label: t("admin.dashboard.orders"), icon: "calendar", path: "/admin/bookings" },
+    { label: t("admin.dashboard.routes"), icon: "map", path: "/admin/routes" },
+  ];
 
   const loadStats = async () => {
     setLoading(true);
@@ -73,30 +75,30 @@ export default function AdminDashboard() {
           colors={[adminTheme.colors.primary, adminTheme.colors.primaryContainer]}
           style={styles.hero}
         >
-          <Text style={styles.heroTitle}>Dashboard Quản Trị</Text>
+          <Text style={styles.heroTitle}>{t("admin.dashboard.title")}</Text>
           <Text style={styles.heroSubtitle}>
-            Tổng quan vận hành hôm nay
+            {t("admin.dashboard.subtitle")}
           </Text>
         </LinearGradient>
 
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-            <Text style={styles.loadingText}>Đang tải số liệu...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         ) : (
           <View style={styles.statsGrid}>
-            <StatCard label="Tổng Users" value={stats.totalUsers} />
-            <StatCard label="Users Hoạt Động" value={stats.activeUsers} />
-            <StatCard label="Đối Tác Chờ" value={stats.partnersPending} />
-            <StatCard label="Đối Tác Hoạt" value={stats.partnersActive} />
-            <StatCard label="Nhà Hàng" value={stats.restaurantsActive} />
-            <StatCard label="Đơn Hôm Nay" value={stats.bookingsToday} />
-            <StatCard label="Chờ Thanh Toán" value={stats.pendingPayments} />
+            <StatCard label={t("admin.dashboard.statsUsers")} value={stats.totalUsers} />
+            <StatCard label={t("admin.dashboard.statsActiveUsers")} value={stats.activeUsers} />
+            <StatCard label={t("admin.dashboard.statsPendingPartners")} value={stats.partnersPending} />
+            <StatCard label={t("admin.dashboard.statsActivePartners")} value={stats.partnersActive} />
+            <StatCard label={t("admin.dashboard.statsRestaurants")} value={stats.restaurantsActive} />
+            <StatCard label={t("admin.dashboard.statsOrders")} value={stats.bookingsToday} />
+            <StatCard label={t("admin.dashboard.statsPendingPayments")} value={stats.pendingPayments} />
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Nhanh</Text>
+        <Text style={styles.sectionTitle}>{t("admin.dashboard.quickActions")}</Text>
         <View style={styles.actionsGrid}>
           {ACTIONS.map((action) => (
             <TouchableOpacity
@@ -119,7 +121,7 @@ export default function AdminDashboard() {
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Ionicons name="log-out" size={16} color={adminTheme.colors.primary} />
-          <Text style={styles.logoutText}>Đăng xuất admin</Text>
+          <Text style={styles.logoutText}>{t("admin.dashboard.logout")}</Text>
         </TouchableOpacity>
       </ScrollView>
       <AdminBottomNav />

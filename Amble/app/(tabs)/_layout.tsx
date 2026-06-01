@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { View, Text, StyleSheet, Image } from "react-native";
 import { Colors } from "../../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack } from "expo-router";
+import { useTranslation } from "../../i18n/useTranslation";
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
     <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
@@ -12,6 +12,7 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -36,7 +37,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Trang chủ",
+          title: t("tabs.home"),
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="home-outline" color={color} />
           ),
@@ -45,7 +46,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Khám phá",
+          title: t("tabs.explore"),
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="compass-outline" color={color} />
           ),
@@ -70,7 +71,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "Đặt bàn",
+          title: t("tabs.bookings"),
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="calendar-outline" color={color} />
           ),
@@ -79,7 +80,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Hồ sơ",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="person-outline" color={color} />
           ),
@@ -119,16 +120,16 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#fff",
+    backgroundColor: "#e58015",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#ea835e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
   aiTabText: {
     color: "#fff",
@@ -140,5 +141,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     resizeMode: "contain",
+    tintColor: "#fff",
   },
 });

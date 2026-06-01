@@ -21,65 +21,11 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 
 type Tab = "active" | "pending_payment" | "completed" | "cancelled";
-
-const TAB_CONFIG: { id: Tab; label: string; statuses: string[] }[] = [
-  {
-    id: "active",
-    label: "Đang đặt",
-    statuses: ["pending", "confirmed", "paid", "draft"],
-  },
-  
-  {
-    id: "pending_payment",
-    label: "Chờ thanh toán",
-    statuses: ["pending_payment"],
-  },
-  { id: "completed", label: "Đã xong", statuses: ["completed"] },
-  {
-    id: "cancelled",
-    label: "Đã hủy",
-    statuses: ["cancelled", "refund_pending", "refunded"],
-  },
-];
-
-const STATUS_DISPLAY: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
-  draft: { label: "Chờ xác nhận", color: "#92400E", bg: "#FEF3C7" },
-  pending: { label: "Chờ xác nhận", color: "#92400E", bg: "#FEF3C7" },
-  pending_payment: {
-    label: "Chờ thanh toán",
-    color: "#B45309",
-    bg: "#FEF3C7",
-  },
-  confirmed: { label: "Đã xác nhận", color: "#065F46", bg: "#D1FAE5" },
-  paid: { label: "Đã thanh toán", color: "#1D4ED8", bg: "#DBEAFE" },
-  completed: { label: "Hoàn thành", color: "#374151", bg: "#F3F4F6" },
-  cancelled: { label: "Đã hủy", color: "#991B1B", bg: "#FEE2E2" },
-  refund_pending: {
-    label: "Chờ hoàn tiền",
-    color: "#92400E",
-    bg: "#FEF3C7",
-  },
-  refunded: { label: "Đã hoàn tiền", color: "#065F46", bg: "#D1FAE5" },
-};
-
-const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
-  pending_payment: { label: "Chờ thanh toán", color: "#B45309" },
-  paid: { label: "Đã thanh toán", color: "#1D4ED8" },
-  completed: { label: "Đã thanh toán", color: "#1D4ED8" },
-  cancelled: { label: "Đã hủy", color: "#991B1B" },
-  refund_pending: { label: "Chờ hoàn tiền", color: "#92400E" },
-  refunded: { label: "Đã hoàn tiền", color: "#065F46" },
-  confirmed: { label: "Chưa thanh toán", color: "#6B7280" },
-  pending: { label: "Chưa thanh toán", color: "#6B7280" },
-  draft: { label: "Chưa thanh toán", color: "#6B7280" },
-};
 
 const BANK_OPTIONS = [
   "Vietcombank",
@@ -96,6 +42,61 @@ export default function BookingHistoryScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  const TAB_CONFIG: { id: Tab; label: string; statuses: string[] }[] = [
+    {
+      id: "active",
+      label: t("history.tabActive"),
+      statuses: ["pending", "confirmed", "paid", "draft"],
+    },
+    {
+      id: "pending_payment",
+      label: t("history.tabPendingPayment"),
+      statuses: ["pending_payment"],
+    },
+    { id: "completed", label: t("history.tabCompleted"), statuses: ["completed"] },
+    {
+      id: "cancelled",
+      label: t("history.tabCancelled"),
+      statuses: ["cancelled", "refund_pending", "refunded"],
+    },
+  ];
+
+  const STATUS_DISPLAY: Record<
+    string,
+    { label: string; color: string; bg: string }
+  > = {
+    draft: { label: t("history.statusPending"), color: "#92400E", bg: "#FEF3C7" },
+    pending: { label: t("history.statusPending"), color: "#92400E", bg: "#FEF3C7" },
+    pending_payment: {
+      label: t("history.statusPendingPayment"),
+      color: "#B45309",
+      bg: "#FEF3C7",
+    },
+    confirmed: { label: t("history.statusConfirmed"), color: "#065F46", bg: "#D1FAE5" },
+    paid: { label: t("history.statusPaid"), color: "#1D4ED8", bg: "#DBEAFE" },
+    completed: { label: t("history.statusCompleted"), color: "#374151", bg: "#F3F4F6" },
+    cancelled: { label: t("history.statusCancelled"), color: "#991B1B", bg: "#FEE2E2" },
+    refund_pending: {
+      label: t("history.statusRefundPending"),
+      color: "#92400E",
+      bg: "#FEF3C7",
+    },
+    refunded: { label: t("history.statusRefunded"), color: "#065F46", bg: "#D1FAE5" },
+  };
+
+  const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
+    pending_payment: { label: t("history.statusPendingPayment"), color: "#B45309" },
+    paid: { label: t("history.statusPaid"), color: "#1D4ED8" },
+    completed: { label: t("history.statusPaid"), color: "#1D4ED8" },
+    cancelled: { label: t("history.statusCancelled"), color: "#991B1B" },
+    refund_pending: { label: t("history.statusRefundPending"), color: "#92400E" },
+    refunded: { label: t("history.statusRefunded"), color: "#065F46" },
+    confirmed: { label: t("history.statusUnpaid"), color: "#6B7280" },
+    pending: { label: t("history.statusUnpaid"), color: "#6B7280" },
+    draft: { label: t("history.statusUnpaid"), color: "#6B7280" },
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>("active");
   const [bookings, setBookings] = useState<any[]>([]);
@@ -195,7 +196,7 @@ export default function BookingHistoryScreen() {
               : b,
           ),
         );
-        Alert.alert("Thành công", "Đã hủy đặt bàn");
+        Alert.alert(t("common.success"), t("history.cancelSuccess"));
         return;
       }
 
@@ -207,8 +208,8 @@ export default function BookingHistoryScreen() {
       setRefundVisible(true);
     } catch (err: any) {
       Alert.alert(
-        "Lỗi",
-        err.response?.data?.message || "Không lấy được hoàn tiền",
+        t("common.error"),
+        err.response?.data?.message || t("history.cancelFailed"),
       );
     } finally {
       setCancelling(null);
@@ -220,7 +221,7 @@ export default function BookingHistoryScreen() {
     const amount = refundPreview?.refundAmount || 0;
     if (amount > 0) {
       if (!refundForm.bankName || !refundForm.accountNumber || !refundForm.accountName) {
-        Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin hoàn tiền");
+        Alert.alert(t("common.error"), t("history.refundInfoRequired"));
         return;
       }
     }
@@ -248,12 +249,12 @@ export default function BookingHistoryScreen() {
         ),
       );
       Alert.alert(
-        "Thành công",
-        amount > 0 ? "Yêu cầu hoàn tiền đã được gửi" : "Đã hủy đặt bàn",
+        t("common.success"),
+        amount > 0 ? t("history.refundRequestSent") : t("history.cancelSuccess"),
       );
       setRefundVisible(false);
     } catch (err: any) {
-      Alert.alert("Lỗi", err.response?.data?.message || "Hủy thất bại");
+      Alert.alert(t("common.error"), err.response?.data?.message || t("history.cancelFailed"));
     } finally {
       setCancelling(null);
     }
@@ -334,7 +335,7 @@ export default function BookingHistoryScreen() {
               <View style={c.countdownRow}>
                 <Ionicons name="time-outline" size={14} color="#B45309" />
                 <Text style={c.countdownText}>
-                  Còn {formatCountdown(paymentCountdown)} để thanh toán
+                  {t("history.countdownPayment", { time: formatCountdown(paymentCountdown) })}
                 </Text>
               </View>
             ) : null}
@@ -395,7 +396,7 @@ export default function BookingHistoryScreen() {
 
           <View style={c.cardFooter}>
             <View>
-              <Text style={c.depositLabel}>Tiền cọc</Text>
+              <Text style={c.depositLabel}>{t("history.depositLabel")}</Text>
               <Text style={c.depositValue}>
                 {item.pricing?.totalAmount?.toLocaleString("vi-VN")}đ
               </Text>
@@ -413,7 +414,7 @@ export default function BookingHistoryScreen() {
               {cancelling === item._id ? (
                 <ActivityIndicator size="small" color="#EF4444" />
               ) : (
-                <Text style={c.cancelTxt}>Hủy đặt bàn</Text>
+                <Text style={c.cancelTxt}>{t("history.cancelBooking")}</Text>
               )}
             </TouchableOpacity>
           )}
@@ -431,7 +432,7 @@ export default function BookingHistoryScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Ionicons name="qr-code-outline" size={16} color="#fff" />
-                <Text style={c.payBtnText}>Thanh toán ngay</Text>
+                <Text style={c.payBtnText}>{t("history.payNow")}</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -446,7 +447,7 @@ export default function BookingHistoryScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Lịch sử đặt bàn</Text>
+        <Text style={s.headerTitle}>{t("history.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -479,7 +480,7 @@ export default function BookingHistoryScreen() {
         </View>
       ) : filteredBookings.length === 0 ? (
         <View style={s.center}>
-          <Text style={s.emptyTxt}>Không có đặt bàn nào</Text>
+          <Text style={s.emptyTxt}>{t("history.emptyTitle")}</Text>
           <TouchableOpacity
             style={s.exploreBtn}
             onPress={() => router.push("/(tabs)/")}
@@ -491,7 +492,7 @@ export default function BookingHistoryScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={s.exploreBtnTxt}>Khám phá nhà hàng</Text>
+              <Text style={s.exploreBtnTxt}>{t("history.emptyAction")}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -515,9 +516,9 @@ export default function BookingHistoryScreen() {
       <Modal transparent visible={refundVisible} animationType="fade">
         <View style={c.modalBackdrop}>
           <View style={c.modalCard}>
-            <Text style={c.modalTitle}>Hủy booking</Text>
+            <Text style={c.modalTitle}>{t("history.modalCancelTitle")}</Text>
             <Text style={c.modalSubtitle}>
-              Bạn sẽ nhận hoàn tiền trong 1-3 ngày làm việc
+              {t("history.modalRefundNote")}
             </Text>
 
             <View style={c.previewRow}>
@@ -527,7 +528,7 @@ export default function BookingHistoryScreen() {
               </Text>
             </View>
             <Text style={c.previewMeta}>
-              {refundPreview?.refundPercent || 0}% • {Math.round(refundPreview?.hoursRemaining || 0)}h còn lại
+              {t("history.modalRefundPercent", { percent: refundPreview?.refundPercent || 0, hours: Math.round(refundPreview?.hoursRemaining || 0) })}
             </Text>
 
             <TouchableOpacity
@@ -535,7 +536,7 @@ export default function BookingHistoryScreen() {
               onPress={() => setShowBankList((prev) => !prev)}
             >
               <Text style={c.bankSelectText}>
-                {refundForm.bankName || "Chọn ngân hàng"}
+                {refundForm.bankName || t("history.modalSelectBank")}
               </Text>
               <Ionicons name="chevron-down" size={16} color="#64748B" />
             </TouchableOpacity>
@@ -559,7 +560,7 @@ export default function BookingHistoryScreen() {
 
             <TextInput
               style={c.modalInput}
-              placeholder="Số tài khoản"
+              placeholder={t("history.modalAccountNumber")}
               placeholderTextColor="#94A3B8"
               value={refundForm.accountNumber}
               onChangeText={(value) =>
@@ -568,7 +569,7 @@ export default function BookingHistoryScreen() {
             />
             <TextInput
               style={c.modalInput}
-              placeholder="Chủ tài khoản"
+              placeholder={t("history.modalAccountHolder")}
               placeholderTextColor="#94A3B8"
               value={refundForm.accountName}
               onChangeText={(value) =>
@@ -581,14 +582,14 @@ export default function BookingHistoryScreen() {
                 style={[c.modalBtn, c.modalGhost]}
                 onPress={() => setRefundVisible(false)}
               >
-                <Text style={c.modalGhostText}>Hủy</Text>
+                <Text style={c.modalGhostText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[c.modalBtn, c.modalPrimary]}
                 onPress={submitCancel}
                 disabled={cancelling === selectedBooking?._id}
               >
-                <Text style={c.modalPrimaryText}>Xác nhận hủy</Text>
+                <Text style={c.modalPrimaryText}>{t("history.modalConfirmCancel")}</Text>
               </TouchableOpacity>
             </View>
           </View>

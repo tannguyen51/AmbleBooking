@@ -29,6 +29,7 @@ import {
   QuickReply,
 } from "@/services/ambleAI";
 import { ChatMessage } from "@/types/chat";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#ff8b25";
 const { width: SW } = Dimensions.get("window");
@@ -44,6 +45,7 @@ function TableCardItem({
   draft: any;
   onBook: (card: TableCard) => void;
 }) {
+  const { t } = useTranslation();
   const [showGallery, setShowGallery] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
 
@@ -51,10 +53,10 @@ function TableCardItem({
     string,
     { label: string; color: string; bg: string }
   > = {
-    vip: { label: "VIP", color: "#9333EA", bg: "#FAF5FF" },
-    view: { label: "View đẹp", color: "#3B82F6", bg: "#EFF6FF" },
-    regular: { label: "Thường", color: "#22C55E", bg: "#F0FDF4" },
-    standard: { label: "Thường", color: "#22C55E", bg: "#F0FDF4" },
+    vip: { label: t("chat.tableVIP"), color: "#9333EA", bg: "#FAF5FF" },
+    view: { label: t("chat.tableView"), color: "#3B82F6", bg: "#EFF6FF" },
+    regular: { label: t("chat.tableRegular"), color: "#22C55E", bg: "#F0FDF4" },
+    standard: { label: t("chat.tableRegular"), color: "#22C55E", bg: "#F0FDF4" },
   };
   const cfg = typeConfig[card.tableType] || typeConfig.regular;
   const allImages = [card.restaurantImage, ...card.tableImages].filter(Boolean);
@@ -127,7 +129,7 @@ function TableCardItem({
           <Text style={tc.tableName}>{card.tableName}</Text>
           <View style={tc.availBadge}>
             <View style={tc.availDot} />
-            <Text style={tc.availText}>Còn trống</Text>
+            <Text style={tc.availText}>{t("chat.available")}</Text>
           </View>
         </View>
 
@@ -164,7 +166,7 @@ function TableCardItem({
             <View style={tc.metaItem}>
               <Ionicons name="wallet-outline" size={13} color="#9CA3AF" />
               <Text style={tc.metaText}>
-                Cọc {(card.deposit / 1000).toFixed(0)}k
+                {t("chat.deposit")} {(card.deposit / 1000).toFixed(0)}k
               </Text>
             </View>
           </View>
@@ -181,7 +183,7 @@ function TableCardItem({
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={tc.bookBtnText}>Chọn bàn này</Text>
+              <Text style={tc.bookBtnText}>{t("chat.selectTable")}</Text>
               <Ionicons name="arrow-forward" size={14} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
@@ -250,7 +252,7 @@ function TableCardItem({
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={gal.bookBtnText}>Đặt bàn này ngay</Text>
+                <Text style={gal.bookBtnText}>{t("chat.bookNow")}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </SafeAreaView>
@@ -266,11 +268,12 @@ export default function ChatScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
-      text: "Xin chào! Mình là **munchmap AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
+      text: t("chat.welcomeMessage"),
       sender: "ai",
       timestamp: new Date(),
     },
@@ -323,7 +326,7 @@ export default function ChatScreen() {
         ...prev,
         {
           id: `err-${Date.now()}`,
-          text: "⚠️ Có lỗi xảy ra, bạn thử lại nhé!",
+          text: t("chat.errorMessage"),
           sender: "ai",
           timestamp: new Date(),
         },
@@ -474,10 +477,10 @@ export default function ChatScreen() {
 
   // ── Initial quick suggestions ────────────────────────
   const suggestions = [
-    "Tìm nhà hàng gần đây",
-    "Đặt bàn hẹn hò",
-    "Đặt bàn gia đình",
-    "Nhà hàng họp mặt",
+    t("chat.chipNearby"),
+    t("chat.chipDate"),
+    t("chat.chipFamily"),
+    t("chat.chipGroup"),
   ];
 
   return (
@@ -502,10 +505,10 @@ export default function ChatScreen() {
               />
             </View>
             <View>
-              <Text style={s.headerTitle}>munchmap AI</Text>
+              <Text style={s.headerTitle}>{t("chat.headerTitle")}</Text>
               <View style={s.headerOnline}>
                 <View style={s.onlineDot} />
-                <Text style={s.headerSub}>Luôn sẵn sàng hỗ trợ</Text>
+                <Text style={s.headerSub}>{t("chat.headerOnline")}</Text>
               </View>
             </View>
           </View>
@@ -515,7 +518,7 @@ export default function ChatScreen() {
               setMessages([
                 {
                   id: `reset-${Date.now()}`,
-                  text: "🔄 Đã reset! Bạn muốn tìm gì?",
+                  text: t("chat.resetMessage"),
                   sender: "ai",
                   timestamp: new Date(),
                 },
@@ -548,7 +551,7 @@ export default function ChatScreen() {
             </View>
             <View style={s.typingBubble}>
               <ActivityIndicator size="small" color={PRIMARY} />
-              <Text style={s.typingText}>Đang tìm kiếm...</Text>
+              <Text style={s.typingText}>{t("chat.typing")}</Text>
             </View>
           </View>
         )}
@@ -576,7 +579,7 @@ export default function ChatScreen() {
           <View style={s.inputWrap}>
             <TextInput
               style={s.input}
-              placeholder="Nhắn munchmap AI..."
+              placeholder={t("chat.inputPlaceholder")}
               placeholderTextColor="#9CA3AF"
               value={inputText}
               onChangeText={setInputText}
@@ -631,6 +634,7 @@ const s = StyleSheet.create({
     width: 24,
     height: 24,
     resizeMode: "contain",
+    tintColor: "#FF6B35",
   },
   headerTitle: { fontSize: 16, fontWeight: "800", color: "#fff" },
   headerOnline: {
@@ -676,6 +680,7 @@ const s = StyleSheet.create({
     width: 20,
     height: 20,
     resizeMode: "contain",
+    tintColor: "#FF6B35",
   },
   userAvatar: {
     width: 28,
@@ -745,6 +750,7 @@ const s = StyleSheet.create({
     width: 18,
     height: 18,
     resizeMode: "contain",
+    tintColor: "#FF6B35",
   },
   typingBubble: {
     flexDirection: "row",

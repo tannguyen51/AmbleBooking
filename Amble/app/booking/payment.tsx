@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI } from "@/services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 import * as Clipboard from "expo-clipboard";
 
 const PRIMARY = "#FF6B35";
@@ -31,6 +32,7 @@ type QrData = {
 export default function BookingPaymentScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     bookingId,
     bookingNumber,
@@ -74,8 +76,8 @@ export default function BookingPaymentScreen() {
       setQrData(res.data?.qr || null);
     } catch (error: any) {
       const message =
-        error?.response?.data?.message || "Không thể tạo mã QR";
-      Alert.alert("Lỗi", message);
+        error?.response?.data?.message || t("booking.payment.qrError");
+      Alert.alert(t("common.error"), message);
     } finally {
       setLoading(false);
     }
@@ -83,11 +85,11 @@ export default function BookingPaymentScreen() {
 
   const handleCopyContent = async () => {
     if (!qrData?.content) {
-      Alert.alert("Thông báo", "Chưa có nội dung chuyển khoản");
+      Alert.alert(t("common.notification"), t("booking.payment.noContent"));
       return;
     }
     await Clipboard.setStringAsync(qrData.content);
-    Alert.alert("Đã sao chép", "Nội dung chuyển khoản đã được sao chép");
+    Alert.alert(t("booking.payment.copied"), t("booking.payment.copiedMessage"));
   };
 
   const checkStatus = async (silent = false) => {
@@ -113,13 +115,13 @@ export default function BookingPaymentScreen() {
           },
         });
       } else if (!silent) {
-        Alert.alert("Thông báo", "Chưa ghi nhận thanh toán. Vui lòng thử lại.");
+        Alert.alert(t("common.notification"), t("booking.payment.notRecorded"));
       }
     } catch (error: any) {
       if (!silent) {
         const message =
-          error?.response?.data?.message || "Không kiểm tra được trạng thái";
-        Alert.alert("Lỗi", message);
+          error?.response?.data?.message || t("booking.payment.checkError");
+        Alert.alert(t("common.error"), message);
       }
     } finally {
       if (!silent) setChecking(false);
@@ -196,14 +198,14 @@ export default function BookingPaymentScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Thanh toán cọc</Text>
+        <Text style={s.headerTitle}>{t("booking.payment.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.section}>
           <View style={s.timerContainer}>
-            <Text style={s.sectionTitle}>Thông tin chuyển khoản</Text>
+            <Text style={s.sectionTitle}>{t("booking.payment.transferInfo")}</Text>
             {timeRemaining > 0 && (
               <View style={s.timerBadge}>
                 <Ionicons name="hourglass-outline" size={14} color="#fff" />
@@ -213,38 +215,38 @@ export default function BookingPaymentScreen() {
           </View>
           <View style={s.card}>
             <View style={s.rowBetween}>
-              <Text style={s.label}>Ngân hàng</Text>
+              <Text style={s.label}>{t("booking.payment.bank")}</Text>
               <Text style={s.value}>{qrData?.bankCode || "TCB"}</Text>
             </View>
             <View style={s.rowBetween}>
-              <Text style={s.label}>Số tài khoản</Text>
+              <Text style={s.label}>{t("booking.payment.accountNumber")}</Text>
               <Text style={s.value}>{qrData?.accountNumber || ""}</Text>
             </View>
             <View style={s.rowBetween}>
-              <Text style={s.label}>Chủ tài khoản</Text>
+              <Text style={s.label}>{t("booking.payment.accountHolder")}</Text>
               <Text style={s.value}>{qrData?.accountName || ""}</Text>
             </View>
             <View style={s.rowBetween}>
-              <Text style={s.label}>Số tiền</Text>
+              <Text style={s.label}>{t("booking.payment.amount")}</Text>
               <Text style={s.amount}>{amountLabel}đ</Text>
             </View>
           </View>
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Mã QR chuyển khoản</Text>
+          <Text style={s.sectionTitle}>{t("booking.payment.qrCode")}</Text>
           <View style={s.qrCard}>
             {loading ? (
               <View style={s.loadingBox}>
                 <ActivityIndicator color={PRIMARY} />
-                <Text style={s.loadingText}>Đang tạo QR...</Text>
+                <Text style={s.loadingText}>{t("booking.payment.generatingQR")}</Text>
               </View>
             ) : qrData?.imageUrl ? (
               <Image source={{ uri: qrData.imageUrl }} style={s.qrImage} />
             ) : (
               <View style={s.loadingBox}>
                 <Ionicons name="alert-circle-outline" size={20} color="#999" />
-                <Text style={s.loadingText}>Chưa thể tạo QR</Text>
+                <Text style={s.loadingText}>{t("booking.payment.qrFallback")}</Text>
               </View>
             )}
           </View>
@@ -254,18 +256,18 @@ export default function BookingPaymentScreen() {
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Nội dung chuyển khoản</Text>
+          <Text style={s.sectionTitle}>{t("booking.payment.transferContent")}</Text>
           <View style={s.contentBox}>
             <Text style={s.contentText}>{qrData?.content || ""}</Text>
           </View>
           <TouchableOpacity style={s.copyBtn} onPress={handleCopyContent}>
             <Ionicons name="copy-outline" size={16} color="#9A3412" />
-            <Text style={s.copyBtnText}>Sao chép nội dung</Text>
+            <Text style={s.copyBtnText}>{t("booking.payment.copyContent")}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Thông tin đặt bàn</Text>
+          <Text style={s.sectionTitle}>{t("booking.payment.bookingInfo")}</Text>
           <View style={s.card}>
             <View style={s.infoRow}>
               <Ionicons name="restaurant-outline" size={18} color="#666" />
@@ -281,7 +283,7 @@ export default function BookingPaymentScreen() {
             </View>
             <View style={s.infoRow}>
               <Ionicons name="people-outline" size={18} color="#666" />
-              <Text style={s.infoText}>{partySize} người</Text>
+              <Text style={s.infoText}>{partySize} {t("booking.select.unitGuest")}</Text>
             </View>
             {!!tableName && (
               <View style={s.infoRow}>
@@ -310,13 +312,13 @@ export default function BookingPaymentScreen() {
               <>
                 <ActivityIndicator color="#999" />
                 <Text style={[s.checkBtnText, { color: "#999" }]}>
-                  Đang kiểm tra...
+                  {t("booking.payment.checking")}
                 </Text>
               </>
             ) : (
               <>
                 <Ionicons name="shield-checkmark-outline" size={20} color="#fff" />
-                <Text style={s.checkBtnText}>Tôi đã chuyển khoản</Text>
+                <Text style={s.checkBtnText}>{t("booking.payment.iHaveTransferred")}</Text>
               </>
             )}
           </LinearGradient>

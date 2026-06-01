@@ -74,7 +74,7 @@ export const DEFAULT_SESSION: AISession = {
 
 // ─── Gọi Gemini qua BE proxy (key bảo mật trong BE/.env) ───────────────────
 
-const BE_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000/api";
+const BE_URL = "https://amblebooking-production.up.railway.app/api";
 
 async function callClaude(
   systemPrompt: string,
@@ -130,7 +130,7 @@ async function callClaude(
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `Bạn là munchmap AI — trợ lý đặt bàn thông minh của munchmap.
-Hôm nay: 2026-03-14
+Hôm nay: 2026-06-01
 
 ## QUY TẮC VÀNG
 - Luôn thân thiện, tự nhiên, ngắn gọn (tối đa 2-3 câu)
@@ -143,7 +143,7 @@ Chỉ trả JSON khi hội tụ ĐỦ các điều kiện:
 2. Đã biết ngày (hoặc có thể mặc định hôm nay)
 3. Đã biết giờ (hoặc có thể mặc định 19:00)
 4. Đã biết số người (hoặc có thể mặc định 2)
-5. Đã biết khu vực / thành phố (hoặc có thể mặc định "Ho Chi Minh")
+5. Đã biết khu vực / thành phố (hoặc có thể mặc định "Hồ Chí Minh")
 6. Đã biết loại bàn (hoặc có thể mặc định "regular")
 
 ## HAI LOẠI JSON: "search_restaurants" vs "search"
@@ -172,7 +172,7 @@ VD: {"action":"search","deposit":300000,"location":"Quan 1"}
 - "tim ban" / "dat ban" => search (liet ke ban + gia coc)
 
 ## GIÁ TRỊ MẶC ĐỊNH (nếu user không cung cấp):
-purpose=casual, date=hôm nay, time=19:00, partySize=2, location=Ho Chi Minh, tableType=regular
+purpose=casual, date=hôm nay, time=19:00, partySize=2, location=Hồ Chí Minh, tableType=regular
 
 ## QUAN TRỌNG - XỬ LÝ ĐỊA ĐIỂM:
 - Đặt location là địa điểm user yêu cầu (VD: "Quận 1", "Thủ Đức", "Hồ Chí Minh", "Hà Nội")
@@ -187,10 +187,10 @@ purpose=casual, date=hôm nay, time=19:00, partySize=2, location=Ho Chi Minh, ta
 
 ## FEW-SHOT MẪU
 User: "Đặt bàn hẹn hò ở Sài Gòn"
-AI: {"action":"search","purpose":"date","date":"2026-03-14","time":"19:00","partySize":2,"location":"Ho Chi Minh","tableType":"regular"}
+AI: {"action":"search","purpose":"date","date":"2026-03-14","time":"19:00","partySize":2,"location":"Hồ Chí Minh","tableType":"regular"}
 
 User: "Nhà hàng Sakura"
-AI: {"action":"search","purpose":"casual","date":"2026-03-14","time":"19:00","partySize":2,"location":"Ho Chi Minh","tableType":"regular","restaurantName":"Sakura"}
+AI: {"action":"search","purpose":"casual","date":"2026-03-14","time":"19:00","partySize":2,"location":"Hồ Chí Minh","tableType":"regular","restaurantName":"Sakura"}
 
 User: "Hello"
 AI: Chào bạn! Mình là munchmap AI, trợ lý đặt bàn thông minh. Bạn muốn đặt bàn hẹn hò, gia đình hay tìm nhà hàng ngon?`;
@@ -430,7 +430,9 @@ export const ambleAI = {
       // ── Claude trả về JSON → tìm NH hoặc bàn ──────
       const searchDraft = parseSearchJSON(rawResponse);
       const rawText = rawResponse;
+      console.log("[AI] rawResponse:", rawResponse.slice(0, 200));
       if (searchDraft) {
+        console.log("[AI] searchDraft.location:", searchDraft.location, "| action:", rawText.includes("search_restaurants") ? "search_restaurants" : "search");
         // Nếu là search_restaurants => liệt kê NH, không fetch bàn
         const isRestaurantSearch = rawText.includes('"action":"search_restaurants"');
 

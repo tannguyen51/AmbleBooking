@@ -17,6 +17,7 @@ import AdminButton from "../../components/admin/AdminButton";
 import { useRouter, type Href } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import MunchMapLogo from "../../components/AmbleLogo";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const GRAD: [string, string] = [adminTheme.colors.primary, adminTheme.colors.accent];
 const SURFACE = adminTheme.colors.surface;
@@ -27,6 +28,7 @@ const TEXT_MUTED = adminTheme.colors.muted;
 const BORDER = adminTheme.colors.outlineVariant;
 
 export default function AdminLoginScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { login, logout } = useAuthStore();
 
@@ -37,7 +39,7 @@ export default function AdminLoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu");
+      Alert.alert(t("common.error"), t("partnerAuth.login.emptyFields"));
       return;
     }
 
@@ -48,13 +50,13 @@ export default function AdminLoginScreen() {
 
       if (!currentUser || currentUser.role !== "admin") {
         await logout();
-        Alert.alert("Không đủ quyền", "Tài khoản này không phải admin.");
+        Alert.alert(t("common.error"), t("common.error"));
         return;
       }
 
       router.replace("/admin/dashboard" as Href);
     } catch (error: any) {
-      Alert.alert("Đăng nhập thất bại", error.message);
+      Alert.alert(t("common.error"), error.message);
     } finally {
       setIsLoading(false);
     }
@@ -87,18 +89,18 @@ export default function AdminLoginScreen() {
           <View style={styles.decCircle2} />
 
           <MunchMapLogo size="md" textColor={adminTheme.colors.onPrimary} />
-          <Text style={styles.title}>Bảng Điều Khiển Admin</Text>
-          <Text style={styles.subtitle}>Đăng nhập để quản trị hệ thống</Text>
+          <Text style={styles.title}>{t("admin.login.title")}</Text>
+          <Text style={styles.subtitle}>{t("admin.login.subtitle")}</Text>
         </LinearGradient>
 
         <View style={styles.formCard}>
-          <Text style={styles.welcomeTitle}>Chào mừng trở lại!</Text>
+          <Text style={styles.welcomeTitle}>{t("admin.login.welcome")}</Text>
           <Text style={styles.welcomeSubtitle}>
-            Đăng nhập vào tài khoản quản trị
+            {t("admin.login.welcomeSubtitle")}
           </Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t("admin.login.emailLabel")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="mail-outline"
@@ -107,7 +109,7 @@ export default function AdminLoginScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="admin@munchmap.com"
+                placeholder={t("admin.login.emailPlaceholder")}
                 placeholderTextColor={TEXT_MUTED}
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -118,7 +120,7 @@ export default function AdminLoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu</Text>
+            <Text style={styles.label}>{t("admin.login.passwordLabel")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="lock-closed-outline"
@@ -127,7 +129,7 @@ export default function AdminLoginScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Nhập mật khẩu"
+                placeholder={t("admin.login.passwordPlaceholder")}
                 placeholderTextColor={TEXT_MUTED}
                 secureTextEntry={!showPass}
                 value={password}
@@ -144,7 +146,7 @@ export default function AdminLoginScreen() {
           </View>
 
           <AdminButton
-            title={isLoading ? "Đang xử lý..." : "Đăng nhập"}
+            title={isLoading ? t("admin.login.processing") : t("admin.login.loginButton")}
             onPress={handleLogin}
             style={[isLoading && styles.loginBtnDisabled, { marginTop: 12 }]}
           />

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const { width } = Dimensions.get("window");
 
@@ -58,8 +59,9 @@ const PACKAGE_CONFIG = {
   premium: { label: "Premium", color: "#9333EA", bg: "#FAF5FF" },
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────────────────────────────────────────────────────────────────────────
 export default function PartnerDashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { partner, restaurant } = usePartnerAuthStore();
@@ -95,14 +97,23 @@ export default function PartnerDashboard() {
   );
   const maxRevenueInWeek = Math.max(...dailyRevenue, 1);
 
+  const dayLabels = [
+    t("partner.dashboard.mon"),
+    t("partner.dashboard.tue"),
+    t("partner.dashboard.wed"),
+    t("partner.dashboard.thu"),
+    t("partner.dashboard.fri"),
+    t("partner.dashboard.sat"),
+    t("partner.dashboard.sun"),
+  ];
   const revenueBars = dailyRevenue.map((value, index) => ({
-    label: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][index],
+    label: dayLabels[index],
     value,
     heightPercent: Math.max(18, Math.round((value / maxRevenueInWeek) * 100)),
     highlight: index === 6,
   }));
 
-  // â”€â”€ Animations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Animations ────────────────────────────────────────────────────────────────────────────
   const headerAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
   const chartAnim = useRef(new Animated.Value(0)).current;
@@ -117,7 +128,7 @@ export default function PartnerDashboard() {
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không thể tải dashboard partner";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     } finally {
       setIsLoading(false);
       setIsActionLoading(false);
@@ -173,7 +184,7 @@ export default function PartnerDashboard() {
     ],
   });
 
-  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Actions ───────────────────────────────────────────────────────────────────────────────
   const handleConfirm = async (id: string) => {
     try {
       setIsActionLoading(true);
@@ -183,15 +194,15 @@ export default function PartnerDashboard() {
       setIsActionLoading(false);
       const message =
         error?.response?.data?.message || "Không thể xác nhận booking";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     }
   };
 
   const handleReject = (id: string) => {
-    Alert.alert("Từ chối đơn", "Bạn có chắc muốn từ chối đơn này?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert(t("partner.orders.rejectTitle"), t("partner.orders.rejectConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Từ chối",
+        text: t("partner.dashboard.reject"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -202,14 +213,14 @@ export default function PartnerDashboard() {
             setIsActionLoading(false);
             const message =
               error?.response?.data?.message || "Không thể từ chối booking";
-            Alert.alert("Lỗi", message);
+            Alert.alert(t("common.error"), message);
           }
         },
       },
     ]);
   };
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ────────────────────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -225,26 +236,26 @@ export default function PartnerDashboard() {
         {isLoading && (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.loadingText}>Đang tải dashboard...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         )}
 
-        {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Header ───────────────────────────────────────────────────────────────────── */}
         <Animated.View style={[styles.header, slideUp(headerAnim)]}>
           <View>
-            <Text style={styles.headerSub}>Chào mừng trở lại,</Text>
+            <Text style={styles.headerSub}>{t("partner.dashboard.welcome")}</Text>
             <Text style={styles.headerName}>
               {partner?.ownerName || "Partner"}
             </Text>
           </View>
         </Animated.View>
 
-        {/* â”€â”€ Restaurant name + package badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Restaurant name + package badge ──────────────────────────────────────────── */}
         <Animated.View style={[styles.restaurantRow, slideUp(headerAnim)]}>
           <View style={styles.restaurantNameRow}>
             <Ionicons name="restaurant-outline" size={14} color="#374151" />
             <Text style={styles.restaurantName} numberOfLines={1}>
-              {partner?.restaurantName || restaurant?.name || "Nhà hàng"}
+              {partner?.restaurantName || restaurant?.name || t("partner.dashboard.restaurantFallback")}
             </Text>
           </View>
           <View style={[styles.pkgBadge, { backgroundColor: pkg.bg }]}>
@@ -254,11 +265,11 @@ export default function PartnerDashboard() {
           </View>
         </Animated.View>
 
-        {/* â”€â”€ Stats grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Stats grid ──────────────────────────────────────────────────────────────── */}
         <Animated.View style={[styles.statsGrid, slideUp(statsAnim)]}>
           <StatCard
             iconName="grid-outline"
-            label="Bàn trống hiện tại"
+            label={t("partner.dashboard.statsAvailable")}
             value={overview.availableTables}
             total={overview.totalTables}
             color="#22C55E"
@@ -266,7 +277,7 @@ export default function PartnerDashboard() {
           />
           <StatCard
             iconName="ellipse-outline"
-            label="Bàn Đã đặt"
+            label={t("partner.dashboard.statsBooked")}
             value={overview.bookedTables}
             total={overview.totalTables}
             color="#EF4444"
@@ -274,14 +285,14 @@ export default function PartnerDashboard() {
           />
           <StatCard
             iconName="calendar-outline"
-            label="Hôm nay"
+            label={t("partner.dashboard.statsToday")}
             value={overview.todayBookings}
             color="#3B82F6"
             bg="#EFF6FF"
           />
           <StatCard
             iconName="time-outline"
-            label="Chờ xác nhận"
+            label={t("partner.dashboard.statsPending")}
             value={overview.pendingOrders}
             color="#F59E0B"
             bg="#FFFBEB"
@@ -289,7 +300,7 @@ export default function PartnerDashboard() {
           />
         </Animated.View>
 
-        {/* â”€â”€ Live operation metrics card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Live operation metrics card ──────────────────────────────────────────────── */}
         <Animated.View style={slideUp(chartAnim)}>
           <LinearGradient
             colors={["#1A1A1A", "#2D2D2D"]}
@@ -305,7 +316,7 @@ export default function PartnerDashboard() {
                     size={14}
                     color="rgba(255,255,255,0.8)"
                   />
-                  <Text style={styles.revenueLabel}>Doanh thu tháng này</Text>
+                  <Text style={styles.revenueLabel}>{t("partner.dashboard.revenue")}</Text>
                 </View>
                 <Text style={styles.revenueAmount}>
                   {monthlyRevenue.toLocaleString("vi-VN")}vnd
@@ -313,7 +324,7 @@ export default function PartnerDashboard() {
                 <View style={styles.revenueGrowthRow}>
                   <Text style={styles.revenueGrowthUp}>â†‘ {growthRate}%</Text>
                   <Text style={styles.revenueGrowthLabel}>
-                    so với tháng trước
+                    {t("partner.dashboard.revenueCompare")}
                   </Text>
                 </View>
               </View>
@@ -349,17 +360,17 @@ export default function PartnerDashboard() {
           </LinearGradient>
         </Animated.View>
 
-        {/* â”€â”€ Pending orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Pending orders ──────────────────────────────────────────────────────────── */}
         {pendingBookings.length > 0 && (
           <Animated.View style={slideUp(ordersAnim)}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
                 <Ionicons name="flash-outline" size={14} color="#1A1A1A" />
-                <Text style={styles.sectionTitle}>Đơn chờ xác nhận</Text>
+                <Text style={styles.sectionTitle}>{t("partner.dashboard.pendingSection")}</Text>
               </View>
               <TouchableOpacity onPress={() => router.push("/(partner)/orders")}>
                 <View style={styles.sectionLinkBtn}>
-                  <Text style={styles.sectionLink}>Xem tất cả</Text>
+                  <Text style={styles.sectionLink}>{t("common.viewAll")}</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -379,7 +390,7 @@ export default function PartnerDashboard() {
                       {booking.date} â€¢ {booking.time}
                     </Text>
                     <Text style={styles.pendingGuests}>
-                      {booking.guests} khách
+                      {booking.guests} {t("partner.dashboard.guests")}
                     </Text>
                   </View>
                 </View>
@@ -388,7 +399,7 @@ export default function PartnerDashboard() {
                   <View style={styles.pendingDepositRow}>
                     <Ionicons name="wallet-outline" size={12} color="#92400E" />
                     <Text style={styles.pendingDepositText}>
-                      Đặt cọc: {booking.depositAmount.toLocaleString("vi-VN")}đ
+                      {t("partner.dashboard.deposit", { amount: booking.depositAmount.toLocaleString("vi-VN") })}
                     </Text>
                   </View>
                 </View>
@@ -399,7 +410,7 @@ export default function PartnerDashboard() {
                     disabled={isActionLoading}
                     onPress={() => handleReject(booking.id)}
                   >
-                    <Text style={styles.rejectBtnText}>Từ chối</Text>
+                    <Text style={styles.rejectBtnText}>{t("partner.dashboard.reject")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.confirmBtn}
@@ -412,7 +423,7 @@ export default function PartnerDashboard() {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.confirmBtnText}>Xác nhận</Text>
+                      <Text style={styles.confirmBtnText}>{t("partner.dashboard.confirm")}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -423,13 +434,13 @@ export default function PartnerDashboard() {
 
       </ScrollView>
 
-      {/* â”€â”€ Bottom nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Bottom nav ────────────────────────────────────────────────────────────────── */}
       <PartnerBottomNav pendingCount={pendingBookings.length} />
     </SafeAreaView>
   );
 }
 
-// â”€â”€ StatCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── StatCard ──────────────────────────────────────────────────────────────────────────────────
 function StatCard({
   iconName,
   label,
@@ -489,7 +500,7 @@ function StatCard({
   );
 }
 
-// â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Styles ────────────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
   scroll: { flex: 1 },
@@ -704,5 +715,3 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 13, color: "#fff", fontWeight: "800" },
 
 });
-
-

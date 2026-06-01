@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { authAPI } from "@/services/api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -32,21 +33,22 @@ export default function ResetPasswordScreen() {
     confirm: "",
   });
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const update = (key: "token" | "password" | "confirm", value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleReset = async () => {
     if (!form.token.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập mã đặt lại");
+      Alert.alert(t("common.error"), t("auth.reset.codeRequired"));
       return;
     }
     if (form.password.length < 6) {
-      Alert.alert("Lỗi", "Mật khẩu tối thiểu 6 ký tự");
+      Alert.alert(t("common.error"), t("auth.register.passwordMinLength"));
       return;
     }
     if (form.password !== form.confirm) {
-      Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp");
+      Alert.alert(t("common.error"), t("auth.register.passwordMismatch"));
       return;
     }
 
@@ -56,12 +58,12 @@ export default function ResetPasswordScreen() {
         token: form.token.trim(),
         newPassword: form.password,
       });
-      Alert.alert("Thành công", "Đặt lại mật khẩu thành công");
+      Alert.alert(t("common.success"), t("auth.reset.successMessage"));
       router.replace("/(auth)/login");
     } catch (error: any) {
       const message =
-        error.response?.data?.message || "Không đặt lại được mật khẩu";
-      Alert.alert("Lỗi", message);
+        error.response?.data?.message || t("auth.reset.failedMessage");
+      Alert.alert(t("common.error"), message);
     } finally {
       setLoading(false);
     }
@@ -77,19 +79,19 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Đặt lại mật khẩu</Text>
+          <Text style={styles.headerTitle}>{t("auth.reset.title")}</Text>
           <Text style={styles.headerSubtitle}>
-            Nhập mã từ email và mật khẩu mới
+            {t("auth.reset.subtitle")}
           </Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Mã đặt lại</Text>
+          <Text style={styles.label}>{t("auth.reset.codeLabel")}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="key-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Nhập mã"
+              placeholder={t("auth.reset.codePlaceholder")}
               placeholderTextColor={TEXT_MUTED}
               value={form.token}
               onChangeText={(v) => update("token", v)}
@@ -97,12 +99,12 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Mật khẩu mới</Text>
+          <Text style={[styles.label, { marginTop: 12 }]}>{t("auth.reset.newPasswordLabel")}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder={t("auth.reset.newPasswordPlaceholder")}
               placeholderTextColor={TEXT_MUTED}
               value={form.password}
               onChangeText={(v) => update("password", v)}
@@ -110,12 +112,12 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Xác nhận</Text>
+          <Text style={[styles.label, { marginTop: 12 }]}>{t("auth.reset.confirmLabel")}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="Nhập lại mật khẩu"
+              placeholder={t("auth.reset.confirmPlaceholder")}
               placeholderTextColor={TEXT_MUTED}
               value={form.confirm}
               onChangeText={(v) => update("confirm", v)}
@@ -137,7 +139,7 @@ export default function ResetPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Cập nhật mật khẩu</Text>
+                <Text style={styles.submitText}>{t("auth.reset.updateButton")}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFavoritesStore } from "../store/favoritesStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const BG = "#FAFAFA";
@@ -25,6 +26,7 @@ const FALLBACK =
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80";
 
 export default function FavoritesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const favorites = useFavoritesStore((state) => state.favorites);
@@ -45,16 +47,16 @@ export default function FavoritesScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={TEXT} />
         </TouchableOpacity>
-        <Text style={s.title}>Nhà hàng yêu thích</Text>
+        <Text style={s.title}>{t("favorites.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {favorites.length === 0 ? (
         <View style={s.emptyWrap}>
           <Text style={{ fontSize: 54 }}>💛</Text>
-          <Text style={s.emptyTitle}>Chưa có nhà hàng yêu thích</Text>
+          <Text style={s.emptyTitle}>{t("favorites.emptyTitle")}</Text>
           <Text style={s.emptyText}>
-            Vào Khám phá, bấm biểu tượng tim để lưu nhà hàng bạn thích.
+            {t("favorites.emptySubtitle")}
           </Text>
           <TouchableOpacity
             style={s.exploreBtn}
@@ -67,7 +69,7 @@ export default function FavoritesScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={s.exploreBtnText}>Đi tới Khám phá</Text>
+              <Text style={s.exploreBtnText}>{t("favorites.goExplore")}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -106,11 +108,11 @@ export default function FavoritesScreen() {
                 </View>
 
                 <Text style={s.meta} numberOfLines={1}>
-                  {item.cuisine || "Ẩm thực"}
+                  {item.cuisine || t("favorites.cuisineFallback")}
                   {item.priceRange ? ` • ${item.priceRange}` : ""}
                 </Text>
                 <Text style={s.location} numberOfLines={1}>
-                  {item.location || item.city || "Đang cập nhật địa chỉ"}
+                  {item.location || item.city || t("favorites.addressFallback")}
                 </Text>
 
                 <View style={s.bottomRow}>
@@ -124,7 +126,7 @@ export default function FavoritesScreen() {
                   <Text style={s.hours}>
                     {item.openTime && item.closeTime
                       ? `${item.openTime} - ${item.closeTime}`
-                      : "Giờ mở cửa đang cập nhật"}
+                      : t("favorites.hoursFallback")}
                   </Text>
                 </View>
               </View>

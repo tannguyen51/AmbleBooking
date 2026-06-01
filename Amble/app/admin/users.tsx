@@ -16,6 +16,7 @@ import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { AdminSegmented } from "../../components/admin/AdminSegmented";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface AdminUser {
   _id: string;
@@ -26,20 +27,21 @@ interface AdminUser {
   isActive: boolean;
 }
 
-const ROLE_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "customer", label: "Khách" },
-  { value: "admin", label: "Admin" },
-] as const;
-
-const ACTIVE_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "active", label: "Hoạt động" },
-  { value: "locked", label: "Đã khóa" },
-] as const;
-
 export default function AdminUsersScreen() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
+
+  const ROLE_OPTIONS = [
+    { value: "all", label: t("admin.users.all") },
+    { value: "customer", label: t("admin.users.customer") },
+    { value: "admin", label: t("admin.users.admin") },
+  ] as const;
+
+  const ACTIVE_OPTIONS = [
+    { value: "all", label: t("admin.users.all") },
+    { value: "active", label: t("admin.users.active") },
+    { value: "locked", label: t("admin.users.locked") },
+  ] as const;
   const [roleFilter, setRoleFilter] = useState<"all" | "customer" | "admin">(
     "all",
   );
@@ -91,7 +93,7 @@ export default function AdminUsersScreen() {
       await adminAPI.setUserActive(user._id, !user.isActive);
       await loadUsers();
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
     }
   };
 
@@ -101,19 +103,19 @@ export default function AdminUsersScreen() {
       await adminAPI.setUserRole(user._id, nextRole);
       await loadUsers();
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
     }
   };
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Users" subtitle="Quản lý tài khoản khách hàng" showBack={false} />
+      <AdminHeader title={t("admin.users.title")} subtitle={t("admin.users.subtitle")} showBack={false} />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm theo tên, email, sđt"
+          placeholder={t("admin.users.searchPlaceholder")}
           placeholderTextColor={adminTheme.colors.muted}
           value={search}
           onChangeText={setSearch}
@@ -128,7 +130,7 @@ export default function AdminUsersScreen() {
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>Vai trò</Text>
+        <Text style={styles.filterLabel}>{t("admin.users.roleFilter")}</Text>
         <AdminSegmented
           options={ROLE_OPTIONS}
           value={roleFilter}
@@ -137,7 +139,7 @@ export default function AdminUsersScreen() {
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>Trạng thái</Text>
+        <Text style={styles.filterLabel}>{t("admin.users.statusFilter")}</Text>
         <AdminSegmented
           options={ACTIVE_OPTIONS}
           value={activeFilter}
@@ -148,7 +150,7 @@ export default function AdminUsersScreen() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -162,7 +164,7 @@ export default function AdminUsersScreen() {
                 onPress={() => loadUsers(false)}
                 disabled={loading}
               >
-                <Text style={styles.loadMoreText}>Tải thêm</Text>
+                <Text style={styles.loadMoreText}>{t("common.loading")}</Text>
               </TouchableOpacity>
             ) : null
           }
@@ -171,7 +173,7 @@ export default function AdminUsersScreen() {
               <View style={styles.cardHeader}>
                 <Text style={styles.name}>{item.fullName}</Text>
                 <StatusPill
-                  label={item.isActive ? "Hoạt Động" : "Bị Khóa"}
+                  label={item.isActive ? t("admin.users.statusActive") : t("admin.users.statusLocked")}
                   tone={item.isActive ? "success" : "danger"}
                 />
               </View>
@@ -184,7 +186,7 @@ export default function AdminUsersScreen() {
                         onPress={() => toggleActive(item)}
                       >
                         <Text style={styles.actionText}>
-                          {item.isActive ? "Khóa" : "Mở khóa"}
+                          {item.isActive ? t("admin.users.lock") : t("admin.users.unlock")}
                         </Text>
                       </TouchableOpacity>
                 <TouchableOpacity
@@ -192,7 +194,7 @@ export default function AdminUsersScreen() {
                   onPress={() => toggleRole(item)}
                 >
                   <Text style={styles.actionTextPrimary}>
-                    {item.role === "admin" ? "Bỏ Admin" : "Set Admin"}
+                    {item.role === "admin" ? t("admin.users.removeAdmin") : t("admin.users.setAdmin")}
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -17,6 +17,7 @@ import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { AdminSegmented } from "../../components/admin/AdminSegmented";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface RestaurantItem {
   _id: string;
@@ -28,20 +29,21 @@ interface RestaurantItem {
   isFeatured: boolean;
 }
 
-const STATUS_FILTERS = [
-  { value: "all", label: "Tất cả" },
-  { value: "active", label: "Đang hoạt động" },
-  { value: "inactive", label: "Đang ẩn" },
-] as const;
-
-const FEATURE_FILTERS = [
-  { value: "all", label: "Tất cả" },
-  { value: "featured", label: "Nổi bật" },
-  { value: "normal", label: "Thường" },
-] as const;
-
 export default function AdminRestaurantsScreen() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
+
+  const STATUS_FILTERS = [
+    { value: "all", label: t("admin.restaurants.all") },
+    { value: "active", label: t("admin.restaurants.active") },
+    { value: "inactive", label: t("admin.restaurants.inactive") },
+  ] as const;
+
+  const FEATURE_FILTERS = [
+    { value: "all", label: t("admin.restaurants.all") },
+    { value: "featured", label: t("admin.restaurants.featured") },
+    { value: "normal", label: t("admin.restaurants.normal") },
+  ] as const;
   const [city, setCity] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [activeFilter, setActiveFilter] = useState<
@@ -101,7 +103,7 @@ export default function AdminRestaurantsScreen() {
       await adminAPI.setRestaurantFeatured(item._id, !item.isFeatured);
       await loadRestaurants(true);
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
     }
   };
 
@@ -110,19 +112,19 @@ export default function AdminRestaurantsScreen() {
       await adminAPI.setRestaurantActive(item._id, !item.isActive);
       await loadRestaurants(true);
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
     }
   };
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Nhà hàng" subtitle="Kiểm duyệt nội dung" showBack={false} />
+      <AdminHeader title={t("admin.restaurants.title")} subtitle={t("admin.restaurants.subtitle")} showBack={false} />
 
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm nhà hàng"
+          placeholder={t("admin.restaurants.searchPlaceholder")}
           placeholderTextColor={adminTheme.colors.muted}
           value={search}
           onChangeText={setSearch}
@@ -139,7 +141,7 @@ export default function AdminRestaurantsScreen() {
       <View style={styles.filterRow}>
         <TextInput
           style={styles.filterInput}
-          placeholder="Thành Phố"
+          placeholder={t("admin.restaurants.cityPlaceholder")}
           placeholderTextColor="#94A3B8"
           value={city}
           onChangeText={setCity}
@@ -147,7 +149,7 @@ export default function AdminRestaurantsScreen() {
         />
         <TextInput
           style={styles.filterInput}
-          placeholder="Loại Ẩm Thực"
+          placeholder={t("admin.restaurants.cuisinePlaceholder")}
           placeholderTextColor="#94A3B8"
           value={cuisine}
           onChangeText={setCuisine}
@@ -156,7 +158,7 @@ export default function AdminRestaurantsScreen() {
       </View>
 
       <View style={styles.filterGroupWrap}>
-        <Text style={styles.filterGroupTitle}>Trạng thái</Text>
+        <Text style={styles.filterGroupTitle}>{t("admin.restaurants.statusTitle")}</Text>
         <AdminSegmented
           options={STATUS_FILTERS}
           value={activeFilter}
@@ -165,7 +167,7 @@ export default function AdminRestaurantsScreen() {
       </View>
 
       <View style={styles.filterGroupWrap}>
-        <Text style={styles.filterGroupTitle}>Hiển thị</Text>
+        <Text style={styles.filterGroupTitle}>{t("admin.restaurants.displayTitle")}</Text>
         <AdminSegmented
           options={FEATURE_FILTERS}
           value={featuredFilter}
@@ -176,7 +178,7 @@ export default function AdminRestaurantsScreen() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -190,7 +192,7 @@ export default function AdminRestaurantsScreen() {
                 onPress={() => loadRestaurants(false)}
                 disabled={loading}
               >
-                <Text style={styles.loadMoreText}>Tải thêm</Text>
+                <Text style={styles.loadMoreText}>{t("common.loading")}</Text>
               </TouchableOpacity>
             ) : null
           }
@@ -206,10 +208,10 @@ export default function AdminRestaurantsScreen() {
 
               <View style={styles.badgeRow}>
                 <Badge
-                  label={item.isActive ? "Active" : "Inactive"}
+                  label={item.isActive ? t("admin.restaurants.active") : t("admin.restaurants.inactive")}
                   tone={item.isActive ? "success" : "danger"}
                 />
-                {item.isFeatured ? <Badge label="Featured" tone="info" /> : null}
+                {item.isFeatured ? <Badge label={t("admin.restaurants.featured")} tone="info" /> : null}
               </View>
 
               <View style={styles.actionsRow}>
@@ -218,7 +220,7 @@ export default function AdminRestaurantsScreen() {
                   onPress={() => toggleActive(item)}
                 >
                   <Text style={styles.actionText}>
-                    {item.isActive ? "Ẩn" : "Hiện"}
+                    {item.isActive ? t("admin.restaurants.hide") : t("admin.restaurants.show")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -226,7 +228,7 @@ export default function AdminRestaurantsScreen() {
                   onPress={() => toggleFeatured(item)}
                 >
                   <Text style={styles.actionTextPrimary}>
-                    {item.isFeatured ? "Bỏ nổi bật" : "Gắn nổi bật"}
+                    {item.isFeatured ? t("admin.restaurants.unfeature") : t("admin.restaurants.feature")}
                   </Text>
                 </TouchableOpacity>
               </View>

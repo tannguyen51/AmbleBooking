@@ -16,6 +16,7 @@ import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { adminTheme } from "../../constants/adminTheme";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface PartnerItem {
   _id: string;
@@ -35,22 +36,23 @@ const toLabelCase = (value: string) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-const ACTIVE_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "active", label: "Hoạt động" },
-  { value: "locked", label: "Đã khóa" },
-] as const;
-
-const STATUS_OPTIONS = [
-  { value: "pending", label: "Chờ duyệt" },
-  { value: "active", label: "Đang chạy" },
-  { value: "expired", label: "Hết hạn" },
-  { value: "cancelled", label: "Đã hủy" },
-  { value: "all", label: "Tất cả" },
-] as const;
-
 export default function AdminPartnersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
+
+  const ACTIVE_OPTIONS = [
+    { value: "all", label: t("admin.partners.all") },
+    { value: "active", label: t("admin.partners.active") },
+    { value: "locked", label: t("admin.partners.locked") },
+  ] as const;
+
+  const STATUS_OPTIONS = [
+    { value: "pending", label: t("admin.partners.pending") },
+    { value: "active", label: t("admin.partners.running") },
+    { value: "expired", label: t("admin.partners.expired") },
+    { value: "cancelled", label: t("admin.partners.cancelled") },
+    { value: "all", label: t("admin.partners.all") },
+  ] as const;
   const [status, setStatus] = useState<
     PartnerItem["subscriptionStatus"] | "all"
   >("pending");
@@ -97,13 +99,13 @@ export default function AdminPartnersScreen() {
       setApproveVisible(false);
       setDecisionNote("");
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("admin.partners.defaultError"));
     }
   };
 
   const handleReject = async (partner: PartnerItem) => {
     if (!decisionNote.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập lý do từ chối");
+      Alert.alert(t("common.error"), t("admin.partners.rejectReasonRequired"));
       return;
     }
     try {
@@ -112,7 +114,7 @@ export default function AdminPartnersScreen() {
       setRejectVisible(false);
       setDecisionNote("");
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("admin.partners.defaultError"));
     }
   };
 
@@ -133,18 +135,18 @@ export default function AdminPartnersScreen() {
       await adminAPI.setPartnerActive(partner._id, !partner.isActive);
       await loadPartners();
     } catch (error: any) {
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không cập nhật");
+      Alert.alert(t("common.error"), error?.response?.data?.message || t("admin.partners.defaultError"));
     }
   };
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="Đối tác" subtitle="Kiểm duyệt và quản lý" showBack={false} />
+      <AdminHeader title={t("admin.partners.title")} subtitle={t("admin.partners.subtitle")} showBack={false} />
 
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm đối tác"
+          placeholder={t("admin.partners.searchPlaceholder")}
           placeholderTextColor={adminTheme.colors.muted}
           value={search}
           onChangeText={setSearch}
@@ -156,7 +158,7 @@ export default function AdminPartnersScreen() {
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>Trạng thái hoạt động</Text>
+        <Text style={styles.filterLabel}>{t("admin.partners.statusTitle")}</Text>
         <View style={styles.chipRow}>
           {ACTIVE_OPTIONS.map((item) => {
             const active = activeFilter === item.value;
@@ -176,7 +178,7 @@ export default function AdminPartnersScreen() {
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>Tình trạng đối tác</Text>
+        <Text style={styles.filterLabel}>{t("admin.partners.verificationTitle")}</Text>
         <View style={styles.chipRow}>
           {STATUS_OPTIONS.map((item) => {
             const active = status === item.value;
@@ -198,7 +200,7 @@ export default function AdminPartnersScreen() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
-          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -233,7 +235,7 @@ export default function AdminPartnersScreen() {
                   />
                   <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
                   <Badge
-                    label={item.isActive ? "Active" : "Locked"}
+                    label={item.isActive ? t("admin.partners.active") : t("admin.partners.locked")}
                     tone={item.isActive ? "success" : "danger"}
                   />
                 </View>
@@ -245,13 +247,13 @@ export default function AdminPartnersScreen() {
                         style={[styles.actionBtn, styles.actionPrimary]}
                         onPress={() => openApprove(item)}
                       >
-                        <Text style={styles.actionTextPrimary}>Duyệt</Text>
+                        <Text style={styles.actionTextPrimary}>{t("admin.partners.approve")}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.actionGhost]}
                         onPress={() => openReject(item)}
                       >
-                        <Text style={styles.actionText}>Từ chối</Text>
+                        <Text style={styles.actionText}>{t("admin.partners.reject")}</Text>
                       </TouchableOpacity>
                     </>
                   ) : (
@@ -260,7 +262,7 @@ export default function AdminPartnersScreen() {
                       onPress={() => toggleActive(item)}
                     >
                       <Text style={styles.actionText}>
-                        {item.isActive ? "Khóa" : "Mở khóa"}
+                        {item.isActive ? t("admin.partners.lockAction") : t("admin.partners.unlockAction")}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -274,13 +276,13 @@ export default function AdminPartnersScreen() {
       <Modal transparent visible={approveVisible} animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Duyệt đối tác</Text>
+            <Text style={styles.modalTitle}>{t("admin.partners.approveModalTitle")}</Text>
             <Text style={styles.modalSubtitle}>
               {selectedPartner?.restaurantName || ""}
             </Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Ghi chú (tùy chọn)"
+              placeholder={t("admin.partners.notePlaceholder")}
               placeholderTextColor="#94A3B8"
               value={decisionNote}
               onChangeText={setDecisionNote}
@@ -290,7 +292,7 @@ export default function AdminPartnersScreen() {
                 style={[styles.modalBtn, styles.modalGhost]}
                 onPress={() => setApproveVisible(false)}
               >
-                <Text style={styles.modalGhostText}>Hủy</Text>
+                <Text style={styles.modalGhostText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalPrimary]}
@@ -298,7 +300,7 @@ export default function AdminPartnersScreen() {
                   selectedPartner ? handleApprove(selectedPartner) : null
                 }
               >
-                <Text style={styles.modalPrimaryText}>Duyệt</Text>
+                <Text style={styles.modalPrimaryText}>{t("admin.partners.approve")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -308,13 +310,13 @@ export default function AdminPartnersScreen() {
       <Modal transparent visible={rejectVisible} animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Từ chối đối tác</Text>
+            <Text style={styles.modalTitle}>{t("admin.partners.rejectModalTitle")}</Text>
             <Text style={styles.modalSubtitle}>
               {selectedPartner?.restaurantName || ""}
             </Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Lý do từ chối"
+              placeholder={t("admin.partners.reasonPlaceholder")}
               placeholderTextColor="#94A3B8"
               value={decisionNote}
               onChangeText={setDecisionNote}
@@ -324,7 +326,7 @@ export default function AdminPartnersScreen() {
                 style={[styles.modalBtn, styles.modalGhost]}
                 onPress={() => setRejectVisible(false)}
               >
-                <Text style={styles.modalGhostText}>Hủy</Text>
+                <Text style={styles.modalGhostText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalDanger]}
@@ -332,7 +334,7 @@ export default function AdminPartnersScreen() {
                   selectedPartner ? handleReject(selectedPartner) : null
                 }
               >
-                <Text style={styles.modalDangerText}>Từ chối</Text>
+                <Text style={styles.modalDangerText}>{t("admin.partners.reject")}</Text>
               </TouchableOpacity>
             </View>
           </View>

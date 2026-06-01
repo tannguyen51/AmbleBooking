@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "../i18n/useTranslation";
 
 const TERMS = [
   "Người dùng và đối tác khi sử dụng nền tảng munchmap đồng ý tuân thủ toàn bộ điều khoản và chính sách được quy định trên hệ thống.",
@@ -29,6 +30,7 @@ const TERMS = [
 ];
 
 export default function PartnerTermsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   return (
@@ -39,15 +41,15 @@ export default function PartnerTermsScreen() {
           onPress={() => router.push("/profile")}
         >
           <Ionicons name="arrow-back" size={18} color="#111827" />
-          <Text style={styles.backText}>Quay lại</Text>
+          <Text style={styles.backText}>{t("partnerTerms.back")}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Điều khoản đối tác</Text>
+        <Text style={styles.title}>{t("partnerTerms.title")}</Text>
         <View style={{ width: 72 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Vui lòng đọc kỹ trước khi sử dụng hệ thống quản lý nhà hàng trên munchmap.
+          {t("partnerTerms.intro")}
         </Text>
         {TERMS.map((item, index) => (
           <View key={index} style={styles.termItem}>
@@ -63,7 +65,7 @@ export default function PartnerTermsScreen() {
           onPress={() => router.replace("/profile")}
         >
           <Ionicons name="arrow-back-outline" size={18} color="#fff" />
-          <Text style={styles.footerBackText}>Quay lại hồ sơ</Text>
+          <Text style={styles.footerBackText}>{t("partnerTerms.backToProfile")}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -3,6 +3,31 @@ const Review = require('../models/review');
 const Booking = require('../models/booking');
 const User = require('../models/user');
 
+// Tạo regex không phân biệt có dấu / không dấu
+function fuzzyRegex(str) {
+  const accentMap = {
+    a: '[aàáảãạâầấẩẫậăằắẳẵặ]',
+    A: '[AÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶ]',
+    e: '[eèéẻẽẹêềếểễệ]',
+    E: '[EÈÉẺẼẸÊỀẾỂỄỆ]',
+    i: '[iìíỉĩị]',
+    I: '[IÌÍỈĨỊ]',
+    o: '[oòóỏõọôồốổỗộơờớởỡợ]',
+    O: '[OÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢ]',
+    u: '[uùúủũụưừứửữự]',
+    U: '[UÙÚỦŨỤƯỪỨỬỮỰ]',
+    y: '[yỳýỷỹỵ]',
+    Y: '[YỲÝỶỸỴ]',
+    d: '[dđ]',
+    D: '[DĐ]',
+  };
+  let pattern = '';
+  for (const ch of str) {
+    pattern += accentMap[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(pattern, 'i');
+}
+
 // GET /api/restaurants/featured
 exports.getFeatured = async (req, res) => {
   try {
@@ -45,13 +70,14 @@ exports.getAll = async (req, res) => {
     if (priceRange) filter.priceRange = priceRange;
 
     if (search) {
+      const ns = fuzzyRegex(search);
       filter.$or = [
-        { name:        new RegExp(search, 'i') },
-        { cuisine:     new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') },
-        { city:        new RegExp(search, 'i') },
-        { address:     new RegExp(search, 'i') },
-        { tags:        new RegExp(search, 'i') },
+        { name:        new RegExp(ns, 'i') },
+        { cuisine:     new RegExp(ns, 'i') },
+        { description: new RegExp(ns, 'i') },
+        { city:        new RegExp(ns, 'i') },
+        { address:     new RegExp(ns, 'i') },
+        { tags:        new RegExp(ns, 'i') },
       ];
     }
 

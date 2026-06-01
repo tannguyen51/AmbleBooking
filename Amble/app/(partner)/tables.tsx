@@ -20,6 +20,7 @@ import { partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type TableFilter = "all" | "available" | "booked";
 type TableType = "regular" | "standard" | "view" | "vip";
@@ -58,22 +59,6 @@ interface TableFormState {
   images: string[];
   isAvailable: boolean;
 }
-
-const TABLE_TYPE_LABELS: Record<TableType, string> = {
-  standard: "Bàn thường",
-  regular: "Bàn thường",
-  view: "Bàn view",
-  vip: "VIP",
-};
-
-const TABLE_TYPE_OPTIONS: Array<{
-  key: "regular" | "view" | "vip";
-  label: string;
-}> = [
-  { key: "regular", label: "Bàn thường" },
-  { key: "view", label: "Bàn view" },
-  { key: "vip", label: "VIP" },
-];
 
 const TABLE_TYPE_STYLES: Record<
   "regular" | "view" | "vip",
@@ -134,6 +119,7 @@ const TABLE_FILTER_ACTIVE_STYLES: Record<
 };
 
 export default function PartnerTablesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [tables, setTables] = useState<PartnerTable[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -146,6 +132,29 @@ export default function PartnerTablesScreen() {
   const [form, setForm] = useState<TableFormState>(DEFAULT_FORM);
   const { partner } = usePartnerAuthStore();
   const canManageTables = hasPartnerPermission(partner?.role, "tables:manage");
+
+  const getTableTypeLabel = (type: TableType): string => {
+    switch (type) {
+      case "regular":
+      case "standard":
+        return t("partner.tables.typeRegular");
+      case "view":
+        return t("partner.tables.typeView");
+      case "vip":
+        return t("partner.tables.typeVIP");
+      default:
+        return type;
+    }
+  };
+
+  const tableTypeOptions: Array<{
+    key: "regular" | "view" | "vip";
+    label: string;
+  }> = [
+    { key: "regular", label: t("partner.tables.typeRegular") },
+    { key: "view", label: t("partner.tables.typeView") },
+    { key: "vip", label: t("partner.tables.typeVIP") },
+  ];
 
   const resetForm = () => {
     setForm(DEFAULT_FORM);
@@ -164,7 +173,7 @@ export default function PartnerTablesScreen() {
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không tải được danh sách bàn";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     } finally {
       setIsLoading(false);
       setIsSubmitting(false);
@@ -189,18 +198,18 @@ export default function PartnerTablesScreen() {
       const matchSearch =
         !keyword ||
         table.name.toLowerCase().includes(keyword) ||
-        TABLE_TYPE_LABELS[table.type].toLowerCase().includes(keyword);
+        getTableTypeLabel(table.type).toLowerCase().includes(keyword);
       return matchFilter && matchSearch;
     });
   }, [tables, filter, searchText]);
 
   const filterTabs = [
-    { key: "all" as TableFilter, label: `Tất cả (${stats.total})` },
+    { key: "all" as TableFilter, label: `${t("partner.tables.all")} (${stats.total})` },
     {
       key: "available" as TableFilter,
-      label: `Bàn trống (${stats.available})`,
+      label: `${t("partner.tables.available")} (${stats.available})`,
     },
-    { key: "booked" as TableFilter, label: `Đã đặt (${stats.booked})` },
+    { key: "booked" as TableFilter, label: `${t("partner.tables.booked")} (${stats.booked})` },
   ];
 
   const updateForm = (key: keyof TableFormState, value: string | boolean) => {
@@ -211,7 +220,7 @@ export default function PartnerTablesScreen() {
     const next = form.imageInput.trim();
     if (!next) return;
     if (form.images.includes(next)) {
-      Alert.alert("Thông báo", "Ảnh này đã được thêm.");
+      Alert.alert(t("common.notification"), t("partner.tables.duplicateImage"));
       return;
     }
     setForm((prev) => ({
@@ -232,7 +241,7 @@ export default function PartnerTablesScreen() {
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền thư viện ảnh.");
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
       return;
     }
 
@@ -250,7 +259,7 @@ export default function PartnerTablesScreen() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền camera.");
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền camera.");
       return;
     }
 
@@ -299,7 +308,7 @@ export default function PartnerTablesScreen() {
     const deposit = Number(form.baseDeposit);
 
     if (!form.name.trim()) {
-      Alert.alert("Thiếu thông tin", "Vui lòng nhập tên bàn.");
+      Alert.alert(t("common.notification"), t("partner.tables.nameRequired"));
       return null;
     }
     if (
@@ -308,11 +317,11 @@ export default function PartnerTablesScreen() {
       min < 1 ||
       max < min
     ) {
-      Alert.alert("Dữ liệu sai", "Sức chứa không hợp lệ.");
+      Alert.alert(t("common.error"), t("partner.tables.invalidCapacity"));
       return null;
     }
     if (!Number.isFinite(deposit) || deposit < 0) {
-      Alert.alert("Dữ liệu sai", "Tiền cọc không hợp lệ.");
+      Alert.alert(t("common.error"), t("partner.tables.invalidDeposit"));
       return null;
     }
 
@@ -348,15 +357,15 @@ export default function PartnerTablesScreen() {
     } catch (error: any) {
       setIsSubmitting(false);
       const message = error?.response?.data?.message || "Không thể lưu bàn";
-      Alert.alert("Lỗi", message);
+      Alert.alert(t("common.error"), message);
     }
   };
 
   const handleDelete = (tableId: string) => {
-    Alert.alert("Xóa bàn", "Bạn chắc chắn muốn xóa bàn này?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert(t("partner.tables.deleteTitle"), t("partner.tables.deleteConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Xóa",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -367,7 +376,7 @@ export default function PartnerTablesScreen() {
             setIsSubmitting(false);
             const message =
               error?.response?.data?.message || "Không thể xóa bàn";
-            Alert.alert("Lỗi", message);
+            Alert.alert(t("common.error"), message);
           }
         },
       },
@@ -377,7 +386,7 @@ export default function PartnerTablesScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerWrap}>
-        <Text style={styles.headerTitle}>Quản lý bàn</Text>
+        <Text style={styles.headerTitle}>{t("partner.tables.title")}</Text>
         <View style={styles.headerActions}>
           {canManageTables && (
             <TouchableOpacity
@@ -392,7 +401,7 @@ export default function PartnerTablesScreen() {
                 style={styles.addBtnGradient}
               >
                 <Ionicons name="add" size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Thêm bàn</Text>
+                <Text style={styles.addBtnText}>{t("partner.tables.add")}</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -406,14 +415,14 @@ export default function PartnerTablesScreen() {
       <View style={styles.statsRow}>
         <View style={[styles.statCard, styles.availableCard]}>
           <Text style={[styles.statLabel, styles.availableStatLabel]}>
-            Bàn trống
+            {t("partner.tables.available")}
           </Text>
           <Text style={[styles.statValue, styles.availableStatValue]}>
             {stats.available}
           </Text>
         </View>
         <View style={[styles.statCard, styles.bookedCard]}>
-          <Text style={[styles.statLabel, styles.bookedStatLabel]}>Đã đặt</Text>
+          <Text style={[styles.statLabel, styles.bookedStatLabel]}>{t("partner.tables.booked")}</Text>
           <Text style={[styles.statValue, styles.bookedStatValue]}>
             {stats.booked}
           </Text>
@@ -424,7 +433,7 @@ export default function PartnerTablesScreen() {
         <TextInput
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Tìm theo tên bàn hoặc loại bàn..."
+          placeholder={t("partner.tables.searchPlaceholder")}
           placeholderTextColor="#9CA3AF"
           style={styles.searchInput}
         />
@@ -485,16 +494,16 @@ export default function PartnerTablesScreen() {
         {isLoading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.helperText}>Đang tải danh sách bàn...</Text>
+            <Text style={styles.helperText}>{t("common.loading")}</Text>
           </View>
         ) : filteredTables.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Không tìm thấy bàn phù hợp</Text>
-            <Text style={styles.helperText}>Thử đổi từ khóa hoặc bộ lọc.</Text>
+            <Text style={styles.emptyTitle}>{t("partner.tables.emptyTitle")}</Text>
+            <Text style={styles.helperText}>{t("partner.tables.emptySubtitle")}</Text>
           </View>
         ) : (
           filteredTables.map((table) => {
-            const typeLabel = TABLE_TYPE_LABELS[table.type] || table.type;
+            const typeLabel = getTableTypeLabel(table.type);
             const isBooked = table.status === "booked";
             const coverImage = table.images?.[0];
             return (
@@ -518,28 +527,26 @@ export default function PartnerTablesScreen() {
                       isBooked ? styles.bookedBadge : styles.availableBadge,
                     ]}
                   >
-                    {isBooked ? "Đã đặt" : "Trống"}
+                    {isBooked ? t("partner.tables.booked") : t("partner.tables.available")}
                   </Text>
                 </View>
 
                 <Text style={styles.metaText}>
-                  Sức chứa: {table.capacity?.min || 0}-
-                  {table.capacity?.max || 0} người
+                  {t("partner.tables.capacity", { min: table.capacity?.min || 0, max: table.capacity?.max || 0 })}
                 </Text>
                 <Text style={styles.metaText}>
-                  Cọc:{" "}
-                  {(table.pricing?.baseDeposit || 0).toLocaleString("vi-VN")}đ
+                  {t("partner.tables.deposit", { deposit: (table.pricing?.baseDeposit || 0).toLocaleString("vi-VN") })}
                 </Text>
                 {table.images && table.images.length > 1 && (
                   <Text style={styles.metaText}>
-                    Ảnh: {table.images.length}
+                    {t("partner.tables.photos", { count: table.images.length })}
                   </Text>
                 )}
 
                 {table.currentBooking && (
                   <View style={styles.bookingInfoBox}>
                     <Text style={styles.bookingInfoTitle}>
-                      Booking hiện tại
+                      {t("partner.tables.currentBooking")}
                     </Text>
                     <Text style={styles.bookingInfoText}>
                       {table.currentBooking.customerName} •{" "}
@@ -547,7 +554,7 @@ export default function PartnerTablesScreen() {
                     </Text>
                     <Text style={styles.bookingInfoText}>
                       {table.currentBooking.date} • {table.currentBooking.time}{" "}
-                      • {table.currentBooking.guests} khách
+                      • {table.currentBooking.guests} {t("partner.dashboard.guests")}
                     </Text>
                   </View>
                 )}
@@ -560,7 +567,7 @@ export default function PartnerTablesScreen() {
                       disabled={isSubmitting}
                     >
                       <Ionicons name="create-outline" size={14} color="#1D4ED8" />
-                      <Text style={styles.editBtnText}>Sửa</Text>
+                      <Text style={styles.editBtnText}>{t("common.edit")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.deleteBtn]}
@@ -568,7 +575,7 @@ export default function PartnerTablesScreen() {
                       disabled={isSubmitting}
                     >
                       <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                      <Text style={styles.deleteBtnText}>Xóa</Text>
+                      <Text style={styles.deleteBtnText}>{t("common.delete")}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -583,7 +590,7 @@ export default function PartnerTablesScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {editingTableId ? "Chỉnh sửa bàn" : "Thêm bàn mới"}
+                {editingTableId ? t("partner.tables.editModalTitle") : t("partner.tables.createModalTitle")}
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -603,7 +610,7 @@ export default function PartnerTablesScreen() {
                 style={styles.input}
                 value={form.name}
                 onChangeText={(v) => updateForm("name", v)}
-                placeholder="Tên bàn"
+                placeholder={t("partner.tables.namePlaceholder")}
                 placeholderTextColor="#9CA3AF"
               />
 
@@ -611,7 +618,7 @@ export default function PartnerTablesScreen() {
                 <View>
                   <Text style={styles.availabilityLabel}>Trạng thái bàn</Text>
                   <Text style={styles.availabilityHint}>
-                    {form.isAvailable ? "Bàn trống" : "Đã đặt"}
+                    {form.isAvailable ? t("partner.tables.available") : t("partner.tables.booked")}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -642,7 +649,7 @@ export default function PartnerTablesScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.typeRow}
               >
-                {TABLE_TYPE_OPTIONS.map(({ key: tableType, label }) => {
+                {tableTypeOptions.map(({ key: tableType, label }) => {
                   const active = form.type === tableType;
                   const palette = TABLE_TYPE_STYLES[tableType];
                   return (
@@ -679,7 +686,7 @@ export default function PartnerTablesScreen() {
                   style={[styles.input, styles.inlineInput]}
                   value={form.minCapacity}
                   onChangeText={(v) => updateForm("minCapacity", v)}
-                  placeholder="Min khách"
+                  placeholder={t("partner.tables.minCapacity")}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                 />
@@ -687,7 +694,7 @@ export default function PartnerTablesScreen() {
                   style={[styles.input, styles.inlineInput]}
                   value={form.maxCapacity}
                   onChangeText={(v) => updateForm("maxCapacity", v)}
-                  placeholder="Max khách"
+                  placeholder={t("partner.tables.maxCapacity")}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                 />
@@ -697,7 +704,7 @@ export default function PartnerTablesScreen() {
                 style={styles.input}
                 value={form.baseDeposit}
                 onChangeText={(v) => updateForm("baseDeposit", v)}
-                placeholder="Tiền cọc"
+                placeholder={t("partner.tables.depositPlaceholder")}
                 placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
               />
@@ -706,7 +713,7 @@ export default function PartnerTablesScreen() {
                 style={styles.input}
                 value={form.featuresText}
                 onChangeText={(v) => updateForm("featuresText", v)}
-                placeholder="Tiện ích (cách nhau bằng dấu phẩy)"
+                placeholder={t("partner.tables.features")}
                 placeholderTextColor="#9CA3AF"
               />
 
@@ -714,19 +721,19 @@ export default function PartnerTablesScreen() {
                 style={[styles.input, styles.textArea]}
                 value={form.description}
                 onChangeText={(v) => updateForm("description", v)}
-                placeholder="Mô tả bàn"
+                placeholder={t("partner.tables.description")}
                 placeholderTextColor="#9CA3AF"
                 multiline
                 numberOfLines={3}
               />
 
               <Text style={styles.imageSectionTitle}>
-                {editingTableId ? "Cập nhật ảnh bàn" : "Ảnh bàn"}
+                {editingTableId ? t("partner.tables.photosEdit") : t("partner.tables.photosCreate")}
               </Text>
               <Text style={styles.imageSectionHint}>
                 {editingTableId
-                  ? "Bạn có thể chụp/chọn thêm ảnh mới hoặc xóa ảnh cũ ngay bên dưới."
-                  : "Thêm ảnh bằng URL hoặc chọn nhanh từ camera/thư viện."}
+                  ? t("partner.tables.editHint")
+                  : t("partner.tables.createHint")}
               </Text>
 
               <View style={styles.imageInputRow}>
@@ -734,7 +741,7 @@ export default function PartnerTablesScreen() {
                   style={[styles.input, styles.imageInput]}
                   value={form.imageInput}
                   onChangeText={(v) => updateForm("imageInput", v)}
-                  placeholder="URL ảnh"
+                  placeholder={t("partner.tables.imageUrl")}
                   placeholderTextColor="#9CA3AF"
                 />
                 <TouchableOpacity style={styles.addImageBtn} onPress={addImage}>
@@ -748,14 +755,14 @@ export default function PartnerTablesScreen() {
                   onPress={takePhoto}
                 >
                   <Ionicons name="camera-outline" size={16} color="#374151" />
-                  <Text style={styles.imagePickerBtnText}>Chụp ảnh</Text>
+                  <Text style={styles.imagePickerBtnText}>{t("partner.tables.camera")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.imagePickerBtn}
                   onPress={pickFromLibrary}
                 >
                   <Ionicons name="images-outline" size={16} color="#374151" />
-                  <Text style={styles.imagePickerBtnText}>Thư viện</Text>
+                  <Text style={styles.imagePickerBtnText}>{t("partner.tables.library")}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -795,7 +802,7 @@ export default function PartnerTablesScreen() {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.saveBtnText}>
-                    {editingTableId ? "Lưu thay đổi" : "Tạo bàn"}
+                    {editingTableId ? t("partner.tables.saveChanges") : t("partner.tables.createButton")}
                   </Text>
                 )}
               </LinearGradient>

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -11,46 +11,13 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../components/AmbleLogo";
-import { useLanguageStore } from "../store/languageStore";
+import { useTranslation } from "../i18n/useTranslation";
 
 const { width, height } = Dimensions.get("window");
 
-const COPY = {
-  vi: {
-    changeLanguage: "Đổi ngôn ngữ",
-    headline: "Không chỉ ăn uống.\nTrải nghiệm của bạn.",
-    tagline: "Ứng dụng đặt bàn hàng đầu Việt Nam",
-    rolePrompt: "Bạn muốn đăng nhập với tư cách gì?",
-    customerTitle: "Khách Hàng",
-    customerSubtitle: "Tìm kiếm & đặt bàn nhà hàng",
-    partnerTitle: "Đối Tác Nhà Hàng",
-    partnerSubtitle: "Quản lý nhà hàng & đặt bàn",
-    adminTitle: "Quản Trị",
-    adminSubtitle: "Giám sát hệ thống & đối tác",
-    or: "hoặc",
-    register: "Đăng Ký cho khách hàng mới",
-  },
-  en: {
-    changeLanguage: "Change language",
-    headline: "More than dining.\nYour full experience.",
-    tagline: "Vietnam's #1 dining app",
-    rolePrompt: "How would you like to sign in?",
-    customerTitle: "Customer",
-    customerSubtitle: "Find and reserve restaurants",
-    partnerTitle: "Restaurant Partner",
-    partnerSubtitle: "Manage your venue & bookings",
-    adminTitle: "Admin",
-    adminSubtitle: "Operate platform & partners",
-    or: "or",
-    register: "Sign up for free",
-  },
-} as const;
-
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { language } = useLanguageStore();
-  const copyLanguage = language === "en" ? "en" : "vi";
-  const copy = useMemo(() => COPY[copyLanguage], [copyLanguage]);
+  const { t, isEnglish, language } = useTranslation();
 
   return (
     <View style={styles.root}>
@@ -71,12 +38,23 @@ export default function WelcomeScreen() {
           <MunchMapLogo size="lg" textColor="#FFFFFF" />
         </View>
 
-        <Text style={styles.headline}>{copy.headline}</Text>
-        <Text style={styles.tagline}>{copy.tagline}</Text>
+        <Text style={styles.headline}>{
+          language === "en" ? t("welcome.headlineEn") :
+          language === "zh" ? "不仅是美食。\n您的体验。" :
+          language === "ko" ? "단순한 식사가 아닌.\n당신의 경험." :
+          language === "ja" ? "食事だけではない。\nあなたの体験。" :
+          t("welcome.headlineVi")
+        }</Text>
+        <Text style={styles.tagline}>{
+          language === "zh" ? "越南最智能的餐厅预订应用" :
+          language === "ko" ? "베트남 스마트 레스토랑 예약 앱" :
+          language === "ja" ? "ベトナムのスマートレストラン予約アプリ" :
+          isEnglish ? t("welcome.taglineEn") : t("welcome.taglineVi")
+        }</Text>
       </View>
 
       <View style={styles.sheet}>
-        <Text style={styles.sheetPrompt}>{copy.rolePrompt}</Text>
+        <Text style={styles.sheetPrompt}>{t("welcome.rolePrompt")}</Text>
 
         <TouchableOpacity
           style={styles.cardCustomer}
@@ -95,8 +73,8 @@ export default function WelcomeScreen() {
           </View>
 
           <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{copy.customerTitle}</Text>
-            <Text style={styles.cardSubtitle}>{copy.customerSubtitle}</Text>
+            <Text style={styles.cardTitle}>{t("welcome.customerTitle")}</Text>
+            <Text style={styles.cardSubtitle}>{t("welcome.customerSubtitle")}</Text>
           </View>
 
           <Text style={styles.cardArrow}>›</Text>
@@ -115,9 +93,9 @@ export default function WelcomeScreen() {
 
           <View style={styles.cardText}>
             <Text style={[styles.cardTitle, { color: "#1A1A1A" }]}>
-              {copy.partnerTitle}
+              {t("welcome.partnerTitle")}
             </Text>
-            <Text style={styles.cardSubtitle}>{copy.partnerSubtitle}</Text>
+            <Text style={styles.cardSubtitle}>{t("welcome.partnerSubtitle")}</Text>
           </View>
 
           <Text style={[styles.cardArrow, { color: "#999" }]}>›</Text>
@@ -141,9 +119,9 @@ export default function WelcomeScreen() {
 
           <View style={styles.cardText}>
             <Text style={[styles.cardTitle, { color: "#0F172A" }]}>
-              {copy.adminTitle}
+              {t("welcome.adminTitle")}
             </Text>
-            <Text style={styles.cardSubtitle}>{copy.adminSubtitle}</Text>
+            <Text style={styles.cardSubtitle}>{t("welcome.adminSubtitle")}</Text>
           </View>
 
           <Text style={[styles.cardArrow, { color: "#0F172A" }]}>›</Text>
@@ -151,7 +129,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{copy.or}</Text>
+          <Text style={styles.dividerText}>{t("welcome.or")}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -160,7 +138,7 @@ export default function WelcomeScreen() {
           onPress={() => router.push("/(auth)/register")}
           activeOpacity={0.8}
         >
-          <Text style={styles.registerBtnText}>{copy.register}</Text>
+          <Text style={styles.registerBtnText}>{t("welcome.register")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -170,7 +148,7 @@ export default function WelcomeScreen() {
         >
           <View style={styles.changeLanguageLeft}>
             <Ionicons name="language-outline" size={17} color="#6B7280" />
-            <Text style={styles.changeLanguageText}>{copy.changeLanguage}</Text>
+            <Text style={styles.changeLanguageText}>{t("welcome.changeLanguage")}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
         </TouchableOpacity>
