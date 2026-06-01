@@ -11,19 +11,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 const TERMS = [
-  "Người dùng và đối tác khi sử dụng nền tảng Amble đồng ý tuân thủ toàn bộ điều khoản và chính sách được quy định trên hệ thống.",
+  "Người dùng và đối tác khi sử dụng nền tảng munchmap đồng ý tuân thủ toàn bộ điều khoản và chính sách được quy định trên hệ thống.",
   "Người dùng có trách nhiệm cung cấp đầy đủ và chính xác thông tin đặt bàn, bao gồm nhưng không giới hạn ở họ tên, số điện thoại, thời gian đặt bàn và số lượng khách.",
   "Đối tác nhà hàng chịu trách nhiệm về tính chính xác của thông tin hiển thị trên hệ thống, bao gồm hình ảnh, thực đơn, giá bán, loại bàn và thời gian hoạt động.",
   "Đối tác có trách nhiệm tiếp nhận và xử lý yêu cầu đặt bàn trong thời gian hợp lý kể từ thời điểm hệ thống ghi nhận booking.",
   "Người dùng có trách nhiệm tuân thủ chính sách đặt cọc, hủy bàn và thời gian giữ bàn được hiển thị trước khi xác nhận booking",
   "Nhà hàng có quyền từ chối phục vụ hoặc hủy booking trong trường hợp người dùng đến trễ vượt quá thời gian giữ bàn được quy định",
-  "Amble có quyền tạm ngưng, giới hạn hoặc chấm dứt quyền truy cập đối với tài khoản có dấu hiệu gian lận, lạm dụng hệ thống hoặc vi phạm điều khoản sử dụng.",
+  "munchmap có quyền tạm ngưng, giới hạn hoặc chấm dứt quyền truy cập đối với tài khoản có dấu hiệu gian lận, lạm dụng hệ thống hoặc vi phạm điều khoản sử dụng.",
   "Nghiêm cấm các hành vi booking ảo, spam đặt bàn, sử dụng thông tin sai lệch hoặc thực hiện các hoạt động gây ảnh hưởng đến hệ thống và đối tác nhà hàng.",
-  "Amble thu thập và xử lý dữ liệu người dùng nhằm mục đích vận hành hệ thống, hỗ trợ đặt bàn và nâng cao trải nghiệm sử dụng dịch vụ.",
+  "munchmap thu thập và xử lý dữ liệu người dùng nhằm mục đích vận hành hệ thống, hỗ trợ đặt bàn và nâng cao trải nghiệm sử dụng dịch vụ.",
   "Dữ liệu cá nhân của người dùng sẽ không được chia sẻ cho bên thứ ba ngoài phạm vi cần thiết để cung cấp dịch vụ, trừ trường hợp pháp luật có quy định khác.",
-  "Người dùng và đối tác không được sử dụng, sao chép hoặc khai thác dữ liệu phát sinh từ hệ thống Amble cho mục đích thương mại khi chưa có sự cho phép bằng văn bản.",
-  "Amble không chịu trách nhiệm đối với các gián đoạn dịch vụ, thay đổi thông tin hoặc sự cố phát sinh từ phía đối tác nhà hàng ngoài phạm vi kiểm soát của hệ thống."  ,
-  "Amble có quyền cập nhật hoặc điều chỉnh điều khoản sử dụng vào bất kỳ thời điểm nào nhằm phù hợp với hoạt động vận hành của nền tảng.",
+  "Người dùng và đối tác không được sử dụng, sao chép hoặc khai thác dữ liệu phát sinh từ hệ thống munchmap cho mục đích thương mại khi chưa có sự cho phép bằng văn bản.",
+  "munchmap không chịu trách nhiệm đối với các gián đoạn dịch vụ, thay đổi thông tin hoặc sự cố phát sinh từ phía đối tác nhà hàng ngoài phạm vi kiểm soát của hệ thống."  ,
+  "munchmap có quyền cập nhật hoặc điều chỉnh điều khoản sử dụng vào bất kỳ thời điểm nào nhằm phù hợp với hoạt động vận hành của nền tảng.",
   "Việc tiếp tục sử dụng nền tảng sau khi điều khoản được cập nhật đồng nghĩa với việc người dùng và đối tác chấp nhận các thay đổi đó.",
   "Mọi tranh chấp phát sinh liên quan đến việc sử dụng nền tảng sẽ được ưu tiên giải quyết thông qua thương lượng trước khi áp dụng các biện pháp pháp lý."
 ];
@@ -47,7 +47,7 @@ export default function PartnerTermsScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Vui lòng đọc kỹ trước khi sử dụng hệ thống quản lý nhà hàng trên Amble.
+          Vui lòng đọc kỹ trước khi sử dụng hệ thống quản lý nhà hàng trên munchmap.
         </Text>
         {TERMS.map((item, index) => (
           <View key={index} style={styles.termItem}>

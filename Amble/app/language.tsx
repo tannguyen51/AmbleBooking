@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import AmbleLogo from "../components/AmbleLogo";
+import MunchMapLogo from "../components/AmbleLogo";
 import { AppLanguage, useLanguageStore } from "../store/languageStore";
 
 type LanguageOption = {
@@ -285,8 +285,8 @@ export default function LanguageScreen() {
 
       <View style={styles.contentWrap}>
         <View style={styles.headerWrap}>
-          <AmbleLogo size="xl" showText={false} textColor="#FFFFFF" />
-          <Text style={styles.brandText}>Amble</Text>
+          <MunchMapLogo size="xl" showText={false} textColor="#FFFFFF" />
+          <Text style={styles.brandText}>munchmap</Text>
           <Text style={styles.headerText}>{copy.title}</Text>
         </View>
 
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 46,
     lineHeight: 48,
-    fontWeight: "900",
+    fontFamily: "TAN-NIMBUS",
     color: "#FFFFFF",
     letterSpacing: 0.2,
     textShadowColor: "rgba(0,0,0,0.16)",

@@ -16,7 +16,7 @@ import { adminTheme } from "../../constants/adminTheme";
 import AdminButton from "../../components/admin/AdminButton";
 import { useRouter, type Href } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
-import AmbleLogo from "../../components/AmbleLogo";
+import MunchMapLogo from "../../components/AmbleLogo";
 
 const GRAD: [string, string] = [adminTheme.colors.primary, adminTheme.colors.accent];
 const SURFACE = adminTheme.colors.surface;
@@ -86,7 +86,7 @@ export default function AdminLoginScreen() {
           <View style={styles.decCircle1} />
           <View style={styles.decCircle2} />
 
-          <AmbleLogo size="md" textColor={adminTheme.colors.onPrimary} />
+          <MunchMapLogo size="md" textColor={adminTheme.colors.onPrimary} />
           <Text style={styles.title}>Bảng Điều Khiển Admin</Text>
           <Text style={styles.subtitle}>Đăng nhập để quản trị hệ thống</Text>
         </LinearGradient>
@@ -107,7 +107,7 @@ export default function AdminLoginScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="admin@amble.com"
+                placeholder="admin@munchmap.com"
                 placeholderTextColor={TEXT_MUTED}
                 autoCapitalize="none"
                 keyboardType="email-address"

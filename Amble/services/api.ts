@@ -60,6 +60,8 @@ export const partnerAuthAPI = {
     api.post("/partner/auth/login", data),
   getMe: () => api.get("/partner/auth/me"),
   logout: () => api.post("/partner/auth/logout"),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.put("/partner/auth/change-password", data),
 };
 
 // ── User ────────────────────────────────────────────────
@@ -92,6 +94,11 @@ export const restaurantAPI = {
   }) => api.get("/restaurants", { params }),
   getFeatured: () => api.get("/restaurants/featured"),
   getById: (id: string) => api.get(`/restaurants/${id}`),
+  getReviews: (id: string) => api.get(`/restaurants/${id}/reviews`),
+  createReview: (
+    id: string,
+    data: { rating: number; comment?: string; images?: string[]; bookingId: string },
+  ) => api.post(`/restaurants/${id}/reviews`, data),
 };
 
 // ── Booking ─────────────────────────────────────────────
@@ -206,6 +213,8 @@ export const partnerDashboardAPI = {
     introduction?: string;
     cuisine?: string;
     hasParking?: boolean;
+    priceMin?: number;
+    priceMax?: number;
     openTime?: string;
     closeTime?: string;
     openDays?: string[];
@@ -238,6 +247,8 @@ export const partnerStaffAPI = {
     staffId: string,
     data?: { sendMethod?: "email" | "sms" | "both" },
   ) => api.post(`/partner/staff/${staffId}/resend-credentials`, data || {}),
+  changePassword: (staffId: string, data: { newPassword: string }) =>
+    api.put(`/partner/staff/${staffId}/change-password`, data),
 };
 
 // ── Admin ──────────────────────────────────────────────
@@ -268,6 +279,7 @@ export const adminAPI = {
     search?: string;
     isActive?: boolean;
   }) => api.get("/admin/partners", { params }),
+  getPartnerById: (id: string) => api.get(`/admin/partners/${id}`),
   approvePartner: (
     id: string,
     data?: { subscriptionPackage?: "basic" | "pro" | "premium"; subscriptionExpiry?: string; note?: string },

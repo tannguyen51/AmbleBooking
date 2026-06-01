@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI } from "@/services/api";
 import * as Clipboard from "expo-clipboard";
@@ -28,10 +29,12 @@ type QrData = {
 };
 
 export default function BookingPaymentScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     bookingId,
     bookingNumber,
+    restaurantId,
     restaurantName,
     restaurantImage,
     tableName,
@@ -42,6 +45,7 @@ export default function BookingPaymentScreen() {
   } = useLocalSearchParams<{
     bookingId: string;
     bookingNumber?: string;
+    restaurantId?: string;
     restaurantName: string;
     restaurantImage?: string;
     tableName: string;
@@ -54,6 +58,8 @@ export default function BookingPaymentScreen() {
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [paymentExpiresAt, setPaymentExpiresAt] = useState<string | null>(null);
 
   const amountLabel = useMemo(() => {
     const amount = qrData?.amount ?? Number(deposit || 0);
@@ -81,7 +87,7 @@ export default function BookingPaymentScreen() {
       return;
     }
     await Clipboard.setStringAsync(qrData.content);
-    Alert.alert("Đã sao chép", "Nội dung chuyển khoản đã được copy");
+    Alert.alert("Đã sao chép", "Nội dung chuyển khoản đã được sao chép");
   };
 
   const checkStatus = async (silent = false) => {
@@ -94,6 +100,7 @@ export default function BookingPaymentScreen() {
         router.replace({
           pathname: "/booking/success" as any,
           params: {
+            restaurantId,
             restaurantName,
             restaurantImage,
             tableName,
@@ -101,7 +108,8 @@ export default function BookingPaymentScreen() {
             time,
             partySize,
             deposit: deposit || "0",
-            bookingId: bookingNumber || bookingId,
+            bookingId,
+            bookingNumber,
           },
         });
       } else if (!silent) {
@@ -130,9 +138,57 @@ export default function BookingPaymentScreen() {
     return () => clearInterval(timer);
   }, [bookingId]);
 
+  useEffect(() => {
+    if (!bookingId) return;
+    
+    // Fallback: mặc định 10 phút (600 giây) nếu API không trả về
+    setTimeRemaining(600);
+    
+    const fetchTime = async () => {
+      try {
+        const res = await bookingAPI.getById(bookingId);
+          console.log("[payment] API response:", res.data?.booking?.paymentTimeRemainingSeconds);
+        if (res.data?.booking?.paymentTimeRemainingSeconds !== undefined) {
+          setTimeRemaining(res.data.booking.paymentTimeRemainingSeconds);
+            setPaymentExpiresAt(res.data.booking.paymentExpiresAt || null);
+          console.log("[payment] Timer set to:", res.data.booking.paymentTimeRemainingSeconds);
+        }
+      } catch (e) {
+        console.error("[payment] Error fetching time:", e);
+      }
+    };
+    fetchTime();
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!bookingId) return;
+
+    const timer = setInterval(() => {
+      if (paymentExpiresAt) {
+        setTimeRemaining(
+          Math.max(
+            0,
+            Math.floor((new Date(paymentExpiresAt).getTime() - Date.now()) / 1000),
+          ),
+        );
+        return;
+      }
+
+      setTimeRemaining((p) => Math.max(0, p - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [bookingId, paymentExpiresAt]);
+
+  const formatTimeRemaining = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
     <SafeAreaView style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + 12 }]}> 
         <TouchableOpacity
           onPress={() => router.back()}
           style={s.backBtn}
@@ -146,7 +202,15 @@ export default function BookingPaymentScreen() {
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Thông tin chuyển khoản</Text>
+          <View style={s.timerContainer}>
+            <Text style={s.sectionTitle}>Thông tin chuyển khoản</Text>
+            {timeRemaining > 0 && (
+              <View style={s.timerBadge}>
+                <Ionicons name="hourglass-outline" size={14} color="#fff" />
+                <Text style={s.timerText}>{formatTimeRemaining(timeRemaining)}</Text>
+              </View>
+            )}
+          </View>
           <View style={s.card}>
             <View style={s.rowBetween}>
               <Text style={s.label}>Ngân hàng</Text>
@@ -176,10 +240,7 @@ export default function BookingPaymentScreen() {
                 <Text style={s.loadingText}>Đang tạo QR...</Text>
               </View>
             ) : qrData?.imageUrl ? (
-              <Image
-                source={{ uri: qrData.imageUrl }}
-                style={s.qrImage}
-              />
+              <Image source={{ uri: qrData.imageUrl }} style={s.qrImage} />
             ) : (
               <View style={s.loadingBox}>
                 <Ionicons name="alert-circle-outline" size={20} color="#999" />
@@ -197,13 +258,9 @@ export default function BookingPaymentScreen() {
           <View style={s.contentBox}>
             <Text style={s.contentText}>{qrData?.content || ""}</Text>
           </View>
-          <TouchableOpacity
-            style={s.copyBtn}
-            onPress={handleCopyContent}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={s.copyBtn} onPress={handleCopyContent}>
             <Ionicons name="copy-outline" size={16} color="#9A3412" />
-            <Text style={s.copyBtnText}>Copy nội dung</Text>
+            <Text style={s.copyBtnText}>Sao chép nội dung</Text>
           </TouchableOpacity>
         </View>
 
@@ -248,8 +305,6 @@ export default function BookingPaymentScreen() {
           <LinearGradient
             colors={checking ? ["#E5E7EB", "#E5E7EB"] : ["#FF6B35", "#FFD700"]}
             style={s.checkBtnInner}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
           >
             {checking ? (
               <>
@@ -278,11 +333,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 35,
+    paddingBottom: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    zIndex: 100,
+    elevation: 4,
   },
   backBtn: {
     width: 44,
@@ -321,7 +377,7 @@ const s = StyleSheet.create({
   },
   label: { fontSize: 13, color: "#6B7280" },
   value: { fontSize: 13, fontWeight: "600", color: "#111827" },
-  amount: { fontSize: 16, fontWeight: "800", color: PRIMARY },
+  amount: { fontSize: 16, fontWeight: "800", color: "#FF6B35" },
   qrCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -333,31 +389,27 @@ const s = StyleSheet.create({
   qrImage: { width: 240, height: 240, borderRadius: 12 },
   loadingBox: { alignItems: "center", gap: 8 },
   loadingText: { fontSize: 12, color: "#9CA3AF" },
-  noteText: { fontSize: 12, color: "#FF6B35", marginTop: 8 },
+  noteText: { fontSize: 12, color: "#9CA3AF", marginTop: 12 },
   contentBox: {
-    backgroundColor: "#FFF7ED",
-    borderRadius: 12,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#FED7AA",
+    borderColor: "#FDBA74",
     padding: 12,
   },
-  contentText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#9A3412",
-    textAlign: "center",
-  },
+  contentText: { fontSize: 14, fontWeight: "600", color: "#92400E", textAlign: "center" },
   copyBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#FDBA74",
-    backgroundColor: "#FFFBEB",
   },
   copyBtnText: { fontSize: 13, fontWeight: "700", color: "#9A3412" },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -377,4 +429,28 @@ const s = StyleSheet.create({
     paddingVertical: 16,
   },
   checkBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  timerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  timerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF6B35",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  timerText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
 });
+
+
+
+

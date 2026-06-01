@@ -24,19 +24,19 @@ const SIZES: Record<LogoSize, SizeConfig> = {
   xl: { ring: 60, text: 34, gap: 10, letterScale: 0.46 },
 };
 
-interface AmbleLogoProps {
+interface MunchMapLogoProps {
   size?: LogoSize;
   showText?: boolean;
   textColor?: string;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
-export default function AmbleLogo({
+export default function MunchMapLogo({
   size = "md",
   showText = true,
   textColor = "#FFFFFF",
   containerStyle,
-}: AmbleLogoProps) {
+}: MunchMapLogoProps) {
   const config = SIZES[size];
   const letterSize = Math.round(config.ring * config.letterScale);
 
@@ -49,7 +49,7 @@ export default function AmbleLogo({
           end={{ x: 1, y: 1 }}
           style={styles.inner}
         >
-          <Text style={[styles.letter, { fontSize: letterSize }]}>A</Text>
+          <Text style={[styles.letter, { fontSize: letterSize }]}>M</Text>
         </LinearGradient>
       </View>
 
@@ -57,7 +57,7 @@ export default function AmbleLogo({
         <Text
           style={[styles.brand, { fontSize: config.text, color: textColor }]}
         >
-          Amble
+          munchmap
         </Text>
       )}
     </View>
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   brand: {
-    fontWeight: "900",
     letterSpacing: 0.2,
+    fontFamily: "TAN-NIMBUS",
   },
 });

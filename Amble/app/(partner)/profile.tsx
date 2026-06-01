@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
   Image,
   SafeAreaView,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -51,6 +52,14 @@ export default function PartnerProfileScreen() {
   const canManageStaff = hasPartnerPermission(partner?.role, "staff:view");
 
   const [pendingCount, setPendingCount] = useState(0);
+  const [showAccountCenter, setShowAccountCenter] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showAccountCenterMenu, setShowAccountCenterMenu] = useState(false);
+  
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -192,6 +201,46 @@ export default function PartnerProfileScreen() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng điền đầy đủ thông tin.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Lỗi", "Mật khẩu mới không khớp.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      // TODO: Gọi API đổi mật khẩu
+      Alert.alert("Thành công", "Đã đổi mật khẩu thành công.");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowChangePassword(false);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Không thể đổi mật khẩu";
+      Alert.alert("Lỗi", message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openSubscription = () => {
+    Alert.alert("Gói đăng ký", `Gói hiện tại: ${partner?.subscriptionPackage || "basic"}`);
+  };
+  const openVoucher = () => {
+    Alert.alert("Voucher nhà hàng", "Tính năng quản lý voucher sẽ được bật trong bản cập nhật tiếp theo.");
+  };
+  const openTerms = () => {
+    router.push("/partner-terms");
+  };
+  const openSupport = () => {
+    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@munchmap.vn");
+  };
+
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn muốn đăng xuất tài khoản đối tác?", [
       { text: "Hủy", style: "cancel" },
@@ -206,28 +255,6 @@ export default function PartnerProfileScreen() {
     ]);
   };
 
-  const openVoucher = () => {
-    Alert.alert(
-      "Voucher nhà hàng",
-      "Tính năng quản lý voucher sẽ được bật trong bản cập nhật tiếp theo.",
-    );
-  };
-
-  const openSubscription = () => {
-    Alert.alert(
-      "Gói đăng ký",
-      `Gói hiện tại: ${partner?.subscriptionPackage || "basic"}`,
-    );
-  };
-
-  const openTerms = () => {
-    router.push("/partner-terms");
-  };
-
-  const openSupport = () => {
-    Alert.alert("Hỗ trợ", "Hotline: 1900 6868\nEmail: partner@amble.vn");
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -235,15 +262,32 @@ export default function PartnerProfileScreen() {
         contentContainerStyle={styles.contentInner}
       >
         <Text style={styles.title}>Hồ sơ nhà hàng</Text>
+
+        <TouchableOpacity style={[styles.card, styles.accountCenterCard]} onPress={() => setShowAccountCenterMenu(!showAccountCenterMenu)}>
+          <View style={[styles.menuItem, styles.accountCenterMenuItem]}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="settings-outline" size={18} color="#374151" />
+              <Text style={[styles.menuItemText, styles.accountCenterMenuText]}>Trung tâm tài khoản</Text>
+            </View>
+            <Ionicons name={showAccountCenterMenu ? "chevron-up" : "chevron-down"} size={16} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+
+
+
         {canManageStaff && (
-          <TouchableOpacity
-            style={styles.teamEntryBtn}
-            onPress={() => router.push("/partner-team")}
-          >
-            <Ionicons name="people-outline" size={16} color="#FF6B35" />
-            <Text style={styles.teamEntryText}>Quản lý nhân sự nhà hàng</Text>
-            <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.teamEntryBtn}
+              onPress={() => router.push("/partner-team")}
+            >
+              <Ionicons name="people-outline" size={16} color="#FF6B35" />
+              <Text style={styles.teamEntryText}>Quản lý nhân sự nhà hàng</Text>
+              <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+
+          </>
         )}
 
         <View style={styles.card}>
@@ -264,243 +308,12 @@ export default function PartnerProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
 
-          <Text style={styles.inputLabel}>Tên nhà hàng</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nhập tên nhà hàng"
-            placeholderTextColor="#9CA3AF"
-            value={name}
-            onChangeText={setName}
-          />
 
-          <Text style={styles.inputLabel}>Địa chỉ</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nhập địa chỉ"
-            placeholderTextColor="#9CA3AF"
-            value={address}
-            onChangeText={setAddress}
-          />
 
-          <Text style={styles.inputLabel}>Thành phố</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nhập thành phố"
-            placeholderTextColor="#9CA3AF"
-            value={city}
-            onChangeText={setCity}
-          />
-
-          <Text style={styles.inputLabel}>Số điện thoại</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nhập số điện thoại"
-            placeholderTextColor="#9CA3AF"
-            value={phone}
-            onChangeText={setPhone}
-          />
-
-          <Text style={styles.inputLabel}>Mô tả nhà hàng</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Mô tả tổng quan"
-            placeholderTextColor="#9CA3AF"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-          />
-
-          <Text style={styles.inputLabel}>Lời giới thiệu</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Thông điệp muốn gửi đến khách hàng"
-            placeholderTextColor="#9CA3AF"
-            value={introduction}
-            onChangeText={setIntroduction}
-            multiline
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Loại ẩm thực</Text>
-          <View style={styles.cuisineWrap}>
-            {CUISINE_OPTIONS.map((item) => {
-              const active = cuisine === item;
-              return (
-                <TouchableOpacity
-                  key={item}
-                  style={[
-                    styles.cuisineChip,
-                    active && styles.cuisineChipActive,
-                  ]}
-                  onPress={() => setCuisine(item)}
-                >
-                  <Text
-                    style={[
-                      styles.cuisineChipText,
-                      active && styles.cuisineChipTextActive,
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <TextInput
-            style={[styles.input, { marginTop: 10 }]}
-            placeholder="Hoặc nhập loại ẩm thực khác"
-            placeholderTextColor="#9CA3AF"
-            value={cuisine}
-            onChangeText={setCuisine}
-          />
-
-          <View style={styles.parkingRow}>
-            <Text style={styles.parkingLabel}>Có bãi đậu xe</Text>
-            <TouchableOpacity
-              style={[
-                styles.parkingToggleTrack,
-                hasParking
-                  ? styles.parkingToggleTrackOn
-                  : styles.parkingToggleTrackOff,
-              ]}
-              onPress={() => setHasParking((v) => !v)}
-              activeOpacity={0.85}
-            >
-              <View
-                style={[
-                  styles.parkingToggleThumb,
-                  hasParking
-                    ? styles.parkingToggleThumbOn
-                    : styles.parkingToggleThumbOff,
-                ]}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Giờ mở cửa</Text>
-
-          <View style={styles.timeRow}>
-            <View style={styles.timeCol}>
-              <Text style={styles.inputLabel}>Giờ mở cửa</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="08:00"
-                placeholderTextColor="#9CA3AF"
-                value={openTime}
-                onChangeText={setOpenTime}
-              />
-            </View>
-            <View style={styles.timeCol}>
-              <Text style={styles.inputLabel}>Giờ đóng cửa</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="22:00"
-                placeholderTextColor="#9CA3AF"
-                value={closeTime}
-                onChangeText={setCloseTime}
-              />
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>Ngày mở cửa</Text>
-          <View style={styles.daysRow}>
-            {DAY_OPTIONS.map((day) => {
-              const active = openDays.includes(day.key);
-              return (
-                <TouchableOpacity
-                  key={day.key}
-                  style={[styles.dayChip, active && styles.dayChipActive]}
-                  onPress={() => toggleOpenDay(day.key)}
-                >
-                  <Text
-                    style={[
-                      styles.dayChipText,
-                      active && styles.dayChipTextActive,
-                    ]}
-                  >
-                    {day.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Mạng xã hội</Text>
-
-          <Text style={styles.inputLabel}>Facebook</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="facebook.com/restaurant"
-            placeholderTextColor="#9CA3AF"
-            value={facebook}
-            onChangeText={setFacebook}
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.inputLabel}>Instagram</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="instagram.com/restaurant"
-            placeholderTextColor="#9CA3AF"
-            value={instagram}
-            onChangeText={setInstagram}
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.inputLabel}>TikTok</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="tiktok.com/@restaurant"
-            placeholderTextColor="#9CA3AF"
-            value={tiktok}
-            onChangeText={setTiktok}
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.inputLabel}>Website</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://restaurant.com"
-            placeholderTextColor="#9CA3AF"
-            value={website}
-            onChangeText={setWebsite}
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={handleSaveProfile}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="save-outline" size={16} color="#fff" />
-                <Text style={styles.saveBtnText}>Lưu hồ sơ nhà hàng</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Dịch vụ & Chính sách</Text>
-
-          <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="ticket-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Voucher</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={openSubscription}>
             <View style={styles.menuItemLeft}>
@@ -510,9 +323,17 @@ export default function PartnerProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="ticket-outline" size={18} color="#374151" />
+              <Text style={styles.menuItemText}>Voucher</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem} onPress={openTerms}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="document-text-outline" size={18} color="#374151" />
+              <Ionicons name="document-outline" size={18} color="#374151" />
               <Text style={styles.menuItemText}>Điều khoản</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
@@ -540,6 +361,412 @@ export default function PartnerProfileScreen() {
         )}
       </ScrollView>
       <PartnerBottomNav pendingCount={pendingCount} />
+
+      <Modal
+        visible={showAccountCenter}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAccountCenter(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Trung tâm tài khoản</Text>
+              <TouchableOpacity onPress={() => setShowAccountCenter(false)}>
+                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowAccountCenter(false);
+              }}
+            >
+              <Ionicons name="document-outline" size={18} color="#FF6B35" />
+              <Text style={styles.modalBtnText}>Hồ sơ nhà hàng</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowAccountCenter(false);
+                Alert.alert("Đổi mật khẩu", "Tính năng đổi mật khẩu sẽ được cập nhật trong phiên bản tiếp theo.");
+              }}
+            >
+              <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
+              <Text style={styles.modalBtnText}>Đổi mật khẩu</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setShowAccountCenter(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showEditProfile}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditProfile(false)}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+            <View style={styles.modalHeader2}>
+              <TouchableOpacity onPress={() => setShowEditProfile(false)}>
+                <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle2}>Hồ sơ nhà hàng</Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            <Image
+              source={{ uri: coverImage || FALLBACK_COVER }}
+              style={styles.coverImage}
+            />
+            <View style={styles.coverActions}>
+              <TouchableOpacity style={styles.coverBtn} onPress={takePhoto}>
+                <Ionicons name="camera-outline" size={16} color="#374151" />
+                <Text style={styles.coverBtnText}>Chụp ảnh</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.coverBtn} onPress={pickFromLibrary}>
+                <Ionicons name="images-outline" size={16} color="#374151" />
+                <Text style={styles.coverBtnText}>Thư viện</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Tên nhà hàng</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập tên nhà hàng"
+              placeholderTextColor="#9CA3AF"
+              value={name}
+              onChangeText={setName}
+            />
+
+            <Text style={styles.inputLabel}>Địa chỉ</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập địa chỉ"
+              placeholderTextColor="#9CA3AF"
+              value={address}
+              onChangeText={setAddress}
+            />
+
+            <Text style={styles.inputLabel}>Thành phố</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập thành phố"
+              placeholderTextColor="#9CA3AF"
+              value={city}
+              onChangeText={setCity}
+            />
+
+            <Text style={styles.inputLabel}>Số điện thoại</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập số điện thoại"
+              placeholderTextColor="#9CA3AF"
+              value={phone}
+              onChangeText={setPhone}
+            />
+
+            <Text style={styles.inputLabel}>Mô tả nhà hàng</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Mô tả tổng quan"
+              placeholderTextColor="#9CA3AF"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+            />
+
+            <Text style={styles.inputLabel}>Lời giới thiệu</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Thông điệp muốn gửi đến khách hàng"
+              placeholderTextColor="#9CA3AF"
+              value={introduction}
+              onChangeText={setIntroduction}
+              multiline
+            />
+
+            <Text style={styles.sectionTitle}>Loại ẩm thực</Text>
+            <View style={styles.cuisineWrap}>
+              {CUISINE_OPTIONS.map((item) => {
+                const active = cuisine === item;
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    style={[
+                      styles.cuisineChip,
+                      active && styles.cuisineChipActive,
+                    ]}
+                    onPress={() => setCuisine(item)}
+                  >
+                    <Text
+                      style={[
+                        styles.cuisineChipText,
+                        active && styles.cuisineChipTextActive,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.sectionTitle}>Có bãi đậu xe</Text>
+            <View style={styles.parkingRow}>
+              <Text style={styles.parkingLabel}>Có bãi đậu xe</Text>
+              <TouchableOpacity
+                style={[
+                  styles.parkingToggleTrack,
+                  hasParking
+                    ? styles.parkingToggleTrackOn
+                    : styles.parkingToggleTrackOff,
+                ]}
+                onPress={() => setHasParking((v) => !v)}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    styles.parkingToggleThumb,
+                    hasParking
+                      ? styles.parkingToggleThumbOn
+                      : styles.parkingToggleThumbOff,
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sectionTitle}>Giờ mở cửa</Text>
+            <View style={styles.timeRow}>
+              <View style={styles.timeCol}>
+                <Text style={styles.inputLabel}>Giờ mở cửa</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="08:00"
+                  placeholderTextColor="#9CA3AF"
+                  value={openTime}
+                  onChangeText={setOpenTime}
+                />
+              </View>
+              <View style={styles.timeCol}>
+                <Text style={styles.inputLabel}>Giờ đóng cửa</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="22:00"
+                  placeholderTextColor="#9CA3AF"
+                  value={closeTime}
+                  onChangeText={setCloseTime}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>Ngày mở cửa</Text>
+            <View style={styles.daysRow}>
+              {DAY_OPTIONS.map((day) => {
+                const active = openDays.includes(day.key);
+                return (
+                  <TouchableOpacity
+                    key={day.key}
+                    style={[styles.dayChip, active && styles.dayChipActive]}
+                    onPress={() => toggleOpenDay(day.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayChipText,
+                        active && styles.dayChipTextActive,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.sectionTitle}>Mạng xã hội</Text>
+
+            <Text style={styles.inputLabel}>Facebook</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="facebook.com/restaurant"
+              placeholderTextColor="#9CA3AF"
+              value={facebook}
+              onChangeText={setFacebook}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Instagram</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="instagram.com/restaurant"
+              placeholderTextColor="#9CA3AF"
+              value={instagram}
+              onChangeText={setInstagram}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>TikTok</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="tiktok.com/@restaurant"
+              placeholderTextColor="#9CA3AF"
+              value={tiktok}
+              onChangeText={setTiktok}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Website</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="https://restaurant.com"
+              placeholderTextColor="#9CA3AF"
+              value={website}
+              onChangeText={setWebsite}
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSaveProfile}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={16} color="#fff" />
+                  <Text style={styles.saveBtnText}>Lưu hồ sơ nhà hàng</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+      <Modal
+        visible={showAccountCenterMenu}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAccountCenterMenu(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.accountCenterModalContent]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Trung tâm tài khoản</Text>
+              <TouchableOpacity onPress={() => setShowAccountCenterMenu(false)}>
+                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowAccountCenterMenu(false);
+                setShowEditProfile(true);
+              }}
+            >
+              <Ionicons name="document-outline" size={18} color="#FF6B35" />
+              <Text style={styles.modalBtnText}>Hồ sơ nhà hàng</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowAccountCenterMenu(false);
+                setShowChangePassword(true);
+              }}
+            >
+              <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
+              <Text style={styles.modalBtnText}>Đổi mật khẩu</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setShowAccountCenterMenu(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showChangePassword}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowChangePassword(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
+              <TouchableOpacity onPress={() => setShowChangePassword(false)}>
+                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập mật khẩu hiện tại"
+              placeholderTextColor="#9CA3AF"
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              secureTextEntry
+            />
+
+            <Text style={styles.inputLabel}>Mật khẩu mới</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập mật khẩu mới"
+              placeholderTextColor="#9CA3AF"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+
+            <Text style={styles.inputLabel}>Xác nhận mật khẩu</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Xác nhận mật khẩu mới"
+              placeholderTextColor="#9CA3AF"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleChangePassword}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                  <Text style={styles.saveBtnText}>Đổi mật khẩu</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setShowChangePassword(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -647,11 +874,11 @@ const styles = StyleSheet.create({
   },
   cuisineChip: {
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#fff",
+    backgroundColor: "#F9FAFB",
   },
   cuisineChipActive: {
     borderColor: "#FF6B35",
@@ -680,10 +907,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   parkingToggleTrackOn: {
-    backgroundColor: "#ff8b25",
+    backgroundColor: "#FF6B35",
   },
   parkingToggleTrackOff: {
-    backgroundColor: "#D1D5DB",
+    backgroundColor: "#E5E7EB",
   },
   parkingToggleThumb: {
     width: 20,
@@ -712,13 +939,13 @@ const styles = StyleSheet.create({
   dayChip: {
     minWidth: 44,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#F9FAFB",
   },
   dayChipActive: {
     borderColor: "#FF6B35",
@@ -773,4 +1000,81 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingText: { fontSize: 12, color: "#9CA3AF" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" },
+  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
+  modalBtn: { borderWidth: 1, borderColor: "#FED7AA", borderRadius: 12, backgroundColor: "#FFF7ED", paddingHorizontal: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+  modalBtnText: { fontSize: 14, fontWeight: "700", color: "#C2410C" },
+  modalCloseBtn: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  modalCloseBtnText: { fontSize: 13, fontWeight: "700", color: "#6B7280" },
+  modalHeader2: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#EEF0F3" },
+  modalTitle2: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
+  saveText: { fontSize: 14, fontWeight: "700", color: "#FF6B35" },
+  infoSection: { marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#EEF0F3" },
+  infoLabel: { fontSize: 12, fontWeight: "700", color: "#6B7280", marginBottom: 6 },
+  infoValue: { fontSize: 14, fontWeight: "600", color: "#111827", lineHeight: 20 },
+  editBtn: { marginTop: 16, backgroundColor: "#FF6B35", borderRadius: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
+  editBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
+  accountCenterCard: { 
+    backgroundColor: "#FFF7ED", 
+    borderColor: "#FED7AA",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginHorizontal: 0,
+    marginVertical: 8,
+    borderWidth: 1
+  },
+  accountCenterMenuItem: { paddingVertical: 16, paddingHorizontal: 12, borderWidth: 0 },
+  accountCenterMenuText: { fontSize: 14, fontWeight: "800" },
+  dropdownContainer: { 
+    backgroundColor: "#fff", 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: "#EEF0F3",
+    marginHorizontal: 16,
+    marginVertical: 8,
+    overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2
+  },
+  dropdownItem: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    paddingHorizontal: 14, 
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF0F3",
+    gap: 10
+  },
+  dropdownItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

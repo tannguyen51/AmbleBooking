@@ -404,6 +404,8 @@ exports.getUserBookings = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    bookings.forEach(attachPaymentTimer);
+
     return res.json({ success: true, bookings });
   } catch (err) {
     console.error("[getUserBookings]", err);
@@ -412,6 +414,19 @@ exports.getUserBookings = async (req, res) => {
 };
 
 // ── GET /api/booking/:bookingId ───────────────────────────
+const PAYMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút
+
+const attachPaymentTimer = (booking) => {
+  if (!booking || booking.status !== "pending_payment") return;
+  const createdAt = booking.createdAt;
+  if (!createdAt) return;
+  const expiresAt = new Date(new Date(createdAt).getTime() + PAYMENT_TIMEOUT_MS);
+  const now = new Date();
+  const timeRemainingMs = Math.max(0, expiresAt.getTime() - now.getTime());
+  booking.paymentTimeRemainingSeconds = Math.floor(timeRemainingMs / 1000);
+  booking.paymentExpiresAt = expiresAt.toISOString();
+};
+
 exports.getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId)
@@ -424,6 +439,8 @@ exports.getBookingById = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
+
+    attachPaymentTimer(booking);
 
     return res.json({ success: true, booking });
   } catch (err) {
@@ -513,3 +530,5 @@ exports.cancelBooking = async (req, res) => {
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
+
+

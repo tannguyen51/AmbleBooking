@@ -198,10 +198,11 @@ export default function SelectTableScreen() {
     }, 260);
   };
 
-  const selectedTable = tables.find((t) => t._id === selectedTableId);
+  const availableTables = tables.filter((t) => t.isActive && t.isAvailable);
+  const selectedTable = availableTables.find((t) => t._id === selectedTableId);
   const filtered = selectedType
-    ? tables.filter((t) => t.type === selectedType)
-    : tables;
+    ? availableTables.filter((t) => t.type === selectedType)
+    : availableTables;
   const groups = Object.keys(TABLE_TYPE_CONFIG).reduce<Record<string, Table[]>>(
     (acc, k) => {
       const g = filtered.filter((t) => t.type === k);
@@ -337,15 +338,15 @@ export default function SelectTableScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={s.chipTxtActive}>Tất cả ({tables.length})</Text>
+                <Text style={s.chipTxtActive}>Tất cả ({availableTables.length})</Text>
               </LinearGradient>
             ) : (
-              <Text style={s.chipTxt}>Tất cả ({tables.length})</Text>
+              <Text style={s.chipTxt}>Tất cả ({availableTables.length})</Text>
             )}
           </TouchableOpacity>
           {Object.entries(TABLE_TYPE_CONFIG).map(([type, cfg]) => {
             const total = tables.filter((t) => t.type === type).length;
-            const avail = tables.filter(
+            const avail = availableTables.filter(
               (t) => t.type === type && t.isActive && t.isAvailable,
             ).length;
             if (!total) return null;
@@ -381,74 +382,63 @@ export default function SelectTableScreen() {
 
         {/* ── Grid bàn ────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-          {Object.entries(groups).map(([type, typeTables]) => {
-            const cfg = TABLE_TYPE_CONFIG[type];
-            return (
-              <View key={type} style={{ marginBottom: 24 }}>
-                <View style={s.groupHeader}>
-                  <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                  <Text style={s.groupTitle}>{cfg.label}</Text>
-                  <View style={[s.groupBadge, { backgroundColor: cfg.bg }]}>
-                    <Text style={[s.groupBadgeTxt, { color: cfg.color }]}>
-                      {typeTables.filter((t) => t.isActive).length} trống
-                    </Text>
+          {availableTables.length === 0 ? (
+            <View style={s.emptyWrap}>
+              <Ionicons name="time-outline" size={28} color="#9CA3AF" />
+              <Text style={s.emptyTitle}>Tạm thời chưa có bàn trống</Text>
+              <Text style={s.emptyText}>
+                Bạn có thể thử lại sau hoặc đổi khung giờ đặt bàn.
+              </Text>
+            </View>
+          ) : (
+            Object.entries(groups).map(([type, typeTables]) => {
+              const cfg = TABLE_TYPE_CONFIG[type];
+              return (
+                <View key={type} style={{ marginBottom: 24 }}>
+                  <View style={s.groupHeader}>
+                    <Ionicons name={cfg.icon} size={18} color={cfg.color} />
+                    <Text style={s.groupTitle}>{cfg.label}</Text>
+                    <View style={[s.groupBadge, { backgroundColor: cfg.bg }]}>
+                      <Text style={[s.groupBadgeTxt, { color: cfg.color }]}>
+                        {typeTables.length} trống
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <View style={s.grid}>
-                  {typeTables.map((table) => {
-                    const isSel = selectedTableId === table._id;
-                    const isBooked = !table.isActive;
-                    return (
-                      <TouchableOpacity
-                        key={table._id}
-                        style={[
-                          s.cell,
-                          {
-                            borderColor: isSel
-                              ? PRIMARY
-                              : isBooked
-                                ? "#FCA5A5"
-                                : cfg.border,
-                            backgroundColor: isSel
-                              ? "#FFF3ED"
-                              : isBooked
-                                ? "#FEF2F2"
-                                : cfg.bg,
-                          },
-                        ]}
-                        onPress={() => handleSelectTable(table)}
-                        disabled={isBooked}
-                        activeOpacity={0.7}
-                      >
-                        <Text
+                  <View style={s.grid}>
+                    {typeTables.map((table) => {
+                      const isSel = selectedTableId === table._id;
+                      return (
+                        <TouchableOpacity
+                          key={table._id}
                           style={[
-                            s.cellName,
+                            s.cell,
                             {
-                              color: isSel
-                                ? PRIMARY
-                                : isBooked
-                                  ? "#EF4444"
-                                  : cfg.color,
+                              borderColor: isSel ? PRIMARY : cfg.border,
+                              backgroundColor: isSel ? "#FFF3ED" : cfg.bg,
                             },
                           ]}
+                          onPress={() => handleSelectTable(table)}
+                          activeOpacity={0.7}
                         >
-                          {table.name}
-                        </Text>
-                        <Text
-                          style={[
-                            s.cellStatus,
-                            { color: isBooked ? "#EF4444" : "#9CA3AF" },
-                          ]}
-                        >
-                          {isBooked ? "Đặt" : "Trống"}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                          <Text
+                            style={[
+                              s.cellName,
+                              { color: isSel ? PRIMARY : cfg.color },
+                            ]}
+                          >
+                            {table.name}
+                          </Text>
+                          <Text style={[s.cellStatus, { color: "#9CA3AF" }]}>
+                            Trống
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
       </ScrollView>
 
@@ -721,6 +711,14 @@ const s = StyleSheet.create({
   groupTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
   groupBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   groupBadgeTxt: { fontSize: 11, fontWeight: "700" },
+  emptyWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
+  emptyText: { fontSize: 13, color: "#6B7280", textAlign: "center" },
 
   // Grid
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

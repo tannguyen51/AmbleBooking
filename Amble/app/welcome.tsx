@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import AmbleLogo from "../components/AmbleLogo";
+import MunchMapLogo from "../components/AmbleLogo";
 import { useLanguageStore } from "../store/languageStore";
 
 const { width, height } = Dimensions.get("window");
@@ -68,7 +68,7 @@ export default function WelcomeScreen() {
 
       <View style={styles.hero}>
         <View style={styles.logoRow}>
-          <AmbleLogo size="lg" textColor="#FFFFFF" />
+          <MunchMapLogo size="lg" textColor="#FFFFFF" />
         </View>
 
         <Text style={styles.headline}>{copy.headline}</Text>

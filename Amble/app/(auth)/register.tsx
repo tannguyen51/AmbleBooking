@@ -21,7 +21,7 @@ import {
 } from "../../constants/theme";
 import { useAuthStore } from "../../store/authStore";
 import { Ionicons } from "@expo/vector-icons";
-import AmbleLogo from "../../components/AmbleLogo";
+import MunchMapLogo from "../../components/AmbleLogo";
 // ─── Design tokens ───
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -141,7 +141,7 @@ export default function RegisterScreen() {
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
 
-          <AmbleLogo
+          <MunchMapLogo
             size="md"
             showText={false}
             containerStyle={styles.registerLogo}
@@ -319,7 +319,7 @@ export default function RegisterScreen() {
             <Text style={styles.termsText}>
               Tôi đồng ý với{" "}
               <Text style={styles.termsLink}>Điều khoản sử dụng</Text> và{" "}
-              <Text style={styles.termsLink}>Chính sách bảo mật</Text> của Amble
+              <Text style={styles.termsLink}>Chính sách bảo mật</Text> của munchmap
             </Text>
           </TouchableOpacity>
 

@@ -25,6 +25,8 @@ export default function BookingSuccessScreen() {
         partySize,
         deposit,
         bookingId,
+        bookingNumber,
+        restaurantId,
     } = useLocalSearchParams<{
         restaurantName: string;
         restaurantImage?: string;
@@ -34,6 +36,8 @@ export default function BookingSuccessScreen() {
         partySize: string;
         deposit: string;
         bookingId: string;
+        bookingNumber?: string;
+        restaurantId?: string;
     }>();
 
     return (
@@ -115,7 +119,7 @@ export default function BookingSuccessScreen() {
                         {/* Booking ID */}
                         <View style={s.bookingIdRow}>
                             <Text style={s.bookingIdLabel}>Mã đặt bàn</Text>
-                            <Text style={s.bookingIdValue}>#{bookingId}</Text>
+                            <Text style={s.bookingIdValue}>#{bookingNumber || bookingId}</Text>
                         </View>
                     </View>
                 </View>
@@ -124,12 +128,32 @@ export default function BookingSuccessScreen() {
                 <View style={s.rewardBanner}>
                     <Ionicons name="star" size={28} color="#F59E0B" />
                     <View style={s.rewardText}>
-                        <Text style={s.rewardTitle}>+200 điểm Amble!</Text>
+                        <Text style={s.rewardTitle}>+200 điểm munchmap!</Text>
                         <Text style={s.rewardSubtitle}>
                             Hoàn tất đặt bàn • Tiếp tục kiếm điểm
                         </Text>
                     </View>
                 </View>
+
+                {restaurantId && bookingId ? (
+                    <TouchableOpacity
+                        style={s.reviewBtn}
+                        onPress={() =>
+                            router.push({
+                                pathname: "/booking/review" as any,
+                                params: {
+                                    restaurantId,
+                                    restaurantName,
+                                    bookingId,
+                                },
+                            })
+                        }
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
+                        <Text style={s.reviewBtnText}>Đánh giá nhà hàng</Text>
+                    </TouchableOpacity>
+                ) : null}
 
                 <View style={{ height: 120 }} />
             </ScrollView>
@@ -328,5 +352,20 @@ const s = StyleSheet.create({
         color: "#6B7280",
         fontSize: 15,
         fontWeight: "600",
+    },
+    reviewBtn: {
+        marginTop: 8,
+        backgroundColor: "#111827",
+        borderRadius: 14,
+        paddingVertical: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "row",
+        gap: 8,
+    },
+    reviewBtnText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "800",
     },
 });

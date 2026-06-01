@@ -128,10 +128,11 @@ exports.getOrders = async (req, res) => {
       bookedAt: booking.createdAt,
     }));
 
-    const counts = {
+        const counts = {
       all: allBookings.length,
       pending: allBookings.filter((b) => b.status === "pending").length,
       confirmed: allBookings.filter((b) => b.status === "confirmed").length,
+      completed: allBookings.filter((b) => b.status === "completed").length,
       cancelled: allBookings.filter((b) => b.status === "cancelled").length,
     };
 
@@ -540,6 +541,8 @@ exports.getRestaurantProfile = async (req, res) => {
         introduction: restaurant.introduction || "",
         cuisine: restaurant.cuisine || "",
         hasParking: !!restaurant.hasParking,
+        priceMin: Number(restaurant.priceMin || 0),
+        priceMax: Number(restaurant.priceMax || 0),
         openTime: restaurant.openTime || "08:00",
         closeTime: restaurant.closeTime || "22:00",
         openDays: Array.isArray(restaurant.openDays) ? restaurant.openDays : [],
@@ -576,6 +579,8 @@ exports.updateRestaurantProfile = async (req, res) => {
       introduction,
       cuisine,
       hasParking,
+      priceMin,
+      priceMax,
       openTime,
       closeTime,
       openDays,
@@ -606,6 +611,42 @@ exports.updateRestaurantProfile = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "hasParking phải là kiểu boolean.",
+      });
+    }
+
+    const normalizedPriceMin =
+      priceMin !== undefined ? Number(priceMin) : undefined;
+    const normalizedPriceMax =
+      priceMax !== undefined ? Number(priceMax) : undefined;
+
+    if (
+      normalizedPriceMin !== undefined &&
+      !Number.isFinite(normalizedPriceMin)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "priceMin phải là số.",
+      });
+    }
+
+    if (
+      normalizedPriceMax !== undefined &&
+      !Number.isFinite(normalizedPriceMax)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "priceMax phải là số.",
+      });
+    }
+
+    if (
+      normalizedPriceMin !== undefined &&
+      normalizedPriceMax !== undefined &&
+      normalizedPriceMin > normalizedPriceMax
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "priceMin phải nhỏ hơn hoặc bằng priceMax.",
       });
     }
 
@@ -651,6 +692,12 @@ exports.updateRestaurantProfile = async (req, res) => {
         ? { cuisine: String(cuisine || "").trim() }
         : {}),
       ...(hasParking !== undefined ? { hasParking } : {}),
+      ...(normalizedPriceMin !== undefined
+        ? { priceMin: normalizedPriceMin }
+        : {}),
+      ...(normalizedPriceMax !== undefined
+        ? { priceMax: normalizedPriceMax }
+        : {}),
       ...(openTime !== undefined
         ? { openTime: String(openTime || "").trim() }
         : {}),
@@ -691,6 +738,8 @@ exports.updateRestaurantProfile = async (req, res) => {
         introduction: restaurant.introduction || "",
         cuisine: restaurant.cuisine || "",
         hasParking: !!restaurant.hasParking,
+        priceMin: Number(restaurant.priceMin || 0),
+        priceMax: Number(restaurant.priceMax || 0),
         openTime: restaurant.openTime || "08:00",
         closeTime: restaurant.closeTime || "22:00",
         openDays: Array.isArray(restaurant.openDays) ? restaurant.openDays : [],
@@ -705,3 +754,4 @@ exports.updateRestaurantProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: "Loi server" });
   }
 };
+

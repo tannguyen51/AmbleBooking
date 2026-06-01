@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -58,7 +58,7 @@ const PACKAGE_CONFIG = {
   premium: { label: "Premium", color: "#9333EA", bg: "#FAF5FF" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function PartnerDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -84,7 +84,11 @@ export default function PartnerDashboard() {
   const dailyRevenue = [0.48, 0.66, 0.41, 0.76, 0.55, 0.84, 0.69].map((r) =>
     Math.round(estimatedBaseRevenue * r),
   );
-  const monthlyRevenue = dailyRevenue.reduce((sum, v) => sum + v, 0) * 4;
+  // Calculate monthly revenue based on actual days in current month
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const avgDailyRevenue = dailyRevenue.reduce((sum, v) => sum + v, 0) / dailyRevenue.length;
+  const monthlyRevenue = Math.round(avgDailyRevenue * daysInMonth);
   const growthRate = Math.max(
     8,
     Math.min(35, Math.round((occupancyRate + overview.todayBookings * 2) / 5)),
@@ -98,7 +102,7 @@ export default function PartnerDashboard() {
     highlight: index === 6,
   }));
 
-  // ── Animations ──────────────────────────────────────────────────────────────
+  // â”€â”€ Animations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const headerAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
   const chartAnim = useRef(new Animated.Value(0)).current;
@@ -169,7 +173,7 @@ export default function PartnerDashboard() {
     ],
   });
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleConfirm = async (id: string) => {
     try {
       setIsActionLoading(true);
@@ -205,7 +209,7 @@ export default function PartnerDashboard() {
     ]);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -225,7 +229,7 @@ export default function PartnerDashboard() {
           </View>
         )}
 
-        {/* ── Header ─────────────────────────────────────────── */}
+        {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <Animated.View style={[styles.header, slideUp(headerAnim)]}>
           <View>
             <Text style={styles.headerSub}>Chào mừng trở lại,</Text>
@@ -235,7 +239,7 @@ export default function PartnerDashboard() {
           </View>
         </Animated.View>
 
-        {/* ── Restaurant name + package badge ──────────────── */}
+        {/* â”€â”€ Restaurant name + package badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <Animated.View style={[styles.restaurantRow, slideUp(headerAnim)]}>
           <View style={styles.restaurantNameRow}>
             <Ionicons name="restaurant-outline" size={14} color="#374151" />
@@ -250,11 +254,11 @@ export default function PartnerDashboard() {
           </View>
         </Animated.View>
 
-        {/* ── Stats grid ─────────────────────────────────────── */}
+        {/* â”€â”€ Stats grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <Animated.View style={[styles.statsGrid, slideUp(statsAnim)]}>
           <StatCard
             iconName="grid-outline"
-            label="Bàn trống"
+            label="Bàn trống hiện tại"
             value={overview.availableTables}
             total={overview.totalTables}
             color="#22C55E"
@@ -262,7 +266,7 @@ export default function PartnerDashboard() {
           />
           <StatCard
             iconName="ellipse-outline"
-            label="Đã đặt"
+            label="Bàn Đã đặt"
             value={overview.bookedTables}
             total={overview.totalTables}
             color="#EF4444"
@@ -285,7 +289,7 @@ export default function PartnerDashboard() {
           />
         </Animated.View>
 
-        {/* ── Live operation metrics card ────────────────────── */}
+        {/* â”€â”€ Live operation metrics card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <Animated.View style={slideUp(chartAnim)}>
           <LinearGradient
             colors={["#1A1A1A", "#2D2D2D"]}
@@ -307,7 +311,7 @@ export default function PartnerDashboard() {
                   {monthlyRevenue.toLocaleString("vi-VN")}vnd
                 </Text>
                 <View style={styles.revenueGrowthRow}>
-                  <Text style={styles.revenueGrowthUp}>↑ {growthRate}%</Text>
+                  <Text style={styles.revenueGrowthUp}>â†‘ {growthRate}%</Text>
                   <Text style={styles.revenueGrowthLabel}>
                     so với tháng trước
                   </Text>
@@ -345,7 +349,7 @@ export default function PartnerDashboard() {
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Pending orders ─────────────────────────────────── */}
+        {/* â”€â”€ Pending orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {pendingBookings.length > 0 && (
           <Animated.View style={slideUp(ordersAnim)}>
             <View style={styles.sectionHeader}>
@@ -372,7 +376,7 @@ export default function PartnerDashboard() {
                       {booking.tableNumber}
                     </Text>
                     <Text style={styles.pendingTime}>
-                      {booking.date} • {booking.time}
+                      {booking.date} â€¢ {booking.time}
                     </Text>
                     <Text style={styles.pendingGuests}>
                       {booking.guests} khách
@@ -419,13 +423,13 @@ export default function PartnerDashboard() {
 
       </ScrollView>
 
-      {/* ── Bottom nav ─────────────────────────────────────── */}
+      {/* â”€â”€ Bottom nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <PartnerBottomNav pendingCount={pendingBookings.length} />
     </SafeAreaView>
   );
 }
 
-// ── StatCard ─────────────────────────────────────────────────────────────────
+// â”€â”€ StatCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({
   iconName,
   label,
@@ -485,7 +489,7 @@ function StatCard({
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
   scroll: { flex: 1 },
@@ -700,3 +704,5 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 13, color: "#fff", fontWeight: "800" },
 
 });
+
+

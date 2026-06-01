@@ -19,7 +19,7 @@ const buildGoogleStateToken = (redirectUri) => {
 
 const getGoogleAppRedirect = (req) => {
   const configured =
-    process.env.GOOGLE_APP_REDIRECT || "amble://auth/google";
+    process.env.GOOGLE_APP_REDIRECT || "munchmap://auth/google";
   const requested = req.query.redirect;
   if (!requested) return configured;
   if (configured && requested !== configured) return configured;
@@ -160,7 +160,7 @@ exports.requestPasswordReset = async (req, res) => {
     await user.save();
 
     const resetLink = buildResetLink(rawToken);
-    const subject = "Đặt lại mật khẩu Amble";
+    const subject = "Đặt lại mật khẩu munchmap";
     const text = resetLink
       ? `Mở liên kết để đặt lại mật khẩu: ${resetLink}`
       : `Mã đặt lại mật khẩu: ${rawToken}`;
@@ -279,7 +279,7 @@ exports.googleAuthCallback = async (req, res) => {
     if (error) {
       return res.redirect(
         buildRedirectUrl(
-          process.env.GOOGLE_APP_REDIRECT || "amble://auth/google",
+          process.env.GOOGLE_APP_REDIRECT || "munchmap://auth/google",
           { error },
         ),
       );

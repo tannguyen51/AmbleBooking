@@ -21,7 +21,7 @@ import {
   Typography,
 } from "../../constants/theme";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
-import AmbleLogo from "../../components/AmbleLogo";
+import MunchMapLogo from "../../components/AmbleLogo";
 
 const PARTNER_PRIMARY = "#FF6B35";
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -64,13 +64,13 @@ export default function PartnerLoginScreen() {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <AmbleLogo
+          <MunchMapLogo
             size="md"
             showText={false}
             containerStyle={styles.partnerLogo}
           />
 
-          <Text style={styles.appName}>Amble Partner</Text>
+          <Text style={styles.appName}>munchmap Partner</Text>
           <Text style={styles.tagline}>Quản lý nhà hàng của bạn</Text>
         </LinearGradient>
 

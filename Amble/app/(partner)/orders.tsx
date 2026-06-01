@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 
-type OrderStatus = "all" | "pending" | "confirmed" | "cancelled";
+type OrderStatus = "all" | "pending" | "completed" | "cancelled";
 
 interface PartnerOrder {
   id: string;
@@ -36,21 +37,21 @@ interface PartnerOrder {
 interface OrderCounts {
   all: number;
   pending: number;
-  confirmed: number;
+  completed: number;
   cancelled: number;
 }
 
 const EMPTY_COUNTS: OrderCounts = {
   all: 0,
   pending: 0,
-  confirmed: 0,
+  completed: 0,
   cancelled: 0,
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Chờ xác nhận",
+  pending: "Chờ partner duyệt",
   pending_payment: "Chờ thanh toán",
-  confirmed: "Đã xác nhận",
+  confirmed: "Hoàn thành",
   cancelled: "Đã hủy",
   paid: "Đã thanh toán",
   completed: "Hoàn thành",
@@ -63,31 +64,11 @@ const STATUS_STYLES: Record<
   pending: { color: "#E69A00", backgroundColor: "#FFF7E2" },
   pending_payment: { color: "#E69A00", backgroundColor: "#FFF7E2" },
   confirmed: { color: "#22C55E", backgroundColor: "#E7F8EE" },
+  completed: { color: "#22C55E", backgroundColor: "#E7F8EE" },
   cancelled: {
     color: "#F04444",
     backgroundColor: "#FEE2E2",
     borderColor: "#F04444",
-  },
-};
-
-const FILTER_ACTIVE_STYLES: Record<
-  Exclude<OrderStatus, "all">,
-  { backgroundColor: string; borderColor: string; textColor: string }
-> = {
-  pending: {
-    backgroundColor: "#FFF7E2",
-    borderColor: "#F2CF75",
-    textColor: "#E69A00",
-  },
-  confirmed: {
-    backgroundColor: "#E7F8EE",
-    borderColor: "#7DDF9E",
-    textColor: "#22C55E",
-  },
-  cancelled: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#F04444",
-    textColor: "#F04444",
   },
 };
 
@@ -98,6 +79,7 @@ export default function PartnerOrdersScreen() {
   const [counts, setCounts] = useState<OrderCounts>(EMPTY_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [searchCode, setSearchCode] = useState("");
 
   const loadOrders = async (status: OrderStatus) => {
     try {
@@ -122,20 +104,21 @@ export default function PartnerOrdersScreen() {
   const filterTabs = useMemo(
     () => [
       { key: "all" as OrderStatus, label: `Tất cả (${counts.all})` },
-      { key: "pending" as OrderStatus, label: `Chờ (${counts.pending})` },
-      {
-        key: "confirmed" as OrderStatus,
-        label: `Đã xác nhận (${counts.confirmed})`,
-      },
-      {
-        key: "cancelled" as OrderStatus,
-        label: `Đã hủy (${counts.cancelled})`,
-      },
+      { key: "pending" as OrderStatus, label: `Chờ duyệt (${counts.pending})` },
+      { key: "completed" as OrderStatus, label: `Hoàn thành (${counts.completed})` },
+      { key: "cancelled" as OrderStatus, label: `Đã hủy (${counts.cancelled})` },
     ],
     [counts],
   );
 
   const pendingCount = counts.pending || 0;
+  const filteredOrders = useMemo(() => {
+    const keyword = searchCode.trim().toLowerCase();
+    if (!keyword) return orders;
+    return orders.filter((order) =>
+      String(order.bookingNumber || "").toLowerCase().includes(keyword),
+    );
+  }, [orders, searchCode]);
 
   const handleConfirm = async (orderId: string) => {
     try {
@@ -151,7 +134,7 @@ export default function PartnerOrdersScreen() {
   };
 
   const handleReject = (orderId: string) => {
-    Alert.alert("Từ chối đơn", "Bạn chắc chắn muốn từ chối đơn đặt bàn này?", [
+    Alert.alert("Từ chối đơn", "Bạn chắc chắn muốn từ chối đơn này?", [
       { text: "Không", style: "cancel" },
       {
         text: "Từ chối",
@@ -177,7 +160,7 @@ export default function PartnerOrdersScreen() {
       <View style={styles.headerWrap}>
         <View>
           <Text style={styles.headerTitle}>Đơn đặt bàn</Text>
-          <Text style={styles.headerSub}>Theo dõi và xử lý theo trạng thái</Text>
+          <Text style={styles.headerSub}>Duyệt và quản lý đơn hàng</Text>
         </View>
         <TouchableOpacity
           style={styles.backBtn}
@@ -195,20 +178,13 @@ export default function PartnerOrdersScreen() {
       >
         {filterTabs.map((tab) => {
           const isActive = activeFilter === tab.key;
-          const activeStyle =
-            tab.key !== "all" && isActive
-              ? FILTER_ACTIVE_STYLES[tab.key]
-              : undefined;
 
           return (
             <TouchableOpacity
               key={tab.key}
               style={[
                 styles.filterChip,
-                activeStyle && {
-                  backgroundColor: activeStyle.backgroundColor,
-                  borderColor: activeStyle.borderColor,
-                },
+                isActive && styles.filterChipActive,
               ]}
               onPress={() => setActiveFilter(tab.key)}
               activeOpacity={0.8}
@@ -224,8 +200,7 @@ export default function PartnerOrdersScreen() {
               <Text
                 style={[
                   styles.filterText,
-                  isActive && tab.key === "all" && styles.filterTextAllActive,
-                  activeStyle && { color: activeStyle.textColor },
+                  isActive && styles.filterTextActive,
                 ]}
               >
                 {tab.label}
@@ -234,6 +209,26 @@ export default function PartnerOrdersScreen() {
           );
         })}
       </ScrollView>
+
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm mã đơn (VD: BK-20260528-1234)"
+            placeholderTextColor="#9CA3AF"
+            value={searchCode}
+            onChangeText={setSearchCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          {!!searchCode && (
+            <TouchableOpacity onPress={() => setSearchCode("")} hitSlop={10}>
+              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       <ScrollView
         style={styles.listWrap}
@@ -244,15 +239,15 @@ export default function PartnerOrdersScreen() {
             <ActivityIndicator size="small" color="#FF6B35" />
             <Text style={styles.helperText}>Đang tải đơn đặt bàn...</Text>
           </View>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.emptyTitle}>Không có đơn phù hợp</Text>
             <Text style={styles.helperText}>
-              Thử chọn bộ lọc khác để xem thêm.
+              Thử đổi từ khóa mã đơn hoặc chọn bộ lọc khác.
             </Text>
           </View>
         ) : (
-          orders.map((order) => {
+          filteredOrders.map((order) => {
             const statusLabel = STATUS_LABELS[order.status] || order.status;
             const isPending = order.status === "pending";
             const isSubmitting = submittingId === order.id;
@@ -355,6 +350,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   filterChip: {
+    flex: 1,
     position: "relative",
     overflow: "hidden",
     borderRadius: 999,
@@ -365,11 +361,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E6EAF0",
   },
+  filterChipActive: {
+    backgroundColor: "#FFF7E2",
+    borderColor: "#F2CF75",
+  },
   filterGradient: {
     ...StyleSheet.absoluteFillObject,
   },
   filterText: { fontSize: 12, fontWeight: "700", color: "#4B5563" },
-  filterTextAllActive: { color: "#fff" },
+  filterTextActive: { color: "#E69A00" },
+  searchWrap: { paddingHorizontal: 18, paddingBottom: 6 },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E6EAF0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#111827",
+    paddingVertical: 0,
+  },
   listWrap: { flex: 1 },
   listContent: { paddingHorizontal: 18, paddingTop: 8, gap: 12, paddingBottom: 24 },
   centerBox: {

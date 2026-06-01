@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Webhook VietQR</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: monospace;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-send {
+            background: #667eea;
+            color: white;
+        }
+        .btn-send:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-send:active {
+            transform: translateY(0);
+        }
+        .btn-copy {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-copy:hover {
+            background: #e0e0e0;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Test Webhook VietQR</h1>
+        
+        <div class="info-box">
+            <strong>?? Hu?ng d?n:</strong><br>
+            1. Nh?p ngrok URL c?a b?n<br>
+            2. Ki?m tra thông tin booking<br>
+            3. Click "G?i Webhook" d? test
+        </div>
+
+        <div class="form-group">
+            <label for="ngrokUrl">Ngrok URL *</label>
+            <input type="text" id="ngrokUrl" placeholder="https://xxxx-xx-xxx-xxx.ngrok.io" required>
+        </div>
+
+        <div class="form-group">
+            <label for="bookingId">Booking ID</label>
+            <input type="text" id="bookingId" value="6a1a5c51737a51123c1e8ebf" readonly>
+        </div>
+
+        <div class="form-group">
+            <label for="content">Content (Expected Content) *</label>
+            <input type="text" id="content" value="AMBLE-23179" required>
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Amount (VND) *</label>
+            <input type="number" id="amount" value="500000" required>
+        </div>
+
+        <div class="form-group">
+            <label for="transactionId">Transaction ID</label>
+            <input type="text" id="transactionId" placeholder="TXN_123456">
+        </div>
+
+        <div class="form-group">
+            <label for="bankCode">Bank Code</label>
+            <input type="text" id="bankCode" value="970422">
+        </div>
+
+        <div class="form-group">
+            <label for="accountNumber">Account Number</label>
+            <input type="text" id="accountNumber" value="1234567890">
+        </div>
+
+        <div class="form-group">
+            <label for="payload">Payload (JSON)</label>
+            <textarea id="payload" readonly></textarea>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-copy" onclick="copyPayload()">?? Copy Payload</button>
+            <button class="btn-send" onclick="sendWebhook()">?? G?i Webhook</button>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        function updatePayload() {
+            const payload = {
+                data: {
+                    content: document.getElementById('content').value,
+                    amount: parseInt(document.getElementById('amount').value),
+                    transactionId: document.getElementById('transactionId').value || `TXN_${Date.now()}`,
+                    bankCode: document.getElementById('bankCode').value,
+                    accountNumber: document.getElementById('accountNumber').value,
+                    paidAt: new Date().toISOString()
+                }
+            };
+            document.getElementById('payload').value = JSON.stringify(payload, null, 2);
+        }
+
+        function copyPayload() {
+            const payload = document.getElementById('payload').value;
+            navigator.clipboard.writeText(payload).then(() => {
+                showStatus('? Payload dã copy vào clipboard', 'success');
+            });
+        }
+
+        async function sendWebhook() {
+            const ngrokUrl = document.getElementById('ngrokUrl').value.trim();
+            
+            if (!ngrokUrl) {
+                showStatus('? Vui lòng nh?p ngrok URL', 'error');
+                return;
+            }
+
+            if (!ngrokUrl.startsWith('https://')) {
+                showStatus('? URL ph?i b?t d?u b?ng https://', 'error');
+                return;
+            }
+
+            updatePayload();
+            const payload = JSON.parse(document.getElementById('payload').value);
+            const webhookUrl = `${ngrokUrl}/api/booking/payment/vietqr-webhook`;
+
+            showStatus('? Ðang g?i webhook...', 'loading');
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus(`? Webhook g?i thành công!\n\nResponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showStatus(`? L?i: ${data.message || 'Webhook failed'}\n\nResponse: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`? L?i k?t n?i: ${error.message}\n\nKi?m tra:\n- Ngrok URL có dúng không?\n- Backend server có ch?y không?\n- Firewall có ch?n không?`, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        // Update payload khi input thay d?i
+        document.getElementById('content').addEventListener('change', updatePayload);
+        document.getElementById('amount').addEventListener('change', updatePayload);
+        document.getElementById('transactionId').addEventListener('change', updatePayload);
+        document.getElementById('bankCode').addEventListener('change', updatePayload);
+        document.getElementById('accountNumber').addEventListener('change', updatePayload);
+
+        // Initial payload
+        updatePayload();
+    </script>
+</body>
+</html>

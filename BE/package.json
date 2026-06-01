@@ -7,9 +7,11 @@
     "start": "node ./bin/www",
     "seed": "node seed.js",
     "dev": "nodemon ./bin/www",
-    "set:reward:6000": "node scripts/set-reward-6000.js"
+    "set:reward:6000": "node scripts/set-reward-6000.js",
+    "booking:complete-overdue": "node scripts/complete-overdue-bookings.js"
   },
   "dependencies": {
+    "@sentry/node": "^8.29.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "debug": "^4.3.4",

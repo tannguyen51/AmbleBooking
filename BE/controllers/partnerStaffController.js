@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+﻿const crypto = require("crypto");
 const Partner = require("../models/partner");
 const { sendMail } = require("../utils/mailer");
 
@@ -16,11 +16,12 @@ const ensureRestaurantScope = (req, res) => {
   return true;
 };
 
-const ensureOwnerRole = (req, res) => {
-  if (req.partner?.role !== "owner") {
+const ensureOwnerOrManagerRole = (req, res) => {
+  const role = req.partner?.role;
+  if (!["owner", "manager"].includes(role)) {
     res.status(403).json({
       success: false,
-      message: "Chỉ chủ nhà hàng mới có quyền quản lý nhân sự.",
+      message: "Chỉ chủ hoặc quản lí mới có quyền quản lí nhân viên.",
     });
     return false;
   }
@@ -29,18 +30,18 @@ const ensureOwnerRole = (req, res) => {
 
 const createTempPassword = () => {
   const raw = crypto.randomBytes(6).toString("base64url");
-  return `Amble@${raw}`;
+  return `munchmap@${raw}`;
 };
 
 const canSendEmail = () =>
   Boolean(process.env.SMTP_USER) && Boolean(process.env.SMTP_PASS);
 
 const sendCredentialsEmail = async ({ to, fullName, email, password, role }) => {
-  const roleLabel = role === "manager" ? "Quản lý" : "Nhân viên";
-  const subject = "Tài khoản quản lý nhà hàng trên Amble";
+  const roleLabel = role === "manager" ? "Quản lí" : "Nhân viên";
+  const subject = "Tài khoản quản lí nhà hàng trên munchmap";
   const text =
     `Xin chào ${fullName},\n\n` +
-    `Bạn đã được cấp tài khoản ${roleLabel} trên Amble.\n` +
+    `Bạn đã được cấp tài khoản ${roleLabel} trên munchmap.\n` +
     `Email: ${email}\n` +
     `Mật khẩu tạm: ${password}\n\n` +
     `Vui lòng đăng nhập và đổi mật khẩu sớm.\n`;
@@ -48,7 +49,7 @@ const sendCredentialsEmail = async ({ to, fullName, email, password, role }) => 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5">
       <h3>Xin chào ${fullName},</h3>
-      <p>Bạn đã được cấp tài khoản <b>${roleLabel}</b> trên Amble.</p>
+      <p>Bạn đã được cấp tài khoản <b>${roleLabel}</b> trên munchmap.</p>
       <p><b>Email:</b> ${email}<br/><b>Mật khẩu tạm:</b> ${password}</p>
       <p>Vui lòng đăng nhập và đổi mật khẩu sớm.</p>
     </div>
@@ -60,6 +61,7 @@ const sendCredentialsEmail = async ({ to, fullName, email, password, role }) => 
 exports.getStaffMembers = async (req, res) => {
   try {
     if (!ensureRestaurantScope(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
 
     const staff = await Partner.find({
       restaurantId: req.partner.restaurantId,
@@ -81,7 +83,7 @@ exports.getStaffMembers = async (req, res) => {
 exports.createStaffMember = async (req, res) => {
   try {
     if (!ensureRestaurantScope(req, res)) return;
-    if (!ensureOwnerRole(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
 
     const { fullName, email, phone, role = "staff", sendMethod = "email" } =
       req.body || {};
@@ -157,7 +159,7 @@ exports.createStaffMember = async (req, res) => {
     delivery.message =
       delivery.email.sent || delivery.sms.sent
         ? "Đã tạo tài khoản và gửi thông tin đăng nhập."
-        : "Đã tạo tài khoản. Chưa gửi được thông tin đăng nhập tự động.";
+        : "Đã tạo tài khoản. Chưa gửi được thông tin đăng nhập từ động.";
 
     return res.status(201).json({
       success: true,
@@ -187,7 +189,7 @@ exports.createStaffMember = async (req, res) => {
 exports.updateStaffMember = async (req, res) => {
   try {
     if (!ensureRestaurantScope(req, res)) return;
-    if (!ensureOwnerRole(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
 
     const staff = await Partner.findOne({
       _id: req.params.staffId,
@@ -235,7 +237,7 @@ exports.updateStaffMember = async (req, res) => {
 exports.resendStaffCredentials = async (req, res) => {
   try {
     if (!ensureRestaurantScope(req, res)) return;
-    if (!ensureOwnerRole(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
 
     const staff = await Partner.findOne({
       _id: req.params.staffId,
@@ -295,7 +297,7 @@ exports.resendStaffCredentials = async (req, res) => {
     delivery.message =
       delivery.email.sent || delivery.sms.sent
         ? "Đã gửi lại thông tin đăng nhập."
-        : "Đã reset mật khẩu tạm nhưng chưa gửi được tự động.";
+        : "Đã reset mật khẩu tạm nhưng chưa gửi được từ động.";
 
     return res.json({
       success: true,
@@ -312,3 +314,45 @@ exports.resendStaffCredentials = async (req, res) => {
   }
 };
 
+exports.changeStaffPassword = async (req, res) => {
+  try {
+    if (!ensureRestaurantScope(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
+
+    const staff = await Partner.findOne({
+      _id: req.params.staffId,
+      restaurantId: req.partner.restaurantId,
+      role: { $in: ["manager", "staff"] },
+    }).select("+password");
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy nhân sự.",
+      });
+    }
+
+    const { newPassword } = req.body || {};
+    const normalizedPassword = String(newPassword || "").trim();
+    if (normalizedPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự.",
+      });
+    }
+
+    staff.password = normalizedPassword;
+    await staff.save();
+
+    return res.json({
+      success: true,
+      message: "Đã đổi mật khẩu nhân sự thành công.",
+    });
+  } catch (error) {
+    console.error("[partner/changeStaffPassword]", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể đổi mật khẩu nhân sự.",
+    });
+  }
+};

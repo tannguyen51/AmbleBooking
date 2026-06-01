@@ -38,11 +38,9 @@ const EMPTY_STATS: DashboardStats = {
 };
 
 const ACTIONS = [
-  { label: "Người Dùng", icon: "people", path: "/admin/users" },
   { label: "Đối Tác", icon: "business", path: "/admin/partners" },
   { label: "Nhà Hàng", icon: "restaurant", path: "/admin/restaurants" },
   { label: "Đơn Hàng", icon: "calendar", path: "/admin/bookings" },
-  { label: "Điểm Thưởng", icon: "trophy", path: "/admin/rewards" },
   { label: "Tuyến Đường", icon: "map", path: "/admin/routes" },
 ];
 

@@ -12,10 +12,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { PartnerBottomNav } from "../components/partner/PartnerBottomNav";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { partnerDashboardAPI, partnerStaffAPI } from "../services/api";
-import { hasPartnerPermission } from "../constants/partnerPermissions";
 
 type StaffRole = "manager" | "staff";
 
@@ -29,23 +29,28 @@ type StaffMember = {
 };
 
 export default function TeamManagementScreen() {
-  const { partner } = usePartnerAuthStore();
+  const router = useRouter();
+  const { partner, isAuthenticated } = usePartnerAuthStore();
   const currentRole = partner?.role;
-  const canView = hasPartnerPermission(currentRole, "staff:view");
-  const canCreate = hasPartnerPermission(currentRole, "staff:create");
-  const canUpdate = hasPartnerPermission(currentRole, "staff:update");
+  const canView = currentRole === "owner";
+  const canCreate = currentRole === "owner";
+  const canUpdate = currentRole === "owner";
 
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [members, setMembers] = useState<StaffMember[]>([]);
-
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<StaffRole>("staff");
 
+
   const loadData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const [overviewRes, membersRes] = await Promise.all([
         partnerDashboardAPI.getOverview(),
@@ -63,11 +68,17 @@ export default function TeamManagementScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [canView]);
+  }, [canView, isAuthenticated]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (isAuthenticated && !canView) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, canView, router]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -145,22 +156,13 @@ export default function TeamManagementScreen() {
     }
   };
 
-  if (!canView) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.blockedWrap}>
-          <Ionicons name="lock-closed-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.blockedTitle}>Không có quyền truy cập</Text>
-          <Text style={styles.blockedText}>
-            Chỉ chủ nhà hàng (Owner) mới được quản lý tài khoản quản lý/nhân viên.
-          </Text>
-        </View>
-        <PartnerBottomNav pendingCount={pendingCount} />
-      </SafeAreaView>
-    );
+
+  if (!isAuthenticated || !canView) {
+    return null;
   }
 
   return (
+    <>
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Quản lý nhân sự nhà hàng</Text>
@@ -262,7 +264,7 @@ export default function TeamManagementScreen() {
                   onPress={() => toggleMemberStatus(item)}
                 >
                   <Text style={styles.smallBtnText}>
-                    {item.isActive ? "Khoá" : "Mở"}
+                    {item.isActive ? "Khóa" : "Mở"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -270,8 +272,10 @@ export default function TeamManagementScreen() {
           )}
         />
       </View>
+
       <PartnerBottomNav pendingCount={pendingCount} />
     </SafeAreaView>
+    </>
   );
 }
 
@@ -352,13 +356,4 @@ const styles = StyleSheet.create({
   disableBtn: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
   enableBtn: { borderColor: "#86EFAC", backgroundColor: "#F0FDF4" },
   emptyText: { color: "#9CA3AF", textAlign: "center", marginTop: 12, marginBottom: 20 },
-  blockedWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 30,
-    gap: 6,
-  },
-  blockedTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
-  blockedText: { textAlign: "center", color: "#6B7280", fontSize: 13 },
 });

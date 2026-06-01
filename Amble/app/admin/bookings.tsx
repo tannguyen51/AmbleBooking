@@ -324,7 +324,7 @@ export default function AdminBookingsScreen() {
                 </View>
               ) : null}
 
-              {item.status === "refund_pending" ? (
+              {false && item.status === "refund_pending" ? (
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionPrimary]}
@@ -345,7 +345,7 @@ export default function AdminBookingsScreen() {
                     <Text style={styles.actionTextPrimary}>Đã Hoàn</Text>
                   </TouchableOpacity>
                 </View>
-              ) : MANAGEABLE_STATUSES.has(item.status) ? (
+              ) : false && MANAGEABLE_STATUSES.has(item.status) ? (
                 <View style={styles.actionsRow}>
                   {item.status !== "confirmed" ? (
                     <TouchableOpacity
@@ -666,3 +666,4 @@ const styles = StyleSheet.create({
     color: adminTheme.colors.onDanger,
   },
 });
+

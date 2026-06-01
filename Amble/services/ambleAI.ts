@@ -19,6 +19,9 @@ export interface BookingDraft {
   location?: string;
   tableType?: "vip" | "view" | "regular";
   restaurantName?: string;
+  maxDeposit?: number;
+  minDeposit?: number;
+  deposit?: number;
 }
 
 export interface QuickReply {
@@ -126,32 +129,71 @@ async function callClaude(
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Bạn là Amble AI — trợ lý đặt bàn thông minh của Amble.
+const SYSTEM_PROMPT = `Bạn là munchmap AI — trợ lý đặt bàn thông minh của munchmap.
 Hôm nay: 2026-03-14
 
-## NGUYÊN TẮC
-- Thân thiện, tự nhiên, ngắn gọn (2-3 câu)
-- KHÔNG hỏi từng câu riêng lẻ — nếu cần hỏi thì gộp 1 câu
-- Khi đủ thông tin → trả JSON ngay, KHÔNG hỏi thêm
+## QUY TẮC VÀNG
+- Luôn thân thiện, tự nhiên, ngắn gọn (tối đa 2-3 câu)
+- KHÔNG hỏi từng câu riêng lẻ — gộp tối đa thông tin cần hỏi vào 1 câu
+- Khi đã đủ thông tin → CHỈ trả JSON, KHÔNG thêm bất kỳ chữ nào ngoài JSON
 
-## XỬ LÝ TÊN NHÀ HÀNG CỤ THỂ
-Nếu user nhắc tên nhà hàng cụ thể (vd: "nhà hàng Sakura", "The Rooftop"):
-=> Thêm field "restaurantName" vào JSON để tìm đúng nhà hàng đó
-=> JSON: {"action":"search","restaurantName":"Sakura",...các field khác...}
+## KHI NÀO TRẢ JSON?
+Chỉ trả JSON khi hội tụ ĐỦ các điều kiện:
+1. Đã biết mục đích (hoặc có thể mặc định "casual")
+2. Đã biết ngày (hoặc có thể mặc định hôm nay)
+3. Đã biết giờ (hoặc có thể mặc định 19:00)
+4. Đã biết số người (hoặc có thể mặc định 2)
+5. Đã biết khu vực / thành phố (hoặc có thể mặc định "Ho Chi Minh")
+6. Đã biết loại bàn (hoặc có thể mặc định "regular")
 
-Nếu KHÔNG có tên nhà hàng → KHÔNG có field restaurantName trong JSON
+## HAI LOẠI JSON: "search_restaurants" vs "search"
 
-## KHI ĐỦ THÔNG TIN → CHỈ TRẢ JSON (không thêm text):
-{"action":"search","purpose":"casual","date":"YYYY-MM-DD","time":"HH:mm","partySize":2,"location":"Ho Chi Minh","tableType":"regular"}
+Dung action:"search_restaurants" khi:
+- User muon tim / xem / goi y nha hang
+- User hoi "co nha hang nao o...", "quan ngon o...", "nha hang Quan 7"
+- Ket qua: liet ke NHA HANG (ten, dia chi, danh gia)
+- JSON: {"action":"search_restaurants","location":"Quan 7"}
 
-## GIÁ TRỊ MẶC ĐỊNH
-purpose=casual, date=2026-03-14, time=19:00, partySize=2, location=Ho Chi Minh, tableType=regular
+Dung action:"search" khi:
+- User muon dat ban, tim ban cu the, xem ban trong
+- User noi "ban", "dat ban", "coc", "tim ban"
+- Ket qua: liet ke BAN voi gia, suc chua, hinh anh
+- JSON: {"action":"search","purpose":"date","date":"2026-03-14","time":"19:00","partySize":2,"location":"Quan 1","tableType":"regular"}
 
-## CÁC TRƯỜNG HỢP KHÁC
-- Chào hỏi → chào lại + giới thiệu Amble AI ngắn
-- Hỏi Amble → app đặt bàn nhà hàng tại Việt Nam
-- Không liên quan → trả lời ngắn + gợi ý đặt bàn
-- Mơ hồ ("tuỳ","gì cũng được") → dùng default, trả JSON ngay`;
+## LOC THEO GIA COC (3 che do):
+- Chinh xac: user noi "ban 300k" => them "deposit":300000 vao JSON
+- Trong khoang: user noi "tu 200k den 500k" => them "minDeposit":200000,"maxDeposit":500000
+- Toi da: user noi "duoi 300k" => them "maxDeposit":300000
+
+VD: {"action":"search","deposit":300000,"location":"Quan 1"}
+
+## QUAN TRONG - PHAN BIET RO:
+- "tim nha hang" => search_restaurants (chi liet ke nha hang)
+- "tim ban" / "dat ban" => search (liet ke ban + gia coc)
+
+## GIÁ TRỊ MẶC ĐỊNH (nếu user không cung cấp):
+purpose=casual, date=hôm nay, time=19:00, partySize=2, location=Ho Chi Minh, tableType=regular
+
+## QUAN TRỌNG - XỬ LÝ ĐỊA ĐIỂM:
+- Đặt location là địa điểm user yêu cầu (VD: "Quận 1", "Thủ Đức", "Hồ Chí Minh", "Hà Nội")
+- Hệ thống sẽ tìm kiếm trong cả city và address, nên có thể dùng tên quận/huyện hoặc thành phố
+- Nếu user không nói địa điểm → location mặc định "Hồ Chí Minh"
+
+## CÁC TRƯỜNG HỢP ĐẶC BIỆT
+- Chào hỏi → chào lại + giới thiệu ngắn munchmap AI + gợi ý đặt bàn
+- Hỏi "munchmap là gì" → app đặt bàn nhà hàng tại Việt Nam, giới thiệu ngắn
+- Câu hỏi không liên quan đặt bàn → trả lời ngắn 1 câu rồi gợi ý đặt bàn
+- User nói "tuỳ", "gì cũng được", "sao cũng được" → DÙNG GIÁ TRỊ MẶC ĐỊNH, trả JSON NGAY, không hỏi thêm
+
+## FEW-SHOT MẪU
+User: "Đặt bàn hẹn hò ở Sài Gòn"
+AI: {"action":"search","purpose":"date","date":"2026-03-14","time":"19:00","partySize":2,"location":"Ho Chi Minh","tableType":"regular"}
+
+User: "Nhà hàng Sakura"
+AI: {"action":"search","purpose":"casual","date":"2026-03-14","time":"19:00","partySize":2,"location":"Ho Chi Minh","tableType":"regular","restaurantName":"Sakura"}
+
+User: "Hello"
+AI: Chào bạn! Mình là munchmap AI, trợ lý đặt bàn thông minh. Bạn muốn đặt bàn hẹn hò, gia đình hay tìm nhà hàng ngon?`;
 
 // ─── Quick replies theo step ──────────────────────────────────────────────────
 
@@ -188,9 +230,9 @@ const STEP_QUICK_REPLIES: Partial<Record<BookingStep, QuickReply[]>> = {
     { id: "3", text: "6 người", value: "6 người" },
   ],
   location: [
-    { id: "1", text: "Quận 1", value: "Quận 1" },
-    { id: "2", text: "Quận 3", value: "Quận 3" },
-    { id: "3", text: "Quận 7", value: "Quận 7" },
+    { id: "1", text: "Hồ Chí Minh", value: "Hồ Chí Minh" },
+    { id: "2", text: "Hà Nội", value: "Hà Nội" },
+    { id: "3", text: "Đà Nẵng", value: "Đà Nẵng" },
     { id: "4", text: "Gần tôi", value: "Gần tôi" },
   ],
   tableType: [
@@ -237,10 +279,12 @@ function parseSearchJSON(
   text: string,
 ): (BookingDraft & { restaurantName?: string }) | null {
   try {
-    const match = text.match(/\{[\s\S]*?"action"\s*:\s*"search"[\s\S]*?\}/);
+    const match = text.match(/\{[\s\S]*?["'][aA]ction["']\s*:\s*["']search[^"']*["'][\s\S]*?\}/);
     if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    if (parsed.action !== "search") return null;
+    // Chuan hoa single quotes -> double quotes de JSON.parse khong bi loi
+    let jsonStr = match[0].replace(/['\u2018\u2019]/g, '"');
+    const parsed = JSON.parse(jsonStr);
+    if (parsed.action !== "search" && parsed.action !== "search_restaurants") return null;
     return {
       purpose: parsed.purpose,
       date: parsed.date,
@@ -248,7 +292,10 @@ function parseSearchJSON(
       partySize: parseInt(parsed.partySize) || 2,
       location: parsed.location,
       tableType: parsed.tableType,
-      restaurantName: parsed.restaurantName, // tên nhà hàng cụ thể nếu có
+      restaurantName: parsed.restaurantName,
+      maxDeposit: parsed.maxDeposit ? parseInt(parsed.maxDeposit) : undefined,
+      minDeposit: parsed.minDeposit ? parseInt(parsed.minDeposit) : undefined,
+      deposit: parsed.deposit ? parseInt(parsed.deposit) : undefined,
     };
   } catch {
     return null;
@@ -278,12 +325,9 @@ async function fetchTableCards(
     } else {
       // Không có tên cụ thể → tìm theo city
       restaurants = await restaurantApi.searchRestaurants({
-        city: draft.location,
+        search: draft.location,
       });
-      if (!restaurants?.length) {
-        console.log("[AI] city not matched, fetching all");
-        restaurants = await restaurantApi.searchRestaurants({});
-      }
+      // KHONG fallback lay tat ca - neu khong tim thay thi tra ve rong
     }
 
     if (!restaurants?.length) {
@@ -317,7 +361,15 @@ async function fetchTableCards(
             // isActive: bàn phải đang hoạt động
             const activeOk = t.isActive !== false;
 
-            return typeOk && capOk && activeOk;
+            // Giá cọc: 3 chế độ — chính xác / trong khoảng / tối đa
+            const baseDep = t.pricing?.baseDeposit || 0;
+            const depositOk = draft.deposit
+              ? baseDep === draft.deposit          // chính xác: "bàn giá 300k" → deposit=300000
+              : draft.minDeposit
+                ? baseDep >= draft.minDeposit && baseDep <= (draft.maxDeposit || Infinity)  // khoảng: "200k-500k" → min=200k, max=500k
+                : !draft.maxDeposit || baseDep <= draft.maxDeposit;  // tối đa: "dưới 300k" → maxDeposit=300k
+
+            return typeOk && capOk && activeOk && depositOk;
           });
 
           console.log("[AI]", r.name, "- matched tables:", matched.length);
@@ -375,9 +427,44 @@ export const ambleAI = {
         { role: "assistant" as const, content: rawResponse },
       ];
 
-      // ── Claude trả về JSON → tìm bàn ────────────────
+      // ── Claude trả về JSON → tìm NH hoặc bàn ──────
       const searchDraft = parseSearchJSON(rawResponse);
+      const rawText = rawResponse;
       if (searchDraft) {
+        // Nếu là search_restaurants => liệt kê NH, không fetch bàn
+        const isRestaurantSearch = rawText.includes('"action":"search_restaurants"');
+
+        if (isRestaurantSearch) {
+          console.log("[AI] search_restaurants location:", searchDraft.location);
+          const restResult = await restaurantApi.searchRestaurants({ search: searchDraft.location || "" });
+          console.log("[AI] search_restaurants results:", restResult?.length);
+          if (!restResult?.length) {
+            return {
+              response: {
+                text: "Hiện không có nhà hàng ở " + (searchDraft.location || "khu vực này") + ".\nBạn muốn thử khu vực khác không?",
+                quickReplies: [
+                  { id: "1", text: "Thử khu vực khác", value: "Thử khu vực khác" },
+                  { id: "2", text: "Tìm tất cả", value: "Tìm tất cả nhà hàng" },
+                ],
+                step: "results",
+                draft: searchDraft,
+                restaurants: [],
+              },
+              session: { step: "results", draft: searchDraft, history: newHistory },
+            };
+          }
+          return {
+            response: {
+              text: "Tìm thấy **" + restResult.length + " nhà hàng** ở **" + searchDraft.location + "**! 👇",
+              restaurants: restResult,
+              step: "results",
+              draft: searchDraft,
+            },
+            session: { step: "results", draft: searchDraft, history: newHistory },
+          };
+        }
+
+        // search => tìm bàn (flow cũ)
         const result = await fetchTableCards(searchDraft);
         const { cards, notFound } = result;
 
@@ -385,7 +472,7 @@ export const ambleAI = {
         if (notFound && searchDraft.restaurantName) {
           return {
             response: {
-              text: `Nhà hàng **${searchDraft.restaurantName}** hiện chưa hợp tác với Amble.\n\nBạn muốn mình tìm nhà hàng tương tự không? 🍽️`,
+              text: `Nhà hàng **${searchDraft.restaurantName}** hiện chưa hợp tác với munchmap.\n\nBạn muốn mình tìm nhà hàng tương tự không? 🍽️`,
               quickReplies: [
                 {
                   id: "1",

@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
@@ -49,6 +50,7 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export default function AdminPartnersScreen() {
+  const router = useRouter();
   const [status, setStatus] = useState<
     PartnerItem["subscriptionStatus"] | "all"
   >("pending");
@@ -204,62 +206,67 @@ export default function AdminPartnersScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <AdminCard style={styles.card}>
-              <Text style={styles.name}>{item.ownerName}</Text>
-              <Text style={styles.meta}>{item.restaurantName}</Text>
-              <Text style={styles.meta}>{item.email}</Text>
-              {item.subscriptionStatus === "cancelled" && item.rejectionReason ? (
-                <Text style={styles.metaDanger}>{item.rejectionReason}</Text>
-              ) : null}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push(`/admin/partners/${item._id}` as any)}
+            >
+              <AdminCard style={styles.card}>
+                <Text style={styles.name}>{item.ownerName}</Text>
+                <Text style={styles.meta}>{item.restaurantName}</Text>
+                <Text style={styles.meta}>{item.email}</Text>
+                {item.subscriptionStatus === "cancelled" && item.rejectionReason ? (
+                  <Text style={styles.metaDanger}>{item.rejectionReason}</Text>
+                ) : null}
 
-              <View style={styles.badgeRow}>
-                <Badge
-                  label={toLabelCase(item.subscriptionStatus)}
-                  tone={
-                    item.subscriptionStatus === "pending"
-                      ? "warning"
-                      : item.subscriptionStatus === "active"
-                        ? "success"
-                        : item.subscriptionStatus === "expired"
-                          ? "danger"
-                          : "default"
-                  }
-                />
-                <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
-                <Badge
-                  label={item.isActive ? "Active" : "Locked"}
-                  tone={item.isActive ? "success" : "danger"}
-                />
-              </View>
+                <View style={styles.badgeRow}>
+                  <Badge
+                    label={toLabelCase(item.subscriptionStatus)}
+                    tone={
+                      item.subscriptionStatus === "pending"
+                        ? "warning"
+                        : item.subscriptionStatus === "active"
+                          ? "success"
+                          : item.subscriptionStatus === "expired"
+                            ? "danger"
+                            : "default"
+                    }
+                  />
+                  <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
+                  <Badge
+                    label={item.isActive ? "Active" : "Locked"}
+                    tone={item.isActive ? "success" : "danger"}
+                  />
+                </View>
 
-              <View style={styles.actionsRow}>
-                {item.subscriptionStatus === "pending" ? (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionPrimary]}
-                      onPress={() => openApprove(item)}
-                    >
-                      <Text style={styles.actionTextPrimary}>Duyệt</Text>
-                    </TouchableOpacity>
+                <View style={styles.actionsRow}>
+                  {item.subscriptionStatus === "pending" ? (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.actionPrimary]}
+                        onPress={() => openApprove(item)}
+                      >
+                        <Text style={styles.actionTextPrimary}>Duyệt</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.actionGhost]}
+                        onPress={() => openReject(item)}
+                      >
+                        <Text style={styles.actionText}>Từ chối</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.actionGhost]}
-                      onPress={() => openReject(item)}
+                      onPress={() => toggleActive(item)}
                     >
-                      <Text style={styles.actionText}>Từ chối</Text>
+                      <Text style={styles.actionText}>
+                        {item.isActive ? "Khóa" : "Mở khóa"}
+                      </Text>
                     </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.actionGhost]}
-                    onPress={() => toggleActive(item)}
-                  >
-                    <Text style={styles.actionText}>
-                      {item.isActive ? "Khóa" : "Mở khóa"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </AdminCard>
+                  )}
+                </View>
+              </AdminCard>
+            </TouchableOpacity>
           )}
         />
       )}

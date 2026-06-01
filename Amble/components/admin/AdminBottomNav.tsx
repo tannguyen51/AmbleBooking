@@ -6,7 +6,6 @@ import { adminTheme } from "../../constants/adminTheme";
 
 const TABS = [
   { name: "dashboard", label: "Tổng Quan", icon: "speedometer" },
-  { name: "users", label: "Người Dùng", icon: "people" },
   { name: "partners", label: "Đối Tác", icon: "business" },
   { name: "restaurants", label: "Nhà Hàng", icon: "restaurant" },
   { name: "bookings", label: "Đơn Hàng", icon: "calendar" },

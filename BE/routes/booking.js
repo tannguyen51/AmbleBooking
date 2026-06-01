@@ -22,4 +22,5 @@ router.delete("/:bookingId/cancel", bookingController.cancelBooking); // ‚Üê m·ª
 router.get("/user/:userId", bookingController.getUserBookings);
 router.get("/:bookingId", bookingController.getBookingById);
 
+
 module.exports = router;

@@ -270,7 +270,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
-      text: "Xin chào! Mình là **Amble AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
+      text: "Xin chào! Mình là **munchmap AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -362,14 +362,12 @@ export default function ChatScreen() {
         <View style={[s.msgRow, isUser ? s.msgRowUser : s.msgRowAI]}>
           {/* AI avatar */}
           {!isUser && (
-            <LinearGradient
-              colors={["#ff8b25", "#FFD700"]}
-              style={s.aiAvatar}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="sparkles" size={14} color="#fff" />
-            </LinearGradient>
+            <View style={s.aiAvatar}>
+              <Image
+                source={require("../../assets/images/chatbot-speech-bubble.png")}
+                style={s.aiAvatarImg}
+              />
+            </View>
           )}
 
           {/* Bubble */}
@@ -498,10 +496,13 @@ export default function ChatScreen() {
         >
           <View style={s.headerLeft}>
             <View style={s.headerAvatar}>
-              <Ionicons name="sparkles" size={18} color="#FF6B35" />
+              <Image
+                source={require("../../assets/images/chatbot-speech-bubble.png")}
+                style={s.headerAvatarImg}
+              />
             </View>
             <View>
-              <Text style={s.headerTitle}>Amble AI</Text>
+              <Text style={s.headerTitle}>munchmap AI</Text>
               <View style={s.headerOnline}>
                 <View style={s.onlineDot} />
                 <Text style={s.headerSub}>Luôn sẵn sàng hỗ trợ</Text>
@@ -539,14 +540,12 @@ export default function ChatScreen() {
         {/* Typing indicator */}
         {loading && (
           <View style={s.typing}>
-            <LinearGradient
-              colors={["#FF6B35", "#FFD700"]}
-              style={s.typingAvatar}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="sparkles" size={12} color="#fff" />
-            </LinearGradient>
+          <View style={s.typingAvatar}>
+              <Image
+                source={require("../../assets/images/chatbot-speech-bubble.png")}
+                style={s.typingAvatarImg}
+              />
+            </View>
             <View style={s.typingBubble}>
               <ActivityIndicator size="small" color={PRIMARY} />
               <Text style={s.typingText}>Đang tìm kiếm...</Text>
@@ -577,7 +576,7 @@ export default function ChatScreen() {
           <View style={s.inputWrap}>
             <TextInput
               style={s.input}
-              placeholder="Nhắn Amble AI..."
+              placeholder="Nhắn munchmap AI..."
               placeholderTextColor="#9CA3AF"
               value={inputText}
               onChangeText={setInputText}
@@ -626,6 +625,12 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  headerAvatarImg: {
+    width: 24,
+    height: 24,
+    resizeMode: "contain",
   },
   headerTitle: { fontSize: 16, fontWeight: "800", color: "#fff" },
   headerOnline: {
@@ -659,6 +664,18 @@ const s = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: "hidden",
+  },
+  aiAvatarImg: {
+    width: 20,
+    height: 20,
+    resizeMode: "contain",
   },
   userAvatar: {
     width: 28,
@@ -714,8 +731,20 @@ const s = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: "hidden",
+  },
+  typingAvatarImg: {
+    width: 18,
+    height: 18,
+    resizeMode: "contain",
   },
   typingBubble: {
     flexDirection: "row",

@@ -18,6 +18,8 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
+import { usePartnerAuthStore } from "../../store/partnerAuthStore";
+import { hasPartnerPermission } from "../../constants/partnerPermissions";
 
 type TableFilter = "all" | "available" | "booked";
 type TableType = "regular" | "standard" | "view" | "vip";
@@ -142,6 +144,8 @@ export default function PartnerTablesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [form, setForm] = useState<TableFormState>(DEFAULT_FORM);
+  const { partner } = usePartnerAuthStore();
+  const canManageTables = hasPartnerPermission(partner?.role, "tables:manage");
 
   const resetForm = () => {
     setForm(DEFAULT_FORM);
@@ -375,21 +379,23 @@ export default function PartnerTablesScreen() {
       <View style={styles.headerWrap}>
         <Text style={styles.headerTitle}>Quản lý bàn</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={openCreateModal}
-            disabled={isSubmitting}
-          >
-            <LinearGradient
-              colors={["#ff8b25", "#ffd109"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.addBtnGradient}
+          {canManageTables && (
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={openCreateModal}
+              disabled={isSubmitting}
             >
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={styles.addBtnText}>Thêm bàn</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={["#ff8b25", "#ffd109"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.addBtnGradient}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.addBtnText}>Thêm bàn</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.push("/dashboard")}
@@ -546,24 +552,26 @@ export default function PartnerTablesScreen() {
                   </View>
                 )}
 
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.editBtn]}
-                    onPress={() => openEditModal(table)}
-                    disabled={isSubmitting}
-                  >
-                    <Ionicons name="create-outline" size={14} color="#1D4ED8" />
-                    <Text style={styles.editBtnText}>Sửa</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.deleteBtn]}
-                    onPress={() => handleDelete(table.id)}
-                    disabled={isSubmitting}
-                  >
-                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                    <Text style={styles.deleteBtnText}>Xóa</Text>
-                  </TouchableOpacity>
-                </View>
+                {canManageTables && (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.editBtn]}
+                      onPress={() => openEditModal(table)}
+                      disabled={isSubmitting}
+                    >
+                      <Ionicons name="create-outline" size={14} color="#1D4ED8" />
+                      <Text style={styles.editBtnText}>Sửa</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.deleteBtn]}
+                      onPress={() => handleDelete(table.id)}
+                      disabled={isSubmitting}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                      <Text style={styles.deleteBtnText}>Xóa</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             );
           })

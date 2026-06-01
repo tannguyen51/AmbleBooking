@@ -13,11 +13,14 @@ import {
   Dimensions,
   Share,
   Alert,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { restaurantAPI } from "../../services/api";
+import * as ImagePicker from "expo-image-picker";
+import { bookingAPI, restaurantAPI } from "../../services/api";
+import { useAuthStore } from "../../store/authStore";
 
 // ─── Design tokens ────────────────────────────────────────
 const PRIMARY = "#FF6B35";
@@ -69,6 +72,19 @@ interface Restaurant {
   website: string;
 }
 
+interface ReviewItem {
+  _id: string;
+  rating: number;
+  comment: string;
+  images?: string[];
+  bookingId?: string;
+  createdAt?: string;
+  userId?: {
+    fullName?: string;
+    avatar?: string;
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────
 const DAY_LABEL: Record<string, string> = {
   mon: "T2",
@@ -82,6 +98,7 @@ const DAY_LABEL: Record<string, string> = {
 
 const FALLBACK =
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80";
+const MAX_REVIEW_IMAGES = 6;
 
 const isOpenNow = (openTime: string, closeTime: string): boolean => {
   try {
@@ -170,12 +187,22 @@ const SocialBtn = ({
 export default function DetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user, isAuthenticated } = useAuthStore();
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFav, setIsFav] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(true);
+  const [eligibleBookingId, setEligibleBookingId] = useState<string>("");
+  const [canWriteReview, setCanWriteReview] = useState(false);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [draftRating, setDraftRating] = useState(5);
+  const [draftComment, setDraftComment] = useState("");
+  const [draftImages, setDraftImages] = useState<string[]>([]);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // ── Fetch từ BE: GET /api/restaurants/:id ─────────────────
   const fetchDetail = useCallback(async () => {
@@ -195,9 +222,131 @@ export default function DetailScreen() {
     }
   }, [id]);
 
+  const fetchReviews = useCallback(async () => {
+    if (!id) return;
+    setReviewLoading(true);
+    try {
+      const res = await restaurantAPI.getReviews(id as string);
+      setReviews(res.data?.reviews || []);
+    } catch {
+      setReviews([]);
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [id]);
+
+  const fetchReviewEligibility = useCallback(async () => {
+    if (!id || !user?._id || !isAuthenticated) {
+      setCanWriteReview(false);
+      setEligibleBookingId("");
+      return;
+    }
+
+    setCheckingEligibility(true);
+    try {
+      const res = await bookingAPI.getUserBookings(user._id);
+      const bookings = res.data?.bookings || [];
+      const reviewedBookingIds = new Set(
+        reviews.map((r) => String(r.bookingId || "")),
+      );
+
+      const eligible = bookings.find((b: any) => {
+        const bookingRestaurantId =
+          typeof b.restaurantId === "string" ? b.restaurantId : b.restaurantId?._id;
+        const bookingStatus = String(b.status || "");
+
+        return (
+          String(bookingRestaurantId || "") === String(id) &&
+          ["confirmed", "paid", "completed"].includes(bookingStatus) &&
+          !reviewedBookingIds.has(String(b._id))
+        );
+      });
+
+      if (eligible?._id) {
+        setCanWriteReview(true);
+        setEligibleBookingId(String(eligible._id));
+      } else {
+        setCanWriteReview(false);
+        setEligibleBookingId("");
+      }
+    } catch {
+      setCanWriteReview(false);
+      setEligibleBookingId("");
+    } finally {
+      setCheckingEligibility(false);
+    }
+  }, [id, isAuthenticated, reviews, user?._id]);
+
   useEffect(() => {
     fetchDetail();
-  }, [fetchDetail]);
+    fetchReviews();
+  }, [fetchDetail, fetchReviews]);
+
+  useEffect(() => {
+    fetchReviewEligibility();
+  }, [fetchReviewEligibility]);
+
+  const addReviewImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Thông báo", "Vui lòng cấp quyền thư viện ảnh.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.7,
+      base64: true,
+      selectionLimit: Math.max(0, MAX_REVIEW_IMAGES - draftImages.length),
+    });
+
+    if (result.canceled) return;
+
+    const next = result.assets
+      .map((asset) =>
+        asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri,
+      )
+      .filter(Boolean);
+
+    setDraftImages((prev) => [...prev, ...next].slice(0, MAX_REVIEW_IMAGES));
+  };
+
+  const removeReviewImage = (uri: string) => {
+    setDraftImages((prev) => prev.filter((img) => img !== uri));
+  };
+
+  const submitReview = async () => {
+    if (!id || !eligibleBookingId) return;
+
+    try {
+      setSubmittingReview(true);
+      const res = await restaurantAPI.createReview(String(id), {
+        rating: draftRating,
+        comment: draftComment,
+        images: draftImages,
+        bookingId: eligibleBookingId,
+      });
+
+      setDraftRating(5);
+      setDraftComment("");
+      setDraftImages([]);
+      await fetchDetail();
+      await fetchReviews();
+      const earned = res.data?.rewardPoints;
+      const msg = earned
+        ? `Đánh giá của bạn đã được gửi. Bạn nhận được +${earned} điểm thưởng!`
+        : "Đánh giá của bạn đã được gửi.";
+      Alert.alert("Thành công", msg);
+    } catch (error: any) {
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Không thể gửi đánh giá.",
+      );
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const openMap = () => {
     if (!restaurant) return;
@@ -217,11 +366,11 @@ export default function DetailScreen() {
     try {
       await Share.share({
         message:
-          `Amble Restaurant\n\n` +
+          `munchmap Restaurant\n\n` +
           `Name: ${restaurant.name}\n` +
           `Address: ${restaurant.address || restaurant.location}\n` +
           `Rating: ${restaurant.rating} (${restaurant.reviewCount} reviews)\n\n` +
-          `Discover this restaurant on Amble!`,
+          `Discover this restaurant on munchmap!`,
       });
     } catch {
       /* silent */
@@ -563,6 +712,124 @@ export default function DetailScreen() {
             </View>
           ) : null}
 
+          {/* ── Đánh giá ── */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Đánh giá từ khách</Text>
+            {checkingEligibility ? (
+              <View style={s.reviewLoading}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={s.reviewLoadingText}>Đang kiểm tra quyền đánh giá...</Text>
+              </View>
+            ) : canWriteReview ? (
+              <View style={s.writeReviewCard}>
+                <Text style={s.writeReviewTitle}>Viết đánh giá của bạn</Text>
+                <View style={s.writeStarsRow}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <TouchableOpacity
+                      key={n}
+                      onPress={() => setDraftRating(n)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={n <= draftRating ? "star" : "star-outline"}
+                        size={24}
+                        color="#F59E0B"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={s.writeReviewInput}
+                  placeholder="Chia sẻ trải nghiệm của bạn..."
+                  placeholderTextColor="#9CA3AF"
+                  value={draftComment}
+                  onChangeText={setDraftComment}
+                  multiline
+                />
+                <TouchableOpacity style={s.addReviewImageBtn} onPress={addReviewImages}>
+                  <Ionicons name="images-outline" size={16} color="#374151" />
+                  <Text style={s.addReviewImageText}>
+                    Thêm ảnh ({draftImages.length}/{MAX_REVIEW_IMAGES})
+                  </Text>
+                </TouchableOpacity>
+                {draftImages.length > 0 ? (
+                  <View style={s.reviewImageGrid}>
+                    {draftImages.map((img) => (
+                      <View key={img} style={s.reviewImageWrap}>
+                        <Image source={{ uri: img }} style={s.reviewImage} />
+                        <TouchableOpacity
+                          style={s.removeReviewImageBtn}
+                          onPress={() => removeReviewImage(img)}
+                        >
+                          <Ionicons name="close" size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+                <TouchableOpacity
+                  style={[s.submitReviewBtn, submittingReview && { opacity: 0.7 }]}
+                  onPress={submitReview}
+                  disabled={submittingReview}
+                >
+                  {submittingReview ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={s.submitReviewBtnText}>Gửi đánh giá</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            {reviewLoading ? (
+              <View style={s.reviewLoading}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={s.reviewLoadingText}>Đang tải đánh giá...</Text>
+              </View>
+            ) : reviews.length === 0 ? (
+              <Text style={s.emptyReviewText}>Chưa có đánh giá nào.</Text>
+            ) : (
+              <View style={s.reviewList}>
+                {reviews.map((review) => (
+                  <View key={review._id} style={s.reviewCard}>
+                    <View style={s.reviewHeader}>
+                      <Text style={s.reviewName}>
+                        {review.userId?.fullName || "Khách hàng"}
+                      </Text>
+                      <View style={s.reviewStars}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Ionicons
+                            key={n}
+                            name={n <= review.rating ? "star" : "star-outline"}
+                            size={14}
+                            color="#F59E0B"
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    {review.comment ? (
+                      <Text style={s.reviewComment}>{review.comment}</Text>
+                    ) : null}
+                    {review.images && review.images.length > 0 ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={s.reviewImages}
+                      >
+                        {review.images.map((img, idx) => (
+                          <Image
+                            key={`${review._id}-${idx}`}
+                            source={{ uri: img }}
+                            style={s.reviewImage}
+                          />
+                        ))}
+                      </ScrollView>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           {/* ── Thông tin liên hệ ── */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>Thông tin</Text>
@@ -900,6 +1167,100 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   descText: { fontSize: 14, color: TEXT_SEC, lineHeight: 23 },
+  reviewLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  reviewLoadingText: { fontSize: 12, color: TEXT_MUTED },
+  emptyReviewText: { fontSize: 13, color: TEXT_MUTED },
+  reviewList: { gap: 12 },
+  reviewCard: {
+    backgroundColor: SURFACE,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+    gap: 8,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reviewName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: TEXT,
+  },
+  reviewStars: { flexDirection: "row", gap: 2 },
+  reviewComment: { fontSize: 13, color: TEXT_SEC, lineHeight: 20 },
+  reviewImages: { gap: 8 },
+  reviewImage: {
+    width: 92,
+    height: 92,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+  },
+  writeReviewCard: {
+    backgroundColor: SURFACE,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+    marginBottom: 12,
+    gap: 10,
+  },
+  writeReviewTitle: { fontSize: 13, fontWeight: "800", color: TEXT },
+  writeStarsRow: { flexDirection: "row", gap: 8 },
+  writeReviewInput: {
+    minHeight: 84,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    color: TEXT,
+    textAlignVertical: "top",
+    fontSize: 13,
+  },
+  addReviewImageBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#F9FAFB",
+  },
+  addReviewImageText: { fontSize: 12, color: "#374151", fontWeight: "700" },
+  reviewImageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  reviewImageWrap: { position: "relative" },
+  removeReviewImageBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  submitReviewBtn: {
+    marginTop: 2,
+    borderRadius: 10,
+    backgroundColor: PRIMARY,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  submitReviewBtnText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
   // ── Info card
   infoCard: {

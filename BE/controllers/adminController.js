@@ -296,6 +296,26 @@ exports.getPartners = async (req, res) => {
   }
 };
 
+exports.getPartnerById = async (req, res) => {
+  try {
+    const partner = await Partner.findById(req.params.id).select("-password").lean();
+
+    if (!partner) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Partner not found" });
+    }
+
+    const restaurant = await Restaurant.findOne({ partnerId: partner._id })
+      .lean();
+
+    return res.json({ success: true, partner, restaurant: restaurant || null });
+  } catch (err) {
+    console.error("[admin/getPartnerById]", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 exports.approvePartner = async (req, res) => {
   try {
     const { subscriptionPackage, subscriptionExpiry, note } = req.body;

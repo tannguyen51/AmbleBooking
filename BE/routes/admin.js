@@ -17,6 +17,7 @@ router.post("/users/:id/rewards", adminController.adjustUserRewards);
 
 // Partners
 router.get("/partners", adminController.getPartners);
+router.get("/partners/:id", adminController.getPartnerById);
 router.put("/partners/:id/approve", adminController.approvePartner);
 router.put("/partners/:id/reject", adminController.rejectPartner);
 router.put("/partners/:id/active", adminController.updatePartnerActive);

@@ -30,7 +30,7 @@ async function callAI(apiKey, messages, systemPrompt, retries = 2) {
     const body = {
       model,
       max_tokens: 1000,
-      temperature: 0.7,
+      temperature: 0.3,
       messages: [
         ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
         ...messages,
@@ -45,8 +45,8 @@ async function callAI(apiKey, messages, systemPrompt, retries = 2) {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://amble.app",
-            "X-Title": "Amble",
+            "HTTP-Referer": "https://munchmap.app",
+            "X-Title": "munchmap",
           },
           body: JSON.stringify(body),
         });

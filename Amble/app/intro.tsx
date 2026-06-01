@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import AmbleLogo from "../components/AmbleLogo";
+import MunchMapLogo from "../components/AmbleLogo";
 import { useLanguageStore } from "../store/languageStore";
 
 const COPY = {
@@ -48,8 +48,8 @@ export default function IntroScreen() {
 
       <View style={styles.content}>
         <View style={styles.logoWrap}>
-          <AmbleLogo size="xl" showText={false} />
-          <Text style={styles.brand}>Amble</Text>
+          <MunchMapLogo size="xl" showText={false} />
+          <Text style={styles.brand}>munchmap</Text>
         </View>
 
         <Text style={styles.headline}>{copy.headline}</Text>
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 42,
     lineHeight: 46,
-    fontWeight: "900",
+    fontFamily: "TAN-NIMBUS",
     color: "#FFFFFF",
     textShadowColor: "rgba(0,0,0,0.15)",
     textShadowOffset: { width: 0, height: 2 },

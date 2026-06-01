@@ -150,6 +150,26 @@ export default function ConfirmBookingScreen() {
     }
     setLoading(true);
     try {
+      const tablesRes = await bookingAPI.getTables(restaurantId as string);
+      const latestTable = (tablesRes.data?.tables || []).find(
+        (t: any) => t._id === tableId,
+      );
+
+      if (!latestTable || !latestTable.isAvailable) {
+        Alert.alert(
+          "Bàn đã được đặt",
+          "Bàn này vừa được người khác giữ chỗ. Vui lòng chọn bàn khác.",
+        );
+        router.replace({
+          pathname: "/booking/select-table" as any,
+          params: {
+            restaurantId,
+            restaurantName,
+          },
+        });
+        return;
+      }
+
       console.log('[DEBUG] Booking data:', {
         userId: user._id,
         restaurantId,
@@ -178,6 +198,7 @@ export default function ConfirmBookingScreen() {
           params: {
             bookingId: booking._id,
             bookingNumber: booking.bookingNumber,
+            restaurantId,
             restaurantName,
             restaurantImage: tableImage,
             tableName,
@@ -193,6 +214,7 @@ export default function ConfirmBookingScreen() {
       router.push({
         pathname: "/booking/success" as any,
         params: {
+          restaurantId,
           restaurantName,
           restaurantImage: tableImage,
           tableName,
@@ -200,7 +222,8 @@ export default function ConfirmBookingScreen() {
           time: bookingData.time,
           partySize: bookingData.partySize,
           deposit: total.toString(),
-          bookingId: booking.bookingNumber || booking._id,
+          bookingId: booking._id,
+          bookingNumber: booking.bookingNumber,
         },
       });
     } catch (err: any) {
@@ -313,7 +336,7 @@ export default function ConfirmBookingScreen() {
 
         {/* Voucher */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}> Mã voucher</Text>
+          <Text style={s.sectionTitle}>Mã voucher</Text>
           <View style={s.voucherRow}>
             <TextInput
               style={s.voucherInput}

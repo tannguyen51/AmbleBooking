@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+﻿﻿﻿import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -24,13 +24,19 @@ import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
 
-type Tab = "active" | "completed" | "cancelled";
+type Tab = "active" | "pending_payment" | "completed" | "cancelled";
 
 const TAB_CONFIG: { id: Tab; label: string; statuses: string[] }[] = [
   {
     id: "active",
     label: "Đang đặt",
-    statuses: ["pending", "pending_payment", "confirmed", "paid", "draft"],
+    statuses: ["pending", "confirmed", "paid", "draft"],
+  },
+  
+  {
+    id: "pending_payment",
+    label: "Chờ thanh toán",
+    statuses: ["pending_payment"],
   },
   { id: "completed", label: "Đã xong", statuses: ["completed"] },
   {
@@ -109,11 +115,52 @@ export default function BookingHistoryScreen() {
     accountName: "",
   });
   const [showBankList, setShowBankList] = useState(false);
+  const [, setClockTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setClockTick((value) => value + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatCountdown = (seconds: number) => {
+    const safeSeconds = Math.max(0, seconds);
+    const minutes = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getPaymentCountdown = (booking: any) => {
+    if (booking.status !== "pending_payment") return null;
+    if (booking.paymentExpiresAt) {
+      const secondsLeft = Math.max(
+        0,
+        Math.floor((new Date(booking.paymentExpiresAt).getTime() - Date.now()) / 1000),
+      );
+      return secondsLeft;
+    }
+    if (booking.paymentTimeRemainingSeconds !== undefined) {
+      return booking.paymentTimeRemainingSeconds;
+    }
+    // Fallback: tính từ createdAt + 10 phút
+    if (booking.createdAt) {
+      const expiresAt = new Date(new Date(booking.createdAt).getTime() + 10 * 60 * 1000);
+      return Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+    }
+    return 0;
+  };
+
+  const hasPaidBooking = (booking: any) => {
+    return Boolean(booking?.payment?.paidAt) || ["paid", "completed"].includes(booking?.status);
+  };
 
   const fetchBookings = useCallback(async () => {
     if (!user?._id) return;
     try {
       const res = await bookingAPI.getUserBookings(user._id);
+      console.log("[history] Fetched bookings:", res.data.bookings?.length || 0);
       setBookings(res.data.bookings || []);
     } catch (err) {
       console.error(err);
@@ -133,11 +180,27 @@ export default function BookingHistoryScreen() {
   };
 
   const handleCancel = async (bookingId: string) => {
+    const booking = bookings.find((b) => b._id === bookingId) || null;
+    if (!booking) return;
+
     setCancelling(bookingId);
     try {
+      if (!hasPaidBooking(booking)) {
+        const res = await bookingAPI.cancel(bookingId, { reason: "Người dùng hủy" });
+        const newStatus = res.data?.booking?.status || "cancelled";
+        setBookings((prev) =>
+          prev.map((b) =>
+            b._id === bookingId
+              ? { ...b, status: newStatus, refund: res.data?.booking?.refund }
+              : b,
+          ),
+        );
+        Alert.alert("Thành công", "Đã hủy đặt bàn");
+        return;
+      }
+
       const res = await bookingAPI.getRefundPreview(bookingId);
       setRefundPreview(res.data?.preview || null);
-      const booking = bookings.find((b) => b._id === bookingId) || null;
       setSelectedBooking(booking);
       setRefundForm({ bankName: "", accountNumber: "", accountName: "" });
       setShowBankList(false);
@@ -207,6 +270,7 @@ export default function BookingHistoryScreen() {
     const status = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.draft;
     const paymentStatus =
       PAYMENT_STATUS[item.status] || PAYMENT_STATUS.confirmed;
+    const paymentCountdown = getPaymentCountdown(item);
     const goToPayment = () =>
       router.push({
         pathname: "/booking/payment" as any,
@@ -265,6 +329,15 @@ export default function BookingHistoryScreen() {
               </View>
             )}
           </View>
+
+            {canPay && paymentCountdown !== null ? (
+              <View style={c.countdownRow}>
+                <Ionicons name="time-outline" size={14} color="#B45309" />
+                <Text style={c.countdownText}>
+                  Còn {formatCountdown(paymentCountdown)} để thanh toán
+                </Text>
+              </View>
+            ) : null}
 
           <View style={c.detailRow}>
             <Ionicons name="restaurant-outline" size={13} color="#9CA3AF" />
@@ -605,6 +678,24 @@ const c = StyleSheet.create({
   },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   statusTxt: { fontSize: 11, fontWeight: "700" },
+  countdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  countdownText: {
+    fontSize: 12,
+    color: "#B45309",
+    fontWeight: "700",
+  },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -762,3 +853,9 @@ const c = StyleSheet.create({
     color: "#FFFFFF",
   },
 });
+
+
+
+
+
+

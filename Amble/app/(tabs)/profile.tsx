@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -166,6 +166,11 @@ export default function ProfileScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [pwVisible, setPwVisible] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [bookingCount, setBookingCount] = useState(0);
   const [rewardPoints, setRewardPoints] = useState(0);
@@ -312,7 +317,7 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
             </View>
-            <Text style={s.sub2}>{user?.email || "user@amble.app"}</Text>
+            <Text style={s.sub2}>{user?.email || "user@munchmap.app"}</Text>
             <View style={s.rankBadge}>
               <Text style={s.rankEmoji}>🥈</Text>
               <Text style={s.rankText}>Silver</Text>
@@ -880,3 +885,5 @@ const lo = StyleSheet.create({
   },
   leaveText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 });
+
+

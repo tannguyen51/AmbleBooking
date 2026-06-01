@@ -1,0 +1,112 @@
+﻿{
+    "fixes":  [
+                  [
+                      "KhÃ´ng tÃ¬m tháº¥y nhÃ¢n sá»±",
+                      "Không tìm thấy nhân sự"
+                  ],
+                  [
+                      "Máº­t kháº©u má»›i pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±",
+                      "Mật khẩu mới phải có ít nhất 6 ký tự"
+                  ],
+                  [
+                      "Äá»•i máº­t kháº©u nhÃ¢n sá»± thÃ nh cÃ´ng",
+                      "Đổi mật khẩu nhân sự thành công"
+                  ],
+                  [
+                      "KhÃ´ng thá»ƒ Ä\u0027á»•i máº­t kháº©u nhÃ¢n sá»±",
+                      "Không thể đổi mật khẩu nhân sự"
+                  ],
+                  [
+                      "Lá»—i",
+                      "Lỗi"
+                  ],
+                  [
+                      "Vui lÃ²ng nháº­p Ä\u0027áº§y Ä\u0027á»§ thÃ´ng tin hoÃ n tiá»n",
+                      "Vui lòng nhập đầy đủ thông tin hoàn tiền"
+                  ],
+                  [
+                      "NgÆ°á»i dÃ¹ng há»§y",
+                      "Người dùng hủy"
+                  ],
+                  [
+                      "ThÃ nh cÃ´ng",
+                      "Thành công"
+                  ],
+                  [
+                      "YÃªu cáº§u hoÃ n tiá»n Ä\u0027Ã£ Ä\u0027Æ°á»£c gá»­i",
+                      "Yêu cầu hoàn tiền đã được gửi"
+                  ],
+                  [
+                      "ÄÃ£ há»§y Ä\u0027áº·t bÃ n",
+                      "Đã hủy đặt bàn"
+                  ],
+                  [
+                      "Há»§y tháº¥t báº¡i",
+                      "Hủy thất bại"
+                  ],
+                  [
+                      "NhÃ  hÃ ng",
+                      "Nhà hàng"
+                  ],
+                  [
+                      "BÃ n",
+                      "Bàn"
+                  ],
+                  [
+                      "Thanh toÃ¡n",
+                      "Thanh toán"
+                  ],
+                  [
+                      "Tiá»n cá»c",
+                      "Tiền cọc"
+                  ],
+                  [
+                      "ngÆ°á»i",
+                      "người"
+                  ],
+                  [
+                      "Há»§y Ä\u0027áº·t bÃ n",
+                      "Hủy đặt bàn"
+                  ],
+                  [
+                      "Lá»‹ch sá»­ Ä\u0027áº·t bÃ n",
+                      "Lịch sử đặt bàn"
+                  ],
+                  [
+                      "KhÃ´ng cÃ³ Ä\u0027áº·t bÃ n nÃ o",
+                      "Không có đặt bàn nào"
+                  ],
+                  [
+                      "KhÃ¡m phÃ¡ nhÃ  hÃ ng",
+                      "Khám phá nhà hàng"
+                  ],
+                  [
+                      "Báº¡n sáº½ nháº­n hoÃ n tiá»n trong 1-3 ngÃ y lÃ m viá»‡c",
+                      "Bạn sẽ nhận hoàn tiền trong 1-3 ngày làm việc"
+                  ],
+                  [
+                      "HoÃ n tiá»n",
+                      "Hoàn tiền"
+                  ],
+                  [
+                      "Chá»n ngÃ¢n hÃ ng",
+                      "Chọn ngân hàng"
+                  ],
+                  [
+                      "Chá»§ tÃ i khoáº£n",
+                      "Chủ tài khoản"
+                  ],
+                  [
+                      "Há»§y",
+                      "Hủy"
+                  ],
+                  [
+                      "KhÃ´ng láº¥y Ä\u0027Æ°á»£c hoÃ n tiá»n",
+                      "Không lấy được hoàn tiền"
+                  ]
+              ],
+    "files":  [
+                  "BE/controllers/partnerStaffController.js",
+                  "Amble/app/(tabs)/history.tsx"
+              ]
+}

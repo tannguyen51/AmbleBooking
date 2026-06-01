@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 
 const TABS = [
   {
@@ -15,12 +16,6 @@ const TABS = [
     label: "Dashboard",
     icon: "home-outline",
     path: "/dashboard",
-  },
-  {
-    name: "team",
-    label: "Nhân sự",
-    icon: "people-outline",
-    path: "/partner-team",
   },
   {
     name: "tables",
@@ -42,11 +37,13 @@ const TABS = [
   },
   {
     name: "profile",
-    label: "Cài Đặt",
+    label: "Cài đặt",
     icon: "person-circle-outline",
     path: "/profile",
   },
 ];
+
+
 
 interface PartnerBottomNavProps {
   pendingCount?: number;
@@ -56,10 +53,14 @@ export function PartnerBottomNav({ pendingCount = 0 }: PartnerBottomNavProps) {
   const router = useRouter();
   const segments = useSegments();
   const currentScreen = segments[segments.length - 1];
+  const { partner } = usePartnerAuthStore();
+
+  // Hiển thị tất cả tab cho tất cả role
+  const displayTabs = TABS;
 
   return (
     <View style={styles.container}>
-      {TABS.map((tab) => {
+      {displayTabs.map((tab) => {
         const isActive = currentScreen === tab.name;
         const showBadge = tab.name === "orders" && pendingCount > 0;
 
@@ -151,3 +152,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

@@ -1,4 +1,4 @@
-export type PartnerRole = "owner" | "manager" | "staff";
+﻿export type PartnerRole = "owner" | "manager" | "staff";
 
 export type PartnerPermission =
   | "dashboard:view"
@@ -55,4 +55,3 @@ export function hasPartnerPermission(
   if (!role) return false;
   return PARTNER_ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
-

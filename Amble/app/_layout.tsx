@@ -1,27 +1,45 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Font from "expo-font";
+import { ActivityIndicator, View } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
 export default function RootLayout() {
   const { isAuthenticated, loadUser, user } = useAuthStore();
-  const { isAuthenticated: isPartnerAuthenticated, loadPartner } =
+  const { isAuthenticated: isPartnerAuthenticated, loadPartner, partner } =
     usePartnerAuthStore();
   const { language, loadLanguage } = useLanguageStore();
   const pathname = usePathname();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
+      try {
+        await Font.loadAsync({
+          "TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
+          "DFVN-TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
+        });
+        if (cancelled) return;
+        console.log("Font isLoaded:", Font.isLoaded("TAN-NIMBUS"), Font.isLoaded("DFVN-TAN-NIMBUS"));
+      } catch (e) {
+        console.warn("Font loading error:", e);
+      }
+      if (!cancelled) setFontsLoaded(true);
+      if (cancelled) return;
       await Promise.all([loadUser(), loadPartner(), loadLanguage()]);
-      setIsReady(true);
+      if (!cancelled) setIsReady(true);
     };
     init();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !fontsLoaded) return;
 
     const inAuthGroup =
       pathname.startsWith("/login") ||
@@ -56,6 +74,13 @@ export default function RootLayout() {
     if (pathname.startsWith("/booking/")) return; // flow đặt bàn
 
     if (isPartnerAuthenticated) {
+      const isStaffRoute =
+        pathname.includes("/partner-team") || pathname.includes("/team");
+      const isOwner = partner?.role === "owner";
+      if (isStaffRoute && !isOwner) {
+        router.replace("/dashboard");
+        return;
+      }
       if (!inPartnerGroup) router.replace("/dashboard");
       return;
     }
@@ -95,7 +120,24 @@ export default function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user]);
+  }, [
+    isReady,
+    isAuthenticated,
+    isPartnerAuthenticated,
+    pathname,
+    language,
+    user,
+    partner?.role,
+  ]);
+
+  if (!fontsLoaded || !isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color="#2D6A4F" />
+      </View>
+    );
+  }
 
   return (
     <>

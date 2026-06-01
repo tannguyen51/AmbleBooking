@@ -10,7 +10,7 @@ A complete walking route mobile app built with **Expo (React Native)** + **Expre
 amble-project/
 ├── backend/                  # Express.js + MongoDB API
 │   ├── src/
-│   │   ├── models/
+│   │   ├── s/
 │   │   │   ├── User.js       # User schema (customer/admin)
 │   │   │   └── Route.js      # Walking route schema
 │   │   ├── controllers/

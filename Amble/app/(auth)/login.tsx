@@ -16,7 +16,7 @@ import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
 import { Ionicons } from "@expo/vector-icons";
-import AmbleLogo from "../../components/AmbleLogo";
+import MunchMapLogo from "../../components/AmbleLogo";
 import { API_BASE_URL } from "../../services/api";
 
 // ─── Design tokens ───
@@ -128,7 +128,7 @@ export default function LoginScreen() {
           <View style={styles.decCircle1} />
           <View style={styles.decCircle2} />
 
-          <AmbleLogo
+          <MunchMapLogo
             size="lg"
             textColor="#FFFFFF"
             containerStyle={styles.appLogo}

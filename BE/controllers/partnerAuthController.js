@@ -98,7 +98,8 @@ exports.login = async (req, res) => {
       });
     }
 
-    const partner = await Partner.findOne({ email }).select("+password");
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const partner = await Partner.findOne({ email: normalizedEmail }).select("+password");
     if (!partner || !(await partner.comparePassword(password))) {
       return res.status(401).json({
         success: false,
@@ -131,6 +132,58 @@ exports.login = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Lỗi máy chủ. Vui lòng thử lại." });
+  }
+};
+
+// Change partner password (owner/manager/staff)
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.",
+      });
+    }
+
+    const normalizedNewPassword = String(newPassword).trim();
+    if (normalizedNewPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự.",
+      });
+    }
+
+    const partner = await Partner.findById(req.partner._id).select("+password");
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Tài khoản không tồn tại.",
+      });
+    }
+
+    const isMatch = await partner.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Mật khẩu hiện tại không đúng.",
+      });
+    }
+
+    partner.password = normalizedNewPassword;
+    await partner.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công.",
+    });
+  } catch (error) {
+    console.error("[partner/changePassword]", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể đổi mật khẩu. Vui lòng thử lại.",
+    });
   }
 };
 exports.logout = async (req, res) => {

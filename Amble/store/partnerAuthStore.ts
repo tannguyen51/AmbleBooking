@@ -64,7 +64,10 @@ export const usePartnerAuthStore = create<PartnerAuthState>((set) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const res = await partnerAuthAPI.login({ email, password });
+      const res = await partnerAuthAPI.login({
+        email: email.trim().toLowerCase(),
+        password,
+      });
       const { token, partner, restaurant } = res.data;
 
       await AsyncStorage.setItem('amble_partner_token', token);

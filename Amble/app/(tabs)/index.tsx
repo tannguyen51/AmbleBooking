@@ -30,7 +30,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
 import { restaurantAPI } from "../../services/api";
 import { Ionicons } from "@expo/vector-icons";
-import AmbleLogo from "../../components/AmbleLogo";
+import MunchMapLogo from "../../components/AmbleLogo";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -722,7 +722,7 @@ export default function HomeScreen() {
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={[styles.header, { paddingTop: 16 + insets.top }]}>
             <View style={styles.headerTop}>
-              <AmbleLogo size="md" textColor={LOGO_TEXT} />
+              <MunchMapLogo size="md" textColor={LOGO_TEXT} />
             </View>
             <View
               style={[skel.line, { width: 180, height: 28, marginBottom: 8 }]}
@@ -772,7 +772,7 @@ export default function HomeScreen() {
         <View style={[styles.header, { paddingTop: 16 + insets.top }]}>
           {/* Logo + icon buttons */}
           <View style={styles.headerTop}>
-            <AmbleLogo size="md" textColor={LOGO_TEXT} />
+            <MunchMapLogo size="md" textColor={LOGO_TEXT} />
 
             <View style={styles.headerBtns}>
               <TouchableOpacity

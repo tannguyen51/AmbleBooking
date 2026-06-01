@@ -11,7 +11,7 @@ const User = require('./models/user');
 const Partner = require('./models/partner');
 const Restaurant = require('./models/restaurant');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/amble_db';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/munchmap_db';
 
 // ─── Users (customers) ────────────────────────────────────────────────────────
 const usersData = [
@@ -43,11 +43,11 @@ const usersData = [
     role: 'customer',
   },
   {
-    fullName: 'Admin Amble',
-    email: 'admin@amble.com',
+    fullName: 'Admin munchmap',
+    email: 'admin@munchmap.com',
     password: 'admin123456',
     phone: '0900000001',
-    bio: 'Amble platform administrator.',
+    bio: 'munchmap platform administrator.',
     location: 'Ho Chi Minh City',
     role: 'admin',
   },
@@ -463,7 +463,7 @@ async function seedDatabase() {
     console.log('══════════════════════════════════════════════════');
     console.log('👤 Customer Accounts:');
     console.log('   lan.nguyen@gmail.com    / password123');
-    console.log('   admin@amble.com         / admin123456');
+    console.log('   admin@munchmap.com         / admin123456');
     console.log('');
     console.log('🏪 Partner Accounts:');
     console.log('   partner@rooftop.vn      / demo123      (Premium)');

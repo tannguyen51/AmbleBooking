@@ -145,7 +145,7 @@ export default function PartnerRegisterScreen() {
 
           <Text style={styles.headerTitle}>Đăng ký đối tác</Text>
           <Text style={styles.headerSubtitle}>
-            Phát triển nhà hàng cùng Amble
+            Phát triển nhà hàng cùng munchmap
           </Text>
         </LinearGradient>
 

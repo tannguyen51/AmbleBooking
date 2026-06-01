@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import { Colors } from "../../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack } from "expo-router";
@@ -58,7 +58,10 @@ export default function TabsLayout() {
           tabBarIcon: () => (
             <View style={styles.aiTabWrap}>
               <View style={styles.aiTabBtn}>
-                <Text style={styles.aiTabText}>AI</Text>
+                <Image
+                  source={require("../../assets/images/chatbot-speech-bubble.png")}
+                  style={styles.aiTabImg}
+                />
               </View>
             </View>
           ),
@@ -116,21 +119,26 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#FFB100",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
-    borderColor: "#FFF3D6",
-    shadowColor: "#F59E0B",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
   aiTabText: {
     color: "#fff",
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: 0,
+  },
+  aiTabImg: {
+    width: 36,
+    height: 36,
+    resizeMode: "contain",
   },
 });
