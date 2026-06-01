@@ -32,7 +32,7 @@ export const authAPI = {
   login: (data: { email: string; password: string }) =>
     api.post("/auth/login", data),
   requestPasswordReset: (data: { email: string }) =>
-    api.post("/auth/forgot-password", data),
+    api.post("/auth/forgot-password", data, { timeout: 30000 }),
   resetPassword: (data: { token: string; newPassword: string }) =>
     api.post("/auth/reset-password", data),
   getMe: () => api.get("/auth/me"),
