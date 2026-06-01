@@ -1,32 +1,35 @@
-const nodemailer = require("nodemailer");
-
-const createTransporter = () => {
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secure = String(process.env.SMTP_SECURE || "true") === "true";
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    connectionTimeout: 15000,
-    socketTimeout: 20000,
-  });
-};
+const BREVO_API = "https://api.brevo.com/v3/smtp/email";
 
 const sendMail = async ({ to, subject, html, text }) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error("SMTP credentials are missing");
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY is missing");
   }
 
-  const transporter = createTransporter();
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const fromEmail = process.env.SMTP_FROM || "munchmap.vn@gmail.com";
+  const fromName = process.env.BREVO_FROM_NAME || "munchmap";
 
-  return transporter.sendMail({ from, to, subject, html, text });
+  const payload = {
+    sender: { email: fromEmail, name: fromName },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    textContent: text,
+  };
+
+  const res = await fetch(BREVO_API, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": apiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Brevo API error ${res.status}: ${err}`);
+  }
 };
 
 module.exports = { sendMail };

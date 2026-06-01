@@ -169,6 +169,7 @@ exports.requestPasswordReset = async (req, res) => {
       : `<p>Mã đặt lại mật khẩu: <strong>${rawToken}</strong></p>`;
 
     await sendMail({ to: email, subject, text, html });
+    console.log(`✅ Reset email sent to ${email}`);
 
     return res.status(200).json({
       success: true,
