@@ -28,7 +28,10 @@ const sendMail = async ({ to, subject, html, text }) => {
 
   if (!res.ok) {
     const err = await res.text();
+    console.error(`Brevo API error ${res.status}: ${err}`);
     throw new Error(`Brevo API error ${res.status}: ${err}`);
+  } else {
+    console.log(`✅ Email sent to ${to} via Brevo`);
   }
 };
 
