@@ -156,10 +156,9 @@ export default function BookingHistoryScreen() {
     if (!user?._id) return;
     try {
       const res = await bookingAPI.getUserBookings(user._id);
-      console.log("[history] Fetched bookings:", res.data.bookings?.length || 0);
       setBookings(res.data.bookings || []);
     } catch (err) {
-      console.error(err);
+      if (__DEV__) console.error(err);
     } finally {
       setLoading(false);
       setRefreshing(false);

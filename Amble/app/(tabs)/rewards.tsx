@@ -128,7 +128,7 @@ export default function RewardsScreen() {
       const res = await userAPI.getRewards();
       setData(res.data);
     } catch (error) {
-      console.warn("[Rewards] fetch error", error);
+      if (__DEV__) console.warn("[Rewards] fetch error", error);
     } finally {
       setLoading(false);
       setRefreshing(false);

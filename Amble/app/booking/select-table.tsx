@@ -142,7 +142,7 @@ export default function SelectTableScreen() {
         .then((res) => {
           if (active) setTables(res.data.tables);
         })
-        .catch((err) => console.error("Error fetching tables:", err))
+        .catch((err) => { if (__DEV__) console.error("Error fetching tables:", err); })
         .finally(() => {
           if (active) setLoading(false);
         });

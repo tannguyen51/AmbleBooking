@@ -87,7 +87,7 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!__DEV__ && API_BASE_URL.includes("localhost")) {
+    if (__DEV__ && API_BASE_URL.includes("localhost")) {
       Alert.alert(
         t("auth.login.missingConfig"),
         t("auth.login.missingConfig"),

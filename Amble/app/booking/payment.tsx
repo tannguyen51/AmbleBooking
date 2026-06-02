@@ -149,14 +149,12 @@ export default function BookingPaymentScreen() {
     const fetchTime = async () => {
       try {
         const res = await bookingAPI.getById(bookingId);
-          console.log("[payment] API response:", res.data?.booking?.paymentTimeRemainingSeconds);
         if (res.data?.booking?.paymentTimeRemainingSeconds !== undefined) {
           setTimeRemaining(res.data.booking.paymentTimeRemainingSeconds);
             setPaymentExpiresAt(res.data.booking.paymentExpiresAt || null);
-          console.log("[payment] Timer set to:", res.data.booking.paymentTimeRemainingSeconds);
         }
       } catch (e) {
-        console.error("[payment] Error fetching time:", e);
+        if (__DEV__) console.error("[payment] Error fetching time:", e);
       }
     };
     fetchTime();

@@ -205,7 +205,7 @@ export default function DetailScreen() {
       const res = await restaurantAPI.getById(id as string);
       setRestaurant(res.data.restaurant);
     } catch (err: any) {
-      console.error('[RestaurantDetail] Error:', err.response?.data || err.message);
+      if (__DEV__) console.error('[RestaurantDetail] Error:', err.response?.data || err.message);
       setError(
         err.response?.data?.message || t("restaurant.error"),
       );

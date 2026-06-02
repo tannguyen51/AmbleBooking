@@ -144,8 +144,6 @@ export default function ConfirmBookingScreen() {
   };
 
   const handleConfirm = async () => {
-    console.log('[DEBUG] User object:', user);
-    console.log('[DEBUG] User ID:', user?._id);
     if (!user?._id) {
       Alert.alert(t("common.error"), t("booking.confirm.loginRequired"));
       return;
@@ -172,7 +170,7 @@ export default function ConfirmBookingScreen() {
         return;
       }
 
-      console.log('[DEBUG] Booking data:', {
+      if (__DEV__) console.log('[DEBUG] Booking data:', {
         userId: user._id,
         restaurantId,
         tableId,
@@ -229,8 +227,8 @@ export default function ConfirmBookingScreen() {
         },
       });
     } catch (err: any) {
-      console.error('[DEBUG] Booking error:', err);
-      console.error('[DEBUG] Error details:', err.response?.data);
+      if (__DEV__) console.error('[DEBUG] Booking error:', err);
+      if (__DEV__) console.error('[DEBUG] Error details:', err.response?.data);
       Alert.alert(
         t("common.error"),
         err.response?.data?.message || "Đặt bàn thất bại. Vui lòng thử lại.",

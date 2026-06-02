@@ -1,6 +1,12 @@
 import { restaurantApi } from "./restaurantApi";
 import { bookingAPI } from "./api";
 
+const devLog = {
+  log: (...args: any[]) => { if (__DEV__) console.log(...args); },
+  warn: (...args: any[]) => { if (__DEV__) console.warn(...args); },
+  error: (...args: any[]) => { if (__DEV__) console.error(...args); },
+};
+
 export type BookingStep =
   | "idle"
   | "purpose"
@@ -313,13 +319,13 @@ async function fetchTableCards(
 
     // Nếu user nhắc tên nhà hàng cụ thể → tìm đúng nhà hàng đó
     if (draft.restaurantName) {
-      console.log("[AI] Searching specific restaurant:", draft.restaurantName);
+      devLog.log("[AI] Searching specific restaurant:", draft.restaurantName);
       restaurants = await restaurantApi.searchRestaurants({
         search: draft.restaurantName,
       });
       // Nếu không tìm thấy → nhà hàng chưa hợp tác
       if (!restaurants?.length) {
-        console.log("[AI] Restaurant not found in DB:", draft.restaurantName);
+        devLog.log("[AI] Restaurant not found in DB:", draft.restaurantName);
         return { cards: [], notFound: true };
       }
     } else {
@@ -331,10 +337,10 @@ async function fetchTableCards(
     }
 
     if (!restaurants?.length) {
-      console.log("[AI] DB has no restaurants");
+      devLog.log("[AI] DB has no restaurants");
       return { cards: [] };
     }
-    console.log("[AI] restaurants found:", restaurants.length);
+    devLog.log("[AI] restaurants found:", restaurants.length);
 
     // B2: Lấy bàn từng nhà hàng song song
     await Promise.all(
@@ -342,7 +348,7 @@ async function fetchTableCards(
         try {
           const res = await bookingAPI.getTables(r._id);
           const allTables: any[] = res.data.tables || [];
-          console.log("[AI]", r.name, "- total tables:", allTables.length);
+          devLog.log("[AI]", r.name, "- total tables:", allTables.length);
 
           // Filter bàn phù hợp — BỎ filter isAvailable vì field này có thể chưa có trong DB cũ
           const matched = allTables.filter((t) => {
@@ -372,7 +378,7 @@ async function fetchTableCards(
             return typeOk && capOk && activeOk && depositOk;
           });
 
-          console.log("[AI]", r.name, "- matched tables:", matched.length);
+          devLog.log("[AI]", r.name, "- matched tables:", matched.length);
 
           matched.slice(0, 2).forEach((t) =>
             cards.push({
@@ -430,16 +436,16 @@ export const ambleAI = {
       // ── Claude trả về JSON → tìm NH hoặc bàn ──────
       const searchDraft = parseSearchJSON(rawResponse);
       const rawText = rawResponse;
-      console.log("[AI] rawResponse:", rawResponse.slice(0, 200));
+      devLog.log("[AI] rawResponse:", rawResponse.slice(0, 200));
       if (searchDraft) {
-        console.log("[AI] searchDraft.location:", searchDraft.location, "| action:", rawText.includes("search_restaurants") ? "search_restaurants" : "search");
+        devLog.log("[AI] searchDraft.location:", searchDraft.location, "| action:", rawText.includes("search_restaurants") ? "search_restaurants" : "search");
         // Nếu là search_restaurants => liệt kê NH, không fetch bàn
         const isRestaurantSearch = rawText.includes('"action":"search_restaurants"');
 
         if (isRestaurantSearch) {
-          console.log("[AI] search_restaurants location:", searchDraft.location);
+          devLog.log("[AI] search_restaurants location:", searchDraft.location);
           const restResult = await restaurantApi.searchRestaurants({ search: searchDraft.location || "" });
-          console.log("[AI] search_restaurants results:", restResult?.length);
+          devLog.log("[AI] search_restaurants results:", restResult?.length);
           if (!restResult?.length) {
             return {
               response: {

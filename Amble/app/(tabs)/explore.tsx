@@ -214,7 +214,7 @@ export default function ExploreScreen() {
       const res = await restaurantAPI.getAll();
       setRestaurants(res.data.restaurants || []);
     } catch (err) {
-      console.log(err);
+      if (__DEV__) console.log(err);
     } finally {
       setLoading(false);
       setRefreshing(false);

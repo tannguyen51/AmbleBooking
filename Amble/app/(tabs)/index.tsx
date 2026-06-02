@@ -523,7 +523,7 @@ export default function HomeScreen() {
       setForDate(dateRes.data.restaurants ?? []);
       setBudgetList(budgetRes.data.restaurants ?? []);
     } catch (err) {
-      console.warn("[HomeScreen] fetchData error:", err);
+      if (__DEV__) console.warn("[HomeScreen] fetchData error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);

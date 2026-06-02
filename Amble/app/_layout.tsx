@@ -6,9 +6,14 @@ import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as Sentry from "@sentry/react-native";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 GoogleSignin.configure({
-  iosClientId: "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
-  webClientId: "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
+  iosClientId:
+    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
+    "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
+  webClientId:
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
   profileImageSize: 120,
 });
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -125,14 +130,15 @@ function RootLayout() {
   }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user]);
 
   return (
-    <>
-      <StatusBar style="auto" />
-      {/*
-        QUAN TRỌNG: KHÔNG liệt kê Stack.Screen với name cụ thể ở đây.
-        Expo Router tự detect routes từ file system.
-        Chỉ khai báo khi muốn override options (animation, gesture...).
-      */}
-      <Stack screenOptions={{ headerShown: false }}>
+    <ErrorBoundary>
+      <>
+        <StatusBar style="auto" />
+        {/*
+          QUAN TRỌNG: KHÔNG liệt kê Stack.Screen với name cụ thể ở đây.
+          Expo Router tự detect routes từ file system.
+          Chỉ khai báo khi muốn override options (animation, gesture...).
+        */}
+        <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen
           name="restaurant/[id]"
           options={{
@@ -171,7 +177,8 @@ function RootLayout() {
           }}
         />
       </Stack>
-    </>
+      </>
+    </ErrorBoundary>
   );
 }
 

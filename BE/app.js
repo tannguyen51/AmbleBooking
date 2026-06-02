@@ -15,6 +15,7 @@ if (sentryDsn) {
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -33,9 +34,31 @@ const { startPendingConfirmationCleanupJob } = require("./services/bookingPendin
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 phút
+  max: 100, // tối đa 100 request/IP
+  message: { success: false, message: "Quá nhiều yêu cầu, vui lòng thử lại sau" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api", apiLimiter);
+
+// Auth endpoints: stricter rate limit
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: "Quá nhiều lần thử, vui lòng thử lại sau" },
+});
+app.use("/api/auth", authLimiter);
 
 // ── Connect MongoDB ───────────────────────────────────────────────────────
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;

@@ -1,7 +1,9 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE_URL = "https://amblebooking-production.up.railway.app/api";
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://amblebooking-production.up.railway.app/api";
 
 export const API_BASE_URL = BASE_URL;
 
