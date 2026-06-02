@@ -1,8 +1,20 @@
 ﻿require("dotenv").config();
+
+// Init Sentry BEFORE importing express (required for @sentry/node v8)
+const Sentry = require("@sentry/node");
+const sentryDsn = process.env.SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.APP_ENV || process.env.NODE_ENV || "development",
+    tracesSampleRate: 0.1,
+    integrations: [Sentry.expressIntegration()],
+  });
+}
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const Sentry = require("@sentry/node");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -13,21 +25,12 @@ const restaurantRoutes = require("./routes/restaurants");
 const bookingRoutes = require("./routes/booking");
 const aiRoutes = require("./routes/ai");
 const adminRoutes = require("./routes/admin");
+const paymentRoutes = require("./routes/payment");
 const { startBookingAutoCompleteJob } = require("./services/bookingAutoCompleteService");
 const { startTableCleanupJob } = require("./services/tableCleanupService");
 const { startPendingPaymentCleanupJob } = require("./services/pendingPaymentCleanupService");
 const { startPendingConfirmationCleanupJob } = require("./services/bookingPendingConfirmationCleanupService");
 const app = express();
-
-const sentryDsn = process.env.SENTRY_DSN;
-if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    environment: process.env.APP_ENV || process.env.NODE_ENV || "development",
-    tracesSampleRate: 0.1,
-  });
-  app.use(Sentry.Handlers.requestHandler());
-}
 
 // ── Middleware ────────────────────────────────────────────────────────────
 app.use(cors());
@@ -62,6 +65,7 @@ app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/payment", paymentRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: " munchmap API is running!" });
@@ -74,7 +78,7 @@ app.use((req, res) => {
 
 // Error handler
 if (sentryDsn) {
-  app.use(Sentry.Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 app.use((err, req, res, next) => {
   console.error(err.stack);

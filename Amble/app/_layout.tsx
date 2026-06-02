@@ -1,45 +1,47 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import * as Font from "expo-font";
-import { ActivityIndicator, View } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
-export default function RootLayout() {
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import * as Sentry from "@sentry/react-native";
+GoogleSignin.configure({
+  iosClientId: "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
+  webClientId: "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
+  profileImageSize: 120,
+});
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.APP_ENV || "development",
+    tracesSampleRate: 0.1,
+  });
+}
+
+function RootLayout() {
   const { isAuthenticated, loadUser, user } = useAuthStore();
-  const { isAuthenticated: isPartnerAuthenticated, loadPartner, partner } =
-    usePartnerAuthStore();
+  const {
+    isAuthenticated: isPartnerAuthenticated,
+    loadPartner,
+    partner,
+  } = usePartnerAuthStore();
   const { language, loadLanguage } = useLanguageStore();
   const pathname = usePathname();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
-  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
     const init = async () => {
-      try {
-        await Font.loadAsync({
-          "TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
-          "DFVN-TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
-        });
-        if (cancelled) return;
-        console.log("Font isLoaded:", Font.isLoaded("TAN-NIMBUS"), Font.isLoaded("DFVN-TAN-NIMBUS"));
-      } catch (e) {
-        console.warn("Font loading error:", e);
-      }
-      if (!cancelled) setFontsLoaded(true);
-      if (cancelled) return;
       await Promise.all([loadUser(), loadPartner(), loadLanguage()]);
-      if (!cancelled) setIsReady(true);
+      setIsReady(true);
     };
     init();
-    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!isReady || !fontsLoaded) return;
+    if (!isReady) return;
 
     const inAuthGroup =
       pathname.startsWith("/login") ||
@@ -74,10 +76,10 @@ export default function RootLayout() {
     if (pathname.startsWith("/booking/")) return; // flow đặt bàn
 
     if (isPartnerAuthenticated) {
-      const isStaffRoute =
-        pathname.includes("/partner-team") || pathname.includes("/team");
-      const isOwner = partner?.role === "owner";
-      if (isStaffRoute && !isOwner) {
+      const isPartnerOwner = partner?.role === "owner";
+      const onStaffScreen =
+        pathname.includes("/team") || pathname.includes("/partner-team");
+      if (onStaffScreen && !isPartnerOwner) {
         router.replace("/dashboard");
         return;
       }
@@ -120,24 +122,7 @@ export default function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [
-    isReady,
-    isAuthenticated,
-    isPartnerAuthenticated,
-    pathname,
-    language,
-    user,
-    partner?.role,
-  ]);
-
-  if (!fontsLoaded || !isReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
-        <StatusBar style="auto" />
-        <ActivityIndicator size="large" color="#2D6A4F" />
-      </View>
-    );
-  }
+  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user]);
 
   return (
     <>
@@ -189,3 +174,5 @@ export default function RootLayout() {
     </>
   );
 }
+
+export default Sentry.wrap(RootLayout);

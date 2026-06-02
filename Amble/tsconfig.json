@@ -2,11 +2,15 @@
   "extends": "expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
+    "types": ["node"],
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "**/*.ts",

@@ -25,7 +25,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 
-type Tab = "active" | "pending_payment" | "completed" | "cancelled";
+type Tab = "active" | "pending_payment" | "completed";
 
 const BANK_OPTIONS = [
   "Vietcombank",
@@ -56,11 +56,6 @@ export default function BookingHistoryScreen() {
       statuses: ["pending_payment"],
     },
     { id: "completed", label: t("history.tabCompleted"), statuses: ["completed"] },
-    {
-      id: "cancelled",
-      label: t("history.tabCancelled"),
-      statuses: ["cancelled", "refund_pending", "refunded"],
-    },
   ];
 
   const STATUS_DISPLAY: Record<
