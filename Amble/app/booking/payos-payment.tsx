@@ -19,6 +19,7 @@ const PAYMENT_TIMEOUT = 10 * 60 * 1000;
 
 export default function PayosPaymentScreen() {
   const router = useRouter();
+  const insets = { top: 0 }; // sẽ dùng safe area
   const {
     bookingId,
     bookingNumber,
@@ -45,6 +46,7 @@ export default function PayosPaymentScreen() {
 
   const [status, setStatus] = useState<string>("PENDING");
   const [manualChecking, setManualChecking] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const startedAt = useRef(Date.now());
   const isMounted = useRef(true);
 
@@ -118,6 +120,31 @@ export default function PayosPaymentScreen() {
     if (isMounted.current) setManualChecking(false);
   }, [bookingId, manualChecking, silentCheck]);
 
+  // Hủy đặt bàn
+  const handleCancel = useCallback(() => {
+    Alert.alert(
+      "Hủy đặt bàn",
+      "Bạn có chắc muốn hủy đặt bàn này? Booking sẽ bị hủy và bạn có thể đặt lại sau.",
+      [
+        { text: "Ở lại", style: "cancel" },
+        {
+          text: "Hủy đặt bàn",
+          style: "destructive",
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              await paymentAPI.cancelPayosPayment(bookingId);
+            } catch {
+              // kể cả lỗi vẫn cho back
+            }
+            if (isMounted.current) setCancelling(false);
+            router.back();
+          },
+        },
+      ],
+    );
+  }, [bookingId, router]);
+
   // Polling tự động
   useEffect(() => {
     const timer = setInterval(() => { silentCheck(); }, POLL_INTERVAL);
@@ -142,6 +169,21 @@ export default function PayosPaymentScreen() {
         start={{ x: 0.05, y: 0 }}
         end={{ x: 0.95, y: 1 }}
       />
+
+      {/* Header với nút back */}
+      <View style={s.header}>
+        <TouchableOpacity
+          onPress={handleCancel}
+          style={s.backBtn}
+          disabled={cancelling}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        {cancelling && (
+          <ActivityIndicator color="#fff" size="small" style={{ marginRight: 44 }} />
+        )}
+      </View>
 
       <View style={s.content}>
         <View style={s.iconWrap}>
@@ -213,8 +255,21 @@ export default function PayosPaymentScreen() {
           </TouchableOpacity>
         )}
 
+        {!isFinal && (
+          <TouchableOpacity
+            style={s.cancelLink}
+            onPress={handleCancel}
+            disabled={cancelling}
+            activeOpacity={0.7}
+          >
+            <Text style={s.cancelLinkText}>
+              {cancelling ? "Đang hủy..." : "Hủy đặt bàn"}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {isFinal && status !== "PAID" && (
-          <Text style={s.backBtn} onPress={() => router.back()}>
+          <Text style={s.backLink} onPress={() => router.back()}>
             Quay lại
           </Text>
         )}
@@ -225,6 +280,21 @@ export default function PayosPaymentScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   content: {
     flex: 1,
     justifyContent: "center",
@@ -289,7 +359,17 @@ const s = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     textAlign: "center",
   },
-  backBtn: {
+  cancelLink: {
+    marginTop: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  cancelLinkText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.6)",
+    textDecorationLine: "underline",
+  },
+  backLink: {
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",

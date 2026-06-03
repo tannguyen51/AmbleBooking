@@ -175,6 +175,8 @@ export const paymentAPI = {
     api.post("/payment/payos-create", data),
   getPayosStatus: (bookingId: string) =>
     api.get(`/payment/payos-status/${bookingId}`),
+  cancelPayosPayment: (bookingId: string) =>
+    api.post(`/payment/payos-cancel/${bookingId}`),
 };
 
 // ── Partner Dashboard ───────────────────────────────────
