@@ -634,7 +634,6 @@ const s = StyleSheet.create({
     width: 24,
     height: 24,
     resizeMode: "contain",
-    tintColor: "#FF6B35",
   },
   headerTitle: { fontSize: 16, fontWeight: "800", color: "#fff" },
   headerOnline: {
@@ -680,7 +679,6 @@ const s = StyleSheet.create({
     width: 20,
     height: 20,
     resizeMode: "contain",
-    tintColor: "#FF6B35",
   },
   userAvatar: {
     width: 28,
@@ -750,7 +748,6 @@ const s = StyleSheet.create({
     width: 18,
     height: 18,
     resizeMode: "contain",
-    tintColor: "#FF6B35",
   },
   typingBubble: {
     flexDirection: "row",

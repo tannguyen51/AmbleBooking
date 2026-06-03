@@ -169,6 +169,14 @@ export const bookingAPI = {
   getSession: (sessionId: string) => api.get(`/booking/session/${sessionId}`),
 };
 
+// ── Payment (PayOS) ────────────────────────────────────
+export const paymentAPI = {
+  createPayosPayment: (data: { bookingId: string; returnUrl: string; cancelUrl: string }) =>
+    api.post("/payment/payos-create", data),
+  getPayosStatus: (bookingId: string) =>
+    api.get(`/payment/payos-status/${bookingId}`),
+};
+
 // ── Partner Dashboard ───────────────────────────────────
 export const partnerDashboardAPI = {
   getOverview: () => api.get("/partner/dashboard/overview"),

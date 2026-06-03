@@ -10,18 +10,19 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { bookingAPI } from "@/services/api";
+import { bookingAPI, paymentAPI } from "@/services/api";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
 
 //type PaymentId = "momo" | "zalopay" | "bank" | "credit";
-type PaymentId = "bank";
+type PaymentId = "bank" | "payos";
 const PAYMENT_METHODS: {
   id: PaymentId;
   name: string;
@@ -29,6 +30,7 @@ const PAYMENT_METHODS: {
 }[] = [
   //{ id: "momo", name: "MoMo", icon: "wallet-outline" },
   //{ id: "zalopay", name: "ZaloPay", icon: "phone-portrait-outline" },
+  { id: "payos", name: "PayOS", icon: "card-outline" },
   { id: "bank", name: "Chuyển khoản", icon: "business-outline" },
   //{ id: "credit", name: "Thẻ tín dụng", icon: "card-outline" },
 ];
@@ -80,7 +82,7 @@ export default function ConfirmBookingScreen() {
   const [loading, setLoading] = useState(false);
   const [voucherLoading, setVoucherLoading] = useState(true);
   const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("bank");
+  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("payos");
   const [showPayments, setShowPayments] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(
@@ -192,6 +194,48 @@ export default function ConfirmBookingScreen() {
         voucherDiscount: discount,
       });
       const booking = res.data.booking;
+      if (selectedPayment === "payos") {
+        try {
+          const returnUrl = `https://amblebooking-production.up.railway.app/api/payment/payos-return?bookingId=${booking._id}`;
+          const cancelUrl = `https://amblebooking-production.up.railway.app/api/payment/payos-cancel-page?bookingId=${booking._id}`;
+          const payosRes = await paymentAPI.createPayosPayment({
+            bookingId: booking._id,
+            returnUrl,
+            cancelUrl,
+          });
+          const checkoutUrl = payosRes.data.checkoutUrl;
+
+          if (checkoutUrl) {
+            await Linking.openURL(checkoutUrl);
+          }
+
+          router.push({
+            pathname: "/booking/payos-payment" as any,
+            params: {
+              bookingId: booking._id,
+              bookingNumber: booking.bookingNumber,
+              restaurantId,
+              restaurantName,
+              restaurantImage: tableImage,
+              tableName,
+              date: bookingData.date,
+              time: bookingData.time,
+              partySize: bookingData.partySize,
+              deposit: total.toString(),
+            },
+          });
+          return;
+        } catch (payosErr: any) {
+          if (__DEV__) console.error('[DEBUG] PayOS error:', payosErr);
+          Alert.alert(
+            t("common.error"),
+            payosErr?.response?.data?.message || "Lỗi tạo link thanh toán PayOS. Vui lòng thử lại.",
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       if (selectedPayment === "bank") {
         router.push({
           pathname: "/booking/payment" as any,

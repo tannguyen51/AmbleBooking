@@ -1,52 +1,59 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Font from "expo-font";
+import { ActivityIndicator, View } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-import * as Sentry from "@sentry/react-native";
-import { ErrorBoundary } from "../components/ErrorBoundary";
-GoogleSignin.configure({
-  iosClientId:
-    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
-    "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
-  webClientId:
-    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-    "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
-  profileImageSize: 120,
-});
-const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
-if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    environment: process.env.APP_ENV || "development",
-    tracesSampleRate: 0.1,
+
+// Lazy init Google Sign-in – tránh crash nếu native module chưa link
+try {
+  const { GoogleSignin } = require("@react-native-google-signin/google-signin");
+  GoogleSignin.configure({
+    iosClientId:
+      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
+      "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
+    webClientId:
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+      "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
+    profileImageSize: 120,
   });
+} catch (e) {
+  // Google Sign-in chưa sẵn sàng – bỏ qua, sẽ init khi có native module
 }
 
 function RootLayout() {
   const { isAuthenticated, loadUser, user } = useAuthStore();
-  const {
-    isAuthenticated: isPartnerAuthenticated,
-    loadPartner,
-    partner,
-  } = usePartnerAuthStore();
+  const { isAuthenticated: isPartnerAuthenticated, loadPartner, partner } =
+    usePartnerAuthStore();
   const { language, loadLanguage } = useLanguageStore();
   const pathname = usePathname();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
+      try {
+        await Font.loadAsync({
+          "TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
+          "DFVN-TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
+        });
+      } catch (e) {
+        console.warn("Font loading error:", e);
+      }
+      if (!cancelled) setFontsLoaded(true);
       await Promise.all([loadUser(), loadPartner(), loadLanguage()]);
-      setIsReady(true);
+      if (!cancelled) setIsReady(true);
     };
     init();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !fontsLoaded) return;
 
     const inAuthGroup =
       pathname.startsWith("/login") ||
@@ -70,15 +77,13 @@ function RootLayout() {
       pathname.startsWith("/(partner)");
     const inAdminGroup = pathname.startsWith("/admin");
     const onAdminLogin = pathname.startsWith("/admin/login");
-    const inTabsGroup = pathname.startsWith("/(tabs)") || pathname === "/";
     const onWelcome = pathname === "/welcome";
     const onLanguage = pathname === "/language";
     const onIntro = pathname === "/intro";
     const isAdmin = isAuthenticated && user?.role === "admin";
 
-    // ── Không redirect khi đang ở các màn hình con ──────────
-    if (pathname.startsWith("/restaurant/")) return; // detail nhà hàng
-    if (pathname.startsWith("/booking/")) return; // flow đặt bàn
+    if (pathname.startsWith("/restaurant/")) return;
+    if (pathname.startsWith("/booking/")) return;
 
     if (isPartnerAuthenticated) {
       const isPartnerOwner = partner?.role === "owner";
@@ -98,9 +103,6 @@ function RootLayout() {
     }
 
     if (isAuthenticated) {
-      // Chỉ redirect khi đang ở auth screens.
-      // KHÔNG redirect từ restaurant, booking, hay bất kỳ screen con nào khác
-      // vì khi router.back() chạy, pathname thay đổi và trigger effect này
       if (inAuthGroup || inPartnerAuthGroup || inAdminGroup)
         router.replace("/(tabs)");
       return;
@@ -127,18 +129,21 @@ function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user]);
+  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user, fontsLoaded, partner?.role]);
+
+  if (!fontsLoaded || !isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color="#FF6B35" />
+      </View>
+    );
+  }
 
   return (
-    <ErrorBoundary>
-      <>
-        <StatusBar style="auto" />
-        {/*
-          QUAN TRỌNG: KHÔNG liệt kê Stack.Screen với name cụ thể ở đây.
-          Expo Router tự detect routes từ file system.
-          Chỉ khai báo khi muốn override options (animation, gesture...).
-        */}
-        <Stack screenOptions={{ headerShown: false }}>
+    <>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen
           name="restaurant/[id]"
           options={{
@@ -147,15 +152,10 @@ function RootLayout() {
             gestureDirection: "horizontal",
           }}
         />
-        {/*
-          QUAN TRỌNG: booking KHÔNG có _layout.tsx riêng.
-          Tất cả screens nằm cùng root Stack → router.back() hoạt động
-          xuyên suốt từ payment → confirm → select-table → restaurant/[id]
-        */}
-      <Stack.Screen
-        name="booking/select-table"
-        options={{
-          animation: "slide_from_right",
+        <Stack.Screen
+          name="booking/select-table"
+          options={{
+            animation: "slide_from_right",
             gestureEnabled: true,
             gestureDirection: "horizontal",
           }}
@@ -177,9 +177,8 @@ function RootLayout() {
           }}
         />
       </Stack>
-      </>
-    </ErrorBoundary>
+    </>
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default RootLayout;
