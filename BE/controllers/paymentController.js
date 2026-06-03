@@ -1,6 +1,23 @@
 const Booking = require("../models/booking");
 const payos = require("../config/payos");
 
+// ── POST /api/payment/payos-register-webhook ──────────
+exports.registerPayosWebhook = async (req, res) => {
+  try {
+    const { webhookUrl } = req.body;
+    if (!webhookUrl) {
+      return res.status(400).json({ success: false, message: "Thiếu webhookUrl" });
+    }
+
+    const result = await payos.webhooks.confirm(webhookUrl);
+    console.log("[payos-register] Webhook registered:", webhookUrl);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error("[payos-register]", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi đăng ký webhook" });
+  }
+};
+
 // ── POST /api/payment/payos-create ─────────────────────
 exports.createPayosPayment = async (req, res) => {
   try {
@@ -72,15 +89,19 @@ exports.createPayosPayment = async (req, res) => {
   }
 };
 
-// ── POST /api/payment/payos-webhook ────────────────────
+// ── GET/POST /api/payment/payos-webhook ────────────────
 exports.handlePayosWebhook = async (req, res) => {
+  // GET: PayOS test webhook URL (xác thực endpoint)
+  if (req.method === "GET") {
+    return res.json({ success: true, message: "PayOS webhook endpoint ready" });
+  }
+
   try {
     const webhookData = req.body;
-    const signature = req.headers["x-signature"] || req.body.signature;
 
     // Verify webhook signature
     try {
-      payos.webhooks.verify(webhookData, signature);
+      payos.webhooks.verify(webhookData);
     } catch {
       return res
         .status(400)

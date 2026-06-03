@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   AppState,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { paymentAPI } from "@/services/api";
 
 const POLL_INTERVAL = 3000;
-const PAYMENT_TIMEOUT = 10 * 60 * 1000; // 10 phút
+const PAYMENT_TIMEOUT = 10 * 60 * 1000;
 
 export default function PayosPaymentScreen() {
   const router = useRouter();
@@ -42,10 +43,15 @@ export default function PayosPaymentScreen() {
   }>();
 
   const [status, setStatus] = useState<string>("PENDING");
-  const [message, setMessage] = useState("Đang chờ thanh toán...");
+  const [manualChecking, setManualChecking] = useState(false);
   const startedAt = useRef(Date.now());
+  const isMounted = useRef(true);
 
-  const navigateToSuccess = () => {
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
+
+  const navigateToSuccess = useCallback(() => {
     router.replace({
       pathname: "/booking/success" as any,
       params: {
@@ -61,56 +67,55 @@ export default function PayosPaymentScreen() {
         bookingNumber,
       },
     });
-  };
+  }, [bookingId, bookingNumber, date, deposit, partySize, restaurantId, restaurantImage, restaurantName, router, tableName, time]);
 
-  const checkStatus = async () => {
-    if (!bookingId) return;
+  // Gọi kiểm tra không hiển thị loading (cho interval + AppState)
+  const silentCheck = useCallback(async () => {
+    if (!bookingId || !isMounted.current) return false;
     try {
       const res = await paymentAPI.getPayosStatus(bookingId);
-      const payosStatus = res.data?.status;
+      const payosStatus = (res.data?.status || "").toUpperCase();
 
       if (payosStatus === "PAID" || payosStatus === "COMPLETED") {
         setStatus("PAID");
-        setMessage("Thanh toán thành công!");
         setTimeout(navigateToSuccess, 800);
         return true;
       }
-
       if (payosStatus === "CANCELLED") {
         setStatus("CANCELLED");
-        setMessage("Đã hủy thanh toán.");
         return true;
       }
-
-      // Check timeout
       if (Date.now() - startedAt.current > PAYMENT_TIMEOUT) {
         setStatus("EXPIRED");
-        setMessage("Hết thời gian thanh toán.");
         return true;
       }
-
-      setMessage("Đang chờ thanh toán...");
     } catch {
-      setMessage("Đang kiểm tra trạng thái...");
+      // ignore
     }
     return false;
-  };
+  }, [bookingId, navigateToSuccess]);
 
+  // Gọi kiểm tra có loading (cho nút bấm)
+  const manualCheck = useCallback(async () => {
+    if (!bookingId || manualChecking) return;
+    setManualChecking(true);
+    await silentCheck();
+    if (isMounted.current) setManualChecking(false);
+  }, [bookingId, manualChecking, silentCheck]);
+
+  // Polling tự động
   useEffect(() => {
-    const timer = setInterval(() => {
-      checkStatus();
-    }, POLL_INTERVAL);
-
+    const timer = setInterval(() => { silentCheck(); }, POLL_INTERVAL);
     return () => clearInterval(timer);
-  }, [bookingId]);
+  }, [silentCheck]);
 
-  // Check khi app trở lại từ background
+  // Check khi app từ background trở lại
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") checkStatus();
+      if (state === "active") silentCheck();
     });
     return () => sub.remove();
-  }, [bookingId]);
+  }, [silentCheck]);
 
   const isFinal = status === "PAID" || status === "CANCELLED" || status === "EXPIRED";
 
@@ -151,20 +156,31 @@ export default function PayosPaymentScreen() {
             ? "Bạn có thể thực hiện lại đặt bàn."
             : status === "EXPIRED"
             ? "Vui lòng đặt bàn lại để thanh toán."
-            : "Vui lòng hoàn tất thanh toán qua PayOS.\nSau đó quay lại ứng dụng."}
+            : "Vui lòng hoàn tất thanh toán qua PayOS.\nSau đó quay lại ứng dụng và nhấn 'Kiểm tra lại'."}
         </Text>
 
         {!isFinal && (
+          <TouchableOpacity
+            style={s.retryBtn}
+            onPress={manualCheck}
+            disabled={manualChecking}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={18} color="#fff" />
+            <Text style={s.retryBtnText}>
+              {manualChecking ? "Đang kiểm tra..." : "Kiểm tra lại"}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {!isFinal && (
           <Text style={s.hint}>
-            Đang kiểm tra trạng thái mỗi 3 giây...
+            Tự động kiểm tra mỗi 3 giây
           </Text>
         )}
 
         {isFinal && status !== "PAID" && (
-          <Text
-            style={s.backBtn}
-            onPress={() => router.back()}
-          >
+          <Text style={s.backBtn} onPress={() => router.back()}>
             Quay lại
           </Text>
         )}
@@ -207,6 +223,23 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: "rgba(255,255,255,0.6)",
     textAlign: "center",
+    marginTop: 16,
+  },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  retryBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
   },
   backBtn: {
     fontSize: 16,
