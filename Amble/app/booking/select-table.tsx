@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
   View,
@@ -24,23 +24,39 @@ import { useTranslation } from "../../i18n/useTranslation";
 const PRIMARY = "#FF6B35";
 const { height: SCREEN_H } = Dimensions.get("window");
 
-const TIMES = [
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
+const LUNCH_TIMES = [
+  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
 ];
+
+const DINNER_TIMES = [
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
+];
+
+// ── Thời lượng mặc định (khớp với backend) ──────────────
+const getDefaultDuration = (mealTime: string, partySize: number): number => {
+  if (partySize >= 9) return 180;
+  if (mealTime === 'lunch') return partySize <= 4 ? 90 : 120;
+  return partySize <= 4 ? 120 : 150;
+};
+
+const getBufferTime = (mealTime: string, partySize: number): number => {
+  if (partySize >= 9) return 30;
+  if (mealTime === 'lunch') return partySize <= 4 ? 15 : 20;
+  return partySize <= 4 ? 20 : 25;
+};
+
+const getMealTime = (time: string): 'lunch' | 'dinner' => {
+  const hour = parseInt(time.split(':')[0], 10);
+  return hour >= 11 && hour < 15 ? 'lunch' : 'dinner';
+};
+
+const calcEndTime = (start: string, dur: number): string => {
+  const [h, m] = start.split(':').map(Number);
+  const t = h * 60 + m + dur;
+  const eh = Math.floor(t / 60) % 24;
+  const em = t % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+};
 
 const TABLE_TYPE_CONFIG: Record<
   string,
@@ -124,10 +140,29 @@ export default function SelectTableScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // ── Giờ ───────────────────────────────────────────────
+  const [mealTime, setMealTime] = useState<'lunch' | 'dinner'>('dinner');
   const [time, setTime] = useState("19:00");
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  // ── Drawer animation ───────────────────────────────────
+  // ── Thời lượng ────────────────────────────────────────
+  const duration = getDefaultDuration(mealTime, guests);
+  const bufferTime = getBufferTime(mealTime, guests);
+  const [durationAdjustment, setDurationAdjustment] = useState(0);
+  const finalDuration = Math.max(60, duration + durationAdjustment);
+  const expectedEndTime = calcEndTime(time, finalDuration);
+
+  const TIMES = mealTime === 'lunch' ? LUNCH_TIMES : DINNER_TIMES;
+
+  // ── Effect: reset time khi đổi meal ────────────────────
+  useEffect(() => {
+    if (mealTime === 'lunch') setTime('12:00');
+    else setTime('19:00');
+  }, [mealTime]);
+
+  // ── Effect: reset adjustment khi đổi guests ────────────
+  useEffect(() => {
+    setDurationAdjustment(0);
+  }, [guests, mealTime]);
   const drawerAnim = useRef(new Animated.Value(SCREEN_H)).current;
 
   // ── Fetch tables — chạy lại mỗi khi màn hình được focus ──
@@ -196,6 +231,11 @@ export default function SelectTableScreen() {
           date: dateStr,
           time,
           partySize: guests.toString(),
+          mealTime,
+          duration: finalDuration.toString(),
+          bufferTime: bufferTime.toString(),
+          expectedEndTime,
+          durationAdjustment: durationAdjustment.toString(),
         },
       });
     }, 260);
@@ -240,6 +280,38 @@ export default function SelectTableScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* ── Meal Time Tabs ──────────────────────────── */}
+        <View style={s.mealRow}>
+          <TouchableOpacity
+            style={[s.mealTab, mealTime === 'lunch' && s.mealTabActive]}
+            onPress={() => setMealTime('lunch')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="sunny-outline"
+              size={16}
+              color={mealTime === 'lunch' ? '#fff' : '#6B7280'}
+            />
+            <Text style={[s.mealTabTxt, mealTime === 'lunch' && s.mealTabTxtActive]}>
+              {t("booking.select.lunch")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.mealTab, mealTime === 'dinner' && s.mealTabActive]}
+            onPress={() => setMealTime('dinner')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="moon-outline"
+              size={16}
+              color={mealTime === 'dinner' ? '#fff' : '#6B7280'}
+            />
+            <Text style={[s.mealTabTxt, mealTime === 'dinner' && s.mealTabTxtActive]}>
+              {t("booking.select.dinner")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Ngày / Giờ / Khách ──────────────────── */}
         <View style={s.dtgRow}>
           {/* Ngày — mở DateTimePicker native */}
@@ -565,6 +637,59 @@ export default function SelectTableScreen() {
                           <Text style={s.badgeTxt}>✅ {t("booking.select.legendAvailable")}</Text>
                         </View>
                       </View>
+
+                      {/* ── Thời lượng dự kiến ─────────────────── */}
+                      <View style={s.durationBox}>
+                        <Ionicons name="time-outline" size={16} color={PRIMARY} />
+                        <Text style={s.durationLabel}>
+                          {t("booking.select.expectedTime")}: {time} – {expectedEndTime}
+                        </Text>
+                        <Text style={s.durationValue}>
+                          ({finalDuration} {t("booking.select.minutes")})
+                        </Text>
+                      </View>
+
+                      {/* ── Adjustment buttons ──────────────────── */}
+                      <View style={s.adjustRow}>
+                        <TouchableOpacity
+                          style={[
+                            s.adjustBtn,
+                            durationAdjustment === -30 && s.adjustBtnActive,
+                          ]}
+                          onPress={() => setDurationAdjustment(durationAdjustment === -30 ? 0 : -30)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[
+                            s.adjustBtnTxt,
+                            durationAdjustment === -30 && s.adjustBtnTxtActive,
+                          ]}>
+                            {t("booking.select.quickEat")}
+                          </Text>
+                          <Text style={[
+                            s.adjustBtnSub,
+                            durationAdjustment === -30 && s.adjustBtnSubActive,
+                          ]}>-30 {t("booking.select.minutes")}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            s.adjustBtn,
+                            durationAdjustment === 30 && s.adjustBtnActive,
+                          ]}
+                          onPress={() => setDurationAdjustment(durationAdjustment === 30 ? 0 : 30)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[
+                            s.adjustBtnTxt,
+                            durationAdjustment === 30 && s.adjustBtnTxtActive,
+                          ]}>
+                            {t("booking.select.longer")}
+                          </Text>
+                          <Text style={[
+                            s.adjustBtnSub,
+                            durationAdjustment === 30 && s.adjustBtnSubActive,
+                          ]}>+30 {t("booking.select.minutes")}</Text>
+                        </TouchableOpacity>
+                      </View>
                       {(selectedTable.description ||
                         selectedTable.features?.length > 0) && (
                         <Text style={s.drawerDesc}>
@@ -833,5 +958,97 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+
+  // Meal time tabs
+  mealRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  mealTab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  mealTabActive: {
+    backgroundColor: PRIMARY,
+    borderColor: PRIMARY,
+  },
+  mealTabTxt: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#6B7280",
+  },
+  mealTabTxtActive: {
+    color: "#fff",
+  },
+
+  // Duration
+  durationBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFF3ED",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  durationLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: PRIMARY,
+  },
+  durationValue: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: PRIMARY,
+  },
+
+  // Adjustment buttons
+  adjustRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 14,
+  },
+  adjustBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    paddingVertical: 10,
+    alignItems: "center",
+    gap: 2,
+  },
+  adjustBtnActive: {
+    borderColor: PRIMARY,
+    backgroundColor: "#FFF3ED",
+  },
+  adjustBtnTxt: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#374151",
+  },
+  adjustBtnTxtActive: {
+    color: PRIMARY,
+  },
+  adjustBtnSub: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    fontWeight: "600",
+  },
+  adjustBtnSubActive: {
+    color: PRIMARY,
   },
 });

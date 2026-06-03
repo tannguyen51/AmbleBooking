@@ -64,6 +64,11 @@ export default function ConfirmBookingScreen() {
     date,
     time,
     partySize,
+    mealTime,
+    duration,
+    expectedEndTime,
+    durationAdjustment,
+    bufferTime,
   } = useLocalSearchParams<{
     restaurantId: string;
     restaurantName: string;
@@ -75,6 +80,11 @@ export default function ConfirmBookingScreen() {
     date?: string;
     time?: string;
     partySize?: string;
+    mealTime?: string;
+    duration?: string;
+    expectedEndTime?: string;
+    durationAdjustment?: string;
+    bufferTime?: string;
   }>();
 
   const depositAmt = parseInt(deposit || "0");
@@ -192,6 +202,7 @@ export default function ConfirmBookingScreen() {
         paymentMethod: selectedPayment,
         voucherCode: appliedVoucher?.code,
         voucherDiscount: discount,
+        durationAdjustment: parseInt(durationAdjustment || "0"),
       });
       const booking = res.data.booking;
       if (selectedPayment === "payos") {
@@ -209,21 +220,8 @@ export default function ConfirmBookingScreen() {
             await Linking.openURL(checkoutUrl);
           }
 
-          router.push({
-            pathname: "/booking/payos-payment" as any,
-            params: {
-              bookingId: booking._id,
-              bookingNumber: booking.bookingNumber,
-              restaurantId,
-              restaurantName,
-              restaurantImage: tableImage,
-              tableName,
-              date: bookingData.date,
-              time: bookingData.time,
-              partySize: bookingData.partySize,
-              deposit: total.toString(),
-            },
-          });
+          // Về màn history, user kiểm tra trạng thái sau
+          router.replace("/(tabs)/history" as any);
           return;
         } catch (payosErr: any) {
           if (__DEV__) console.error('[DEBUG] PayOS error:', payosErr);
@@ -352,7 +350,14 @@ export default function ConfirmBookingScreen() {
             <View style={s.detailRow}>
               <Ionicons name="time-outline" size={20} color="#666" />
               <Text style={s.detailLabel}>{t("booking.confirm.time")}</Text>
-              <Text style={s.detailValue}>{bookingData.time}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.detailValue}>{bookingData.time}</Text>
+                {expectedEndTime && (
+                  <Text style={{ fontSize: 11, color: '#FF6B35', fontWeight: '600', marginTop: 1 }}>
+                    {bookingData.time} – {expectedEndTime} ({duration || 120} phút)
+                  </Text>
+                )}
+              </View>
             </View>
             <View style={s.divider} />
             <View style={s.detailRow}>
@@ -524,8 +529,7 @@ export default function ConfirmBookingScreen() {
             style={{ marginTop: 1 }}
           />
           <Text style={s.infoTxt}>
-            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được:
-            hoàn tiền cọc.
+            {t("booking.confirm.policy")}
           </Text>
         </View>
         <View style={{ height: 100 }} />

@@ -2,6 +2,11 @@ const Booking = require("../models/booking");
 const Table = require("../models/table");
 const Restaurant = require("../models/restaurant");
 const paymentConfig = require("../config/paymentConfig");
+const {
+  computeBookingDuration,
+  detectMealTime,
+  GRACE_PERIOD_MIN,
+} = require("../services/bookingDuration");
 
 const buildVietQrImageUrl = (amount, content) => {
   if (!paymentConfig.accountNumber || !paymentConfig.accountName) return null;
@@ -126,6 +131,9 @@ exports.createBooking = async (req, res) => {
         .json({ success: false, message: "Thiếu thông tin bắt buộc" });
     }
 
+    // Chuẩn hóa time về HH:MM để so sánh string an toàn
+    const normalizedTime = time?.padStart(5, '0').slice(0, 5) || time;
+
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant)
       return res
@@ -160,6 +168,52 @@ exports.createBooking = async (req, res) => {
     const random = Math.floor(1000 + Math.random() * 9000);
     const bookingNumber = `BK-${dateStr}-${random}`;
 
+    // ── Kiểm tra thời gian hợp lệ ──
+    const hour = parseInt(normalizedTime.split(':')[0], 10);
+    const isLunchTime = hour >= 11 && hour < 15;
+    const isDinnerTime = hour >= 17 && hour < 23;
+    if (!isLunchTime && !isDinnerTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Giờ đặt không nằm trong khung hoạt động (11:00-14:59 hoặc 17:00-22:59)',
+      });
+    }
+
+    // ── Kiểm tra trùng lặp thời gian (time overlap) ──
+    const computeEndFallback = (bookingTime) => {
+      const [h, m] = bookingTime.split(':').map(Number);
+      const total = h * 60 + m + 120;
+      const eh = Math.floor(total / 60) % 24;
+      const em = total % 60;
+      return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    };
+
+    const durationAdjustment = Math.max(-30, Math.min(30, Number(req.body.durationAdjustment || 0)));
+    const durationInfo = computeBookingDuration(normalizedTime, partySize, durationAdjustment);
+
+    const existingBookings = await Booking.find({
+      tableId,
+      'bookingDetails.date': date,
+      status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid'] },
+    }).lean();
+
+    for (const existing of existingBookings) {
+      const existingStart = (existing.bookingDetails?.time || '').padStart(5, '0').slice(0, 5);
+      const existingEnd = (existing.bookingDetails?.expectedEndTime || computeEndFallback(existingStart)).padStart(5, '0').slice(0, 5);
+      const newStart = normalizedTime;
+      const newEnd = durationInfo.expectedEndTime;
+
+      // Hai khung giờ overlap nếu: start_new < end_existing AND end_new > start_existing
+      if (newStart < existingEnd && newEnd > existingStart) {
+        return res.status(409).json({
+          success: false,
+          message: `Khung giờ ${existingStart}-${existingEnd} đã có booking. Vui lòng chọn giờ khác.`,
+        });
+      }
+    }
+
+    const isPayos = paymentMethod === "payos";
+
     const booking = await Booking.create({
       bookingNumber,
       userId,
@@ -171,6 +225,12 @@ exports.createBooking = async (req, res) => {
         partySize,
         purpose: purpose || "casual",
         specialRequests: specialRequests || "",
+        mealTime: durationInfo.mealTime,
+        duration: durationInfo.duration,
+        durationAdjustment: durationInfo.durationAdjustment,
+        expectedEndTime: durationInfo.expectedEndTime,
+        bufferTime: durationInfo.buffer,
+        gracePeriodEndTime: durationInfo.gracePeriodEndTime,
       },
       pricing: {
         depositAmount,
@@ -181,7 +241,7 @@ exports.createBooking = async (req, res) => {
           : undefined,
       },
       payment: paymentMethod ? { method: paymentMethod } : undefined,
-      status: paymentMethod === "bank" ? "pending_payment" : "pending",
+      status: isPayos ? "pending" : paymentMethod === "bank" ? "pending_payment" : "pending",
     });
 
     if (paymentMethod === "bank") {
@@ -201,11 +261,15 @@ exports.createBooking = async (req, res) => {
       await booking.save();
     }
 
-    // Cập nhật trạng thái bàn → đã đặt
-    await Table.findByIdAndUpdate(tableId, {
-      isAvailable: false,
-      currentBookingId: booking._id,
-    });
+    // Cập nhật trạng thái bàn → đã đặt (chỉ với các phương thức đã xác nhận)
+    // PayOS: không lock bàn, chỉ lock khi thanh toán thành công
+    if (paymentMethod !== "payos") {
+      await Table.findByIdAndUpdate(tableId, {
+        isAvailable: false,
+        currentBookingId: booking._id,
+        status: 'reserved',
+      });
+    }
 
     return res.json({
       success: true,
@@ -227,9 +291,23 @@ exports.confirmBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
+    if (!['pending', 'pending_payment', 'paid'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể xác nhận booking ở trạng thái: ${booking.status}`,
+      });
+    }
+
     booking.status = "confirmed";
     booking.confirmedAt = new Date();
     await booking.save();
+
+    // Lock bàn khi partner xác nhận booking
+    await Table.findByIdAndUpdate(booking.tableId, {
+      isAvailable: false,
+      currentBookingId: booking._id,
+      status: 'reserved',
+    });
 
     return res.json({ success: true, booking });
   } catch (err) {
@@ -460,7 +538,7 @@ exports.cancelBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (["cancelled", "completed", "refund_pending", "refunded"].includes(booking.status)) {
+    if (["cancelled", "completed", "refund_pending", "refunded", "released", "no_show"].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể hủy booking ở trạng thái: ${booking.status}`,
@@ -510,6 +588,7 @@ exports.cancelBooking = async (req, res) => {
     await Table.findByIdAndUpdate(booking.tableId, {
       isAvailable: true,
       currentBookingId: null,
+      status: 'available',
     });
 
     return res.json({
@@ -531,4 +610,145 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+// ── Helper: cập nhật trạng thái bàn khi release ─────────
+const updateTableForRelease = async (tableId, nextStatus) => {
+  const update = {
+    isAvailable: nextStatus === 'available',
+    currentBookingId: null,
+    status: nextStatus,
+  };
+  return Table.findByIdAndUpdate(tableId, update);
+};
 
+// ── POST /api/booking/:bookingId/release ────────────────
+// Chỉ Owner & Manager mới có quyền (check ở route layer)
+exports.releaseBooking = async (req, res) => {
+  try {
+    const { reason, note } = req.body;
+    const VALID_REASONS = ['no_show', 'late', 'customer_cancel', 'emergency_clean', 'other'];
+
+    if (!reason || !VALID_REASONS.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn lý do release hợp lệ.',
+      });
+    }
+
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
+    }
+
+    if (['cancelled', 'released', 'no_show', 'completed', 'refunded'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể release booking ở trạng thái: ${booking.status}`,
+      });
+    }
+
+    // Xác định trạng thái mới
+    const newBookingStatus = reason === 'no_show' ? 'no_show' : 'released';
+    const tableNextStatus = reason === 'emergency_clean' ? 'cleaning' : 'available';
+
+    booking.status = newBookingStatus;
+    booking.releaseReason = reason;
+    booking.releaseNote = note || '';
+    booking.releasedAt = new Date();
+    if (req.partner) {
+      booking.releasedBy = req.partner._id;
+    }
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = `Release: ${reason}${note ? ' - ' + note : ''}`;
+    await booking.save();
+
+    // Giải phóng bàn
+    await updateTableForRelease(booking.tableId, tableNextStatus);
+
+    return res.json({
+      success: true,
+      booking,
+      message: reason === 'no_show'
+        ? 'Đã đánh dấu No-show và giải phóng bàn'
+        : 'Đã giải phóng bàn thành công',
+    });
+  } catch (err) {
+    console.error('[releaseBooking]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// ── POST /api/booking/:bookingId/check-in ───────────────
+exports.checkInBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
+    }
+
+    if (!['confirmed', 'paid'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể check-in booking ở trạng thái: ${booking.status}`,
+      });
+    }
+
+    // Chỉ cập nhật trạng thái bàn → occupied, KHÔNG đổi booking status
+    // (giữ nguyên confirmed/paid để cleanup service không release nhầm)
+    await Table.findByIdAndUpdate(booking.tableId, {
+      isAvailable: false,
+      status: 'occupied',
+    });
+
+    return res.json({ success: true, message: 'Khách đã check-in' });
+  } catch (err) {
+    console.error('[checkInBooking]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// ── POST /api/booking/:bookingId/check-out ──────────────
+exports.checkOutBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
+    }
+
+    if (!['confirmed', 'paid', 'completed'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking chưa check-in, không thể check-out',
+      });
+    }
+
+    // Cập nhật trạng thái bàn → cleaning
+    await Table.findByIdAndUpdate(booking.tableId, {
+      status: 'cleaning',
+    });
+
+    return res.json({ success: true, message: 'Bàn đang được dọn dẹp' });
+  } catch (err) {
+    console.error('[checkOutBooking]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// ── PUT /api/booking/table/:tableId/cleaning-done ───────
+exports.setCleaningDone = async (req, res) => {
+  try {
+    const table = await Table.findById(req.params.tableId);
+    if (!table) {
+      return res.status(404).json({ success: false, message: 'Bàn không tồn tại' });
+    }
+
+    table.status = 'available';
+    table.isAvailable = true;
+    table.currentBookingId = null;
+    await table.save();
+
+    return res.json({ success: true, message: 'Bàn đã sẵn sàng' });
+  } catch (err) {
+    console.error('[setCleaningDone]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};

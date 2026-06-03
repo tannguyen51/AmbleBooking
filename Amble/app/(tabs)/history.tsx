@@ -25,7 +25,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 
-type Tab = "active" | "pending_payment" | "completed";
+type Tab = "active" | "completed";
 
 const BANK_OPTIONS = [
   "Vietcombank",
@@ -48,14 +48,9 @@ export default function BookingHistoryScreen() {
     {
       id: "active",
       label: t("history.tabActive"),
-      statuses: ["pending", "confirmed", "paid", "draft"],
+      statuses: ["paid", "confirmed"],
     },
-    {
-      id: "pending_payment",
-      label: t("history.tabPendingPayment"),
-      statuses: ["pending_payment"],
-    },
-    { id: "completed", label: t("history.tabCompleted"), statuses: ["completed"] },
+    { id: "completed", label: t("history.tabCompleted"), statuses: ["completed", "cancelled", "refund_pending", "refunded"] },
   ];
 
   const STATUS_DISPLAY: Record<
@@ -88,9 +83,7 @@ export default function BookingHistoryScreen() {
     cancelled: { label: t("history.statusCancelled"), color: "#991B1B" },
     refund_pending: { label: t("history.statusRefundPending"), color: "#92400E" },
     refunded: { label: t("history.statusRefunded"), color: "#065F46" },
-    confirmed: { label: t("history.statusUnpaid"), color: "#6B7280" },
-    pending: { label: t("history.statusUnpaid"), color: "#6B7280" },
-    draft: { label: t("history.statusUnpaid"), color: "#6B7280" },
+    confirmed: { label: t("history.statusPaid"), color: "#065F46" },
   };
 
   const [activeTab, setActiveTab] = useState<Tab>("active");
@@ -282,9 +275,6 @@ export default function BookingHistoryScreen() {
         },
       });
     const canCancel = [
-      "draft",
-      "pending",
-      "pending_payment",
       "confirmed",
       "paid",
     ].includes(item.status);

@@ -7,7 +7,7 @@ const ROLE_PERMISSIONS = {
     tables: ["create", "read", "update", "delete"],
     staff: ["create", "read", "update", "delete"],
     restaurant: ["read", "update"],
-    orders: ["read"],
+    orders: ["read", "release", "checkin", "checkout"],
     dashboard: ["read"],
   },
   manager: {
@@ -15,7 +15,7 @@ const ROLE_PERMISSIONS = {
     tables: ["create", "read", "update", "delete"],
     staff: ["create", "read", "update"],
     restaurant: ["read", "update"],
-    orders: ["read"],
+    orders: ["read", "release", "checkin", "checkout"],
     dashboard: ["read"],
   },
   staff: {
@@ -23,7 +23,7 @@ const ROLE_PERMISSIONS = {
     tables: ["read"],
     staff: [],
     restaurant: ["read"],
-    orders: ["read"],
+    orders: ["read", "checkin", "checkout"],
     dashboard: ["read"],
   },
 };

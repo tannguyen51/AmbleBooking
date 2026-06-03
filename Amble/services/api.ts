@@ -120,6 +120,7 @@ export const bookingAPI = {
     paymentMethod: string;
     voucherCode?: string;
     voucherDiscount?: number;
+    durationAdjustment?: number;
   }) => api.post("/booking/create", data),
 
   // Lịch sử booking của user
@@ -230,6 +231,16 @@ export const partnerDashboardAPI = {
     tiktok?: string;
     website?: string;
   }) => api.put("/partner/restaurant-profile", data),
+
+  // ── New: Booking actions for partner ────────────
+  releaseBooking: (bookingId: string, data: { reason: string; note?: string }) =>
+    api.post(`/partner/bookings/${bookingId}/release`, data),
+  checkInBooking: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/check-in`),
+  checkOutBooking: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/check-out`),
+  setCleaningDone: (tableId: string) =>
+    api.put(`/partner/tables/${tableId}/cleaning-done`),
 };
 
 export const partnerStaffAPI = {

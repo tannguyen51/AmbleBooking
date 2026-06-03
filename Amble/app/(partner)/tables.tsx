@@ -35,7 +35,7 @@ interface PartnerTable {
   description?: string;
   features?: string[];
   isAvailable: boolean;
-  status: "available" | "booked";
+  status: "available" | "reserved" | "occupied" | "cleaning" | "released";
   currentBooking: {
     id: string;
     status: string;
@@ -147,6 +147,17 @@ export default function PartnerTablesScreen() {
     }
   };
 
+  const getStatusConfig = (status: string): { label: string; color: string; bg: string; border: string } => {
+    switch (status) {
+      case 'available': return { label: t("partner.tables.available"), color: '#22C55E', bg: '#F0FDF4', border: '#86EFAC' };
+      case 'reserved': return { label: t("partner.tables.booked"), color: '#EAB308', bg: '#FEFCE8', border: '#FDE68A' };
+      case 'occupied': return { label: 'Đang dùng', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' };
+      case 'cleaning': return { label: 'Đang dọn', color: '#9CA3AF', bg: '#F3F4F6', border: '#D1D5DB' };
+      case 'released': return { label: 'Đã release', color: '#8B5CF6', bg: '#F5F3FF', border: '#C4B5FD' };
+      default: return { label: status, color: '#6B7280', bg: '#F3F4F6', border: '#D1D5DB' };
+    }
+  };
+
   const tableTypeOptions: Array<{
     key: "regular" | "view" | "vip";
     label: string;
@@ -187,14 +198,18 @@ export default function PartnerTablesScreen() {
   const stats = useMemo(() => {
     const total = tables.length;
     const available = tables.filter((t) => t.status === "available").length;
-    const booked = tables.filter((t) => t.status === "booked").length;
-    return { total, available, booked };
+    const reserved = tables.filter((t) => t.status === "reserved" || t.status === "occupied").length;
+    const cleaning = tables.filter((t) => t.status === "cleaning").length;
+    return { total, available, booked: reserved, reserved, cleaning };
   }, [tables]);
 
   const filteredTables = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
     return tables.filter((table) => {
-      const matchFilter = filter === "all" ? true : table.status === filter;
+      const isBookedStatus = ['reserved', 'occupied', 'cleaning', 'released'].includes(table.status);
+      const matchFilter = filter === "all" ? true :
+        filter === "available" ? table.status === "available" :
+        filter === "booked" ? !table.isAvailable || isBookedStatus : false;
       const matchSearch =
         !keyword ||
         table.name.toLowerCase().includes(keyword) ||
@@ -427,6 +442,12 @@ export default function PartnerTablesScreen() {
             {stats.booked}
           </Text>
         </View>
+        <View style={[styles.statCard, { backgroundColor: '#F3F4F6' }]}>
+          <Text style={[styles.statLabel, { color: '#9CA3AF' }]}>Đang dọn</Text>
+          <Text style={[styles.statValue, { color: '#9CA3AF' }]}>
+            {stats.cleaning || 0}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -504,7 +525,7 @@ export default function PartnerTablesScreen() {
         ) : (
           filteredTables.map((table) => {
             const typeLabel = getTableTypeLabel(table.type);
-            const isBooked = table.status === "booked";
+            const statusInfo = getStatusConfig(table.status);
             const coverImage = table.images?.[0];
             return (
               <View key={table.id} style={styles.tableCard}>
@@ -524,10 +545,10 @@ export default function PartnerTablesScreen() {
                   <Text
                     style={[
                       styles.statusBadge,
-                      isBooked ? styles.bookedBadge : styles.availableBadge,
+                      { color: statusInfo.color, backgroundColor: statusInfo.bg, borderColor: statusInfo.border, borderWidth: statusInfo.border ? 1 : 0 },
                     ]}
                   >
-                    {isBooked ? t("partner.tables.booked") : t("partner.tables.available")}
+                    {statusInfo.label}
                   </Text>
                 </View>
 

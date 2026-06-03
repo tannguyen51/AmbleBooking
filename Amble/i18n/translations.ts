@@ -329,6 +329,12 @@ export type TranslationKey =
   | "booking.select.deposit"
   | "booking.select.continue"
   | "booking.select.loading"
+  | "booking.select.lunch"
+  | "booking.select.dinner"
+  | "booking.select.expectedTime"
+  | "booking.select.minutes"
+  | "booking.select.quickEat"
+  | "booking.select.longer"
 
   // Booking - Confirm
   | "booking.confirm.title"
@@ -1137,6 +1143,12 @@ const translations: Translations = {
     "booking.select.deposit": "Tiền cọc",
     "booking.select.continue": "Tiếp tục đặt bàn",
     "booking.select.loading": "Đang tải bàn...",
+    "booking.select.lunch": "Buổi trưa",
+    "booking.select.dinner": "Buổi tối",
+    "booking.select.expectedTime": "Thời gian dự kiến",
+    "booking.select.minutes": "phút",
+    "booking.select.quickEat": "Ăn nhanh",
+    "booking.select.longer": "Ăn lâu hơn",
 
     "booking.confirm.title": "Xác nhận đặt bàn",
     "booking.confirm.restaurant": "Nhà hàng",
@@ -1157,7 +1169,7 @@ const translations: Translations = {
     "booking.confirm.depositLabel": "Tiền cọc bàn",
     "booking.confirm.discount": "Voucher giảm",
     "booking.confirm.total": "Tổng thanh toán",
-    "booking.confirm.policy": "Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được: hoàn tiền cọc.",
+    "booking.confirm.policy": "Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được hoàn tiền cọc. Thời gian ân hạn: 20 phút sau giờ đặt.",
     "booking.confirm.loginRequired": "Vui lòng đăng nhập để đặt bàn",
     "booking.confirm.tableTakenTitle": "Bàn đã được đặt",
     "booking.confirm.tableTakenMessage": "Bàn này vừa được người khác giữ chỗ. Vui lòng chọn bàn khác.",
@@ -1919,6 +1931,12 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
+    "booking.select.lunch": "Lunch",
+    "booking.select.dinner": "Dinner",
+    "booking.select.expectedTime": "Expected time",
+    "booking.select.minutes": "min",
+    "booking.select.quickEat": "Quick eat",
+    "booking.select.longer": "Stay longer",
 
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
@@ -1939,7 +1957,7 @@ const translations: Translations = {
     "booking.confirm.depositLabel": "Table Deposit",
     "booking.confirm.discount": "Voucher Discount",
     "booking.confirm.total": "Total Payment",
-    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund.",
+    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund. Grace period: 20 minutes after booking time.",
     "booking.confirm.loginRequired": "Please log in to book a table",
     "booking.confirm.tableTakenTitle": "Table Already Booked",
     "booking.confirm.tableTakenMessage": "This table was just taken by someone else. Please choose another table.",
@@ -2694,6 +2712,12 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
+    "booking.select.lunch": "Lunch",
+    "booking.select.dinner": "Dinner",
+    "booking.select.expectedTime": "Expected time",
+    "booking.select.minutes": "min",
+    "booking.select.quickEat": "Quick eat",
+    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -2713,7 +2737,7 @@ const translations: Translations = {
     "booking.confirm.depositLabel": "Table Deposit",
     "booking.confirm.discount": "Voucher Discount",
     "booking.confirm.total": "Total Payment",
-    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund.",
+    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund. Grace period: 20 minutes after booking time.",
     "booking.confirm.loginRequired": "Please log in to book a table",
     "booking.confirm.tableTakenTitle": "Table Already Booked",
     "booking.confirm.tableTakenMessage": "This table was just taken by someone else. Please choose another table.",
@@ -3442,6 +3466,12 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
+    "booking.select.lunch": "Lunch",
+    "booking.select.dinner": "Dinner",
+    "booking.select.expectedTime": "Expected time",
+    "booking.select.minutes": "min",
+    "booking.select.quickEat": "Quick eat",
+    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -3461,7 +3491,7 @@ const translations: Translations = {
     "booking.confirm.depositLabel": "Table Deposit",
     "booking.confirm.discount": "Voucher Discount",
     "booking.confirm.total": "Total Payment",
-    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund.",
+    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund. Grace period: 20 minutes after booking time.",
     "booking.confirm.loginRequired": "Please log in to book a table",
     "booking.confirm.tableTakenTitle": "Table Already Booked",
     "booking.confirm.tableTakenMessage": "This table was just taken by someone else. Please choose another table.",
@@ -4190,6 +4220,12 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
+    "booking.select.lunch": "Lunch",
+    "booking.select.dinner": "Dinner",
+    "booking.select.expectedTime": "Expected time",
+    "booking.select.minutes": "min",
+    "booking.select.quickEat": "Quick eat",
+    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -4209,7 +4245,7 @@ const translations: Translations = {
     "booking.confirm.depositLabel": "Table Deposit",
     "booking.confirm.discount": "Voucher Discount",
     "booking.confirm.total": "Total Payment",
-    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund.",
+    "booking.confirm.policy": "Deposit will be deducted from your bill at the restaurant. Cancel 1-3 days in advance for a full refund. Grace period: 20 minutes after booking time.",
     "booking.confirm.loginRequired": "Please log in to book a table",
     "booking.confirm.tableTakenTitle": "Table Already Booked",
     "booking.confirm.tableTakenMessage": "This table was just taken by someone else. Please choose another table.",

@@ -16,6 +16,8 @@ const BOOKING_STATUSES = [
   "cancelled",
   "refund_pending",
   "refunded",
+  "released",
+  "no_show",
 ];
 
 const parseBool = (value) => {
@@ -669,15 +671,17 @@ exports.updateBookingStatus = async (req, res) => {
       meta: { status, reason: reason || "", paymentMethod: paymentMethod || "" },
     });
 
-    if (["cancelled", "refund_pending", "refunded"].includes(status)) {
+    if (["cancelled", "refund_pending", "refunded", "released", "no_show"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
         isAvailable: true,
         currentBookingId: null,
+        status: 'available',
       });
     } else if (["confirmed", "paid", "completed"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
         isAvailable: false,
         currentBookingId: booking._id,
+        status: status === 'completed' ? 'occupied' : 'reserved',
       });
     }
 

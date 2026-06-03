@@ -18,11 +18,13 @@ import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { useTranslation } from "../../i18n/useTranslation";
 
-/** Chỉ các trạng thái còn được admin thao tác */
 const MANAGEABLE_STATUSES = new Set([
   "pending",
   "pending_payment",
   "confirmed",
+  "paid",
+  "released",
+  "no_show",
 ]);
 
 interface BookingRefund {
@@ -55,6 +57,8 @@ const getStatusTone = (
   if (status === "paid" || status === "completed" || status === "confirmed") return "success";
   if (status === "cancelled") return "danger";
   if (status === "refund_pending" || status === "refunded") return "info";
+  if (status === "released") return "info";
+  if (status === "no_show") return "danger";
   return "default";
 };
 
@@ -68,6 +72,8 @@ export default function AdminBookingsScreen() {
     { value: "paid", label: t("admin.bookings.statusPaid") },
     { value: "refund_pending", label: t("admin.bookings.statusRefundPending") },
     { value: "refunded", label: t("admin.bookings.statusRefunded") },
+    { value: "released", label: "Đã release" },
+    { value: "no_show", label: "No-show" },
     { value: "cancelled", label: t("admin.bookings.statusCancelled") },
     { value: "completed", label: t("admin.bookings.statusCompleted") },
   ] as const;
@@ -81,11 +87,13 @@ export default function AdminBookingsScreen() {
     "cancelled": t("admin.bookings.statusCancelled"),
     "refund_pending": t("admin.bookings.statusRefundPending"),
     "refunded": t("admin.bookings.statusRefunded"),
+    "released": "Đã release",
+    "no_show": "No-show",
     "all": t("admin.bookings.all"),
   };
 
   const [status, setStatus] = useState<
-    "all" | "pending" | "confirmed" | "paid" | "refund_pending" | "refunded" | "cancelled" | "completed"
+    "all" | "pending" | "confirmed" | "paid" | "refund_pending" | "refunded" | "released" | "no_show" | "cancelled" | "completed"
   >("all");
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");

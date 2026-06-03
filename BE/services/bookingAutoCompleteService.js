@@ -47,7 +47,7 @@ const runAutoCompleteBookings = async () => {
   if (tableIds.length) {
     await Table.updateMany(
       { _id: { $in: tableIds } },
-      { $set: { isAvailable: true, currentBookingId: null } },
+      { $set: { isAvailable: true, currentBookingId: null, status: 'available' } },
     );
   }
 

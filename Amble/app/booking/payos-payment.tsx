@@ -238,31 +238,13 @@ export default function PayosPaymentScreen() {
 
         {!isFinal && (
           <TouchableOpacity
-            style={s.forceBtn}
-            onPress={() => {
-              Alert.alert(
-                "Xác nhận",
-                "Bạn đã chắc chắn đã thanh toán thành công qua PayOS?",
-                [
-                  { text: "Chưa, kiểm tra lại", style: "cancel" },
-                  { text: "Đã thanh toán rồi", onPress: navigateToSuccess },
-                ],
-              );
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={s.forceBtnText}>Tôi đã thanh toán rồi</Text>
-          </TouchableOpacity>
-        )}
-
-        {!isFinal && (
-          <TouchableOpacity
-            style={s.cancelLink}
+            style={s.cancelBtn}
             onPress={handleCancel}
             disabled={cancelling}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Text style={s.cancelLinkText}>
+            <Ionicons name="close-circle-outline" size={20} color="rgba(255,255,255,0.85)" />
+            <Text style={s.cancelBtnText}>
               {cancelling ? "Đang hủy..." : "Hủy đặt bàn"}
             </Text>
           </TouchableOpacity>
@@ -345,29 +327,23 @@ const s = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-  forceBtn: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+  cancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 32,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
   },
-  forceBtnText: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.8)",
-    textAlign: "center",
-  },
-  cancelLink: {
-    marginTop: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  cancelLinkText: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.6)",
-    textDecorationLine: "underline",
+  cancelBtnText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "rgba(255,255,255,0.85)",
   },
   backLink: {
     fontSize: 16,

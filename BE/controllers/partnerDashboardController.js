@@ -29,18 +29,20 @@ exports.getOverview = async (req, res) => {
     const [
       totalTables,
       availableTables,
-      bookedTables,
+      reservedTables,
+      occupiedTables,
+      cleaningTables,
       pendingOrders,
       todayBookings,
       pendingBookings,
+      upcomingBookings,
+      allTables,
     ] = await Promise.all([
       Table.countDocuments({ restaurantId, isActive: true }),
-      Table.countDocuments({ restaurantId, isActive: true, isAvailable: true }),
-      Table.countDocuments({
-        restaurantId,
-        isActive: true,
-        isAvailable: false,
-      }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'available' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'reserved' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'occupied' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'cleaning' }),
       Booking.countDocuments({ restaurantId, status: "pending" }),
       Booking.countDocuments({
         restaurantId,
@@ -52,6 +54,23 @@ exports.getOverview = async (req, res) => {
         .populate("tableId", "name")
         .sort({ createdAt: -1 })
         .limit(5)
+        .lean(),
+      Booking.find({
+        restaurantId,
+        "bookingDetails.date": today,
+        status: { $in: ["confirmed", "paid"] },
+      })
+        .populate("userId", "fullName phone")
+        .populate("tableId", "name type")
+        .sort({ "bookingDetails.time": 1 })
+        .limit(20)
+        .lean(),
+      Table.find({ restaurantId, isActive: true })
+        .populate({
+          path: "currentBookingId",
+          populate: { path: "userId", select: "fullName phone" },
+        })
+        .sort({ name: 1 })
         .lean(),
     ]);
 
@@ -67,16 +86,62 @@ exports.getOverview = async (req, res) => {
       status: booking.status,
     }));
 
+    const upcomingBookingItems = upcomingBookings.map((booking) => ({
+      id: booking._id,
+      bookingNumber: booking.bookingNumber,
+      userName: booking.userId?.fullName || "Khách hàng",
+      userPhone: booking.userId?.phone || "",
+      tableId: booking.tableId?._id,
+      tableNumber: booking.tableId?.name || "Bàn",
+      tableType: booking.tableId?.type || "regular",
+      date: booking.bookingDetails?.date || "",
+      time: booking.bookingDetails?.time || "",
+      guests: booking.bookingDetails?.partySize || 0,
+      duration: booking.bookingDetails?.duration || 120,
+      expectedEndTime: booking.bookingDetails?.expectedEndTime || '',
+      depositAmount: booking.pricing?.depositAmount || 0,
+      status: booking.status,
+    }));
+
+    const tableFloorItems = allTables.map((table) => {
+      const currentBooking = table.currentBookingId;
+      return {
+        id: table._id,
+        name: table.name,
+        type: table.type,
+        capacity: table.capacity,
+        status: table.status,
+        isAvailable: table.isAvailable,
+        features: table.features || [],
+        currentBooking: currentBooking
+          ? {
+              id: currentBooking._id,
+              status: currentBooking.status,
+              date: currentBooking.bookingDetails?.date || "",
+              time: currentBooking.bookingDetails?.time || "",
+              expectedEndTime: currentBooking.bookingDetails?.expectedEndTime || "",
+              guests: currentBooking.bookingDetails?.partySize || 0,
+              customerName: currentBooking.userId?.fullName || "",
+            }
+          : null,
+      };
+    });
+
     return res.json({
       success: true,
       overview: {
         totalTables,
         availableTables,
-        bookedTables,
+        reservedTables,
+        occupiedTables,
+        cleaningTables,
+        bookedTables: reservedTables + occupiedTables,
         pendingOrders,
         todayBookings,
       },
       pendingBookings: pendingBookingItems,
+      upcomingBookings: upcomingBookingItems,
+      floorTables: tableFloorItems,
     });
   } catch (err) {
     console.error("[getOverview]", err);
@@ -131,9 +196,13 @@ exports.getOrders = async (req, res) => {
         const counts = {
       all: allBookings.length,
       pending: allBookings.filter((b) => b.status === "pending").length,
+      pending_payment: allBookings.filter((b) => b.status === "pending_payment").length,
       confirmed: allBookings.filter((b) => b.status === "confirmed").length,
+      paid: allBookings.filter((b) => b.status === "paid").length,
       completed: allBookings.filter((b) => b.status === "completed").length,
       cancelled: allBookings.filter((b) => b.status === "cancelled").length,
+      released: allBookings.filter((b) => b.status === "released").length,
+      no_show: allBookings.filter((b) => b.status === "no_show").length,
     };
 
     return res.json({ success: true, orders, counts });
@@ -178,7 +247,7 @@ exports.getTables = async (req, res) => {
         features: table.features || [],
         description: table.description || "",
         isAvailable: table.isAvailable,
-        status: table.isAvailable ? "available" : "booked",
+        status: table.status || (table.isAvailable ? "available" : "booked"),
         currentBooking: currentBooking
           ? {
               id: currentBooking._id,
@@ -452,6 +521,7 @@ exports.updateTable = async (req, res) => {
       }
       if (table.isAvailable) {
         table.currentBookingId = null;
+        table.status = 'available';
       }
     }
 

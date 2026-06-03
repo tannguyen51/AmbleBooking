@@ -4,6 +4,9 @@ export type PartnerPermission =
   | "dashboard:view"
   | "orders:view"
   | "orders:update_status"
+  | "orders:release"
+  | "orders:checkin"
+  | "orders:checkout"
   | "tables:view"
   | "tables:manage"
   | "restaurant_profile:view"
@@ -19,6 +22,9 @@ export const PARTNER_ROLE_PERMISSIONS: Record<PartnerRole, PartnerPermission[]> 
     "dashboard:view",
     "orders:view",
     "orders:update_status",
+    "orders:release",
+    "orders:checkin",
+    "orders:checkout",
     "tables:view",
     "tables:manage",
     "restaurant_profile:view",
@@ -33,6 +39,9 @@ export const PARTNER_ROLE_PERMISSIONS: Record<PartnerRole, PartnerPermission[]> 
     "dashboard:view",
     "orders:view",
     "orders:update_status",
+    "orders:release",
+    "orders:checkin",
+    "orders:checkout",
     "tables:view",
     "tables:manage",
     "restaurant_profile:view",

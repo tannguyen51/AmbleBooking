@@ -28,8 +28,15 @@ const tableSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
 
     // isAvailable = bàn đang trống (không có booking confirmed/paid)
-    // Được cập nhật tự động khi tạo/hủy booking
+    // Được cập nhật tự động khi tạo/hủy booking (giữ để tương thích ngược)
     isAvailable: { type: Boolean, default: true },
+
+    // Trạng thái hiển thị của bàn (UI color mapping)
+    status: {
+      type: String,
+      enum: ['available', 'reserved', 'occupied', 'cleaning', 'released'],
+      default: 'available',
+    },
 
     // Booking hiện tại đang giữ bàn (nếu có)
     currentBookingId: {

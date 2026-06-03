@@ -1,4 +1,5 @@
 const Booking = require("../models/booking");
+const Table = require("../models/table");
 const payos = require("../config/payos");
 
 // ── POST /api/payment/payos-register-webhook ──────────
@@ -189,6 +190,15 @@ exports.handlePayosWebhook = async (req, res) => {
       booking.status = "paid";
       await booking.save();
 
+      // Lock bàn sau khi thanh toán thành công
+      try {
+        await Table.findByIdAndUpdate(booking.tableId, {
+          isAvailable: false,
+          currentBookingId: booking._id,
+          status: 'reserved',
+        });
+      } catch (_) {}
+
       console.log(
         `[payos-webhook] Booking ${booking.bookingNumber} paid: ${amount}`
       );
@@ -241,6 +251,14 @@ exports.getPaymentStatus = async (req, res) => {
         if (payosStatus === "PAID" || payosStatus === "COMPLETED") {
           booking.status = "paid";
           booking.payment.paidAt = new Date();
+          // Lock bàn sau khi thanh toán thành công
+          try {
+            await Table.findByIdAndUpdate(booking.tableId, {
+              isAvailable: false,
+              currentBookingId: booking._id,
+              status: 'reserved',
+            });
+          } catch (_) {}
         }
         await booking.save();
       }
@@ -278,9 +296,20 @@ exports.cancelPayosPayment = async (req, res) => {
       ...(booking.payment || {}),
       payosStatus: "CANCELLED",
     };
+    booking.status = "cancelled";
+    booking.cancelledAt = new Date();
     await booking.save();
 
-    return res.json({ success: true, message: "Đã huỷ thanh toán PayOS" });
+    // Trả bàn về trạng thái trống
+    try {
+      await require("../models/table").findByIdAndUpdate(booking.tableId, {
+        isAvailable: true,
+        currentBookingId: null,
+        status: 'available',
+      });
+    } catch (_) {}
+
+    return res.json({ success: true, message: "Đã huỷ đặt bàn" });
   } catch (err) {
     console.error("[cancelPayosPayment]", err);
     return res

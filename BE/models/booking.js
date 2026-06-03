@@ -28,6 +28,18 @@ const bookingSchema = new mongoose.Schema(
       partySize: { type: Number, required: true },
       purpose: { type: String, default: "casual" },
       specialRequests: { type: String, default: "" },
+      // Thông tin thời lượng
+      mealTime: {
+        type: String,
+        enum: ['lunch', 'dinner', ''],
+        default: '',
+      },
+      duration: { type: Number, default: 120 },       // phút
+      durationAdjustment: { type: Number, default: 0 }, // -30, 0, +30
+      expectedEndTime: { type: String, default: '' },   // HH:mm
+      bufferTime: { type: Number, default: 15 },        // phút dọn bàn
+      // Grace period
+      gracePeriodEndTime: { type: String, default: '' }, // HH:mm
     },
     pricing: {
       depositAmount: { type: Number, required: true },
@@ -50,6 +62,8 @@ const bookingSchema = new mongoose.Schema(
         "cancelled",
         "refund_pending",
         "refunded",
+        "released",
+        "no_show",
       ],
       default: "draft",
     },
@@ -79,6 +93,19 @@ const bookingSchema = new mongoose.Schema(
       accountNumber: { type: String, default: "" },
       accountName: { type: String, default: "" },
     },
+    // Release flow (Owner/Manager)
+    releaseReason: {
+      type: String,
+      enum: ['no_show', 'late', 'customer_cancel', 'emergency_clean', 'other', ''],
+      default: '',
+    },
+    releaseNote: { type: String, default: '' },
+    releasedAt: Date,
+    releasedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Partner',
+    },
+    isAutoReleased: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

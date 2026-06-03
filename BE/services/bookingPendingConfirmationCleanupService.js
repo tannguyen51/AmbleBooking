@@ -2,6 +2,7 @@
 const Table = require("../models/table");
 
 const PENDING_STATUS = "pending";
+const PENDING_TIMEOUT_MS = 60 * 60 * 1000; // 60 phút
 const CHECK_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
 
 const parseBookingDateTime = (dateStr, timeStr) => {
@@ -18,19 +19,21 @@ const parseBookingDateTime = (dateStr, timeStr) => {
 
 const runPendingConfirmationCleanup = async () => {
   const now = new Date();
-  
+
   // Tìm tất cả booking pending (chờ nhà hàng xác nhận)
   const candidates = await Booking.find({
     status: PENDING_STATUS,
   }).lean();
 
-  // Lọc những booking quá ngày đặt (booking time < now)
+  // Lọc: (1) quá ngày đặt hoặc (2) quá 60 phút kể từ khi tạo
   const overdue = candidates.filter((booking) => {
     const dateTime = parseBookingDateTime(
       booking?.bookingDetails?.date,
       booking?.bookingDetails?.time,
     );
-    return dateTime && dateTime.getTime() < now.getTime();
+    if (dateTime && dateTime.getTime() < now.getTime()) return true;
+    const createdAt = booking.createdAt ? new Date(booking.createdAt).getTime() : 0;
+    return now.getTime() - createdAt > PENDING_TIMEOUT_MS;
   });
 
   if (!overdue.length) return { updated: 0 };
@@ -54,7 +57,7 @@ const runPendingConfirmationCleanup = async () => {
   if (tableIds.length) {
     await Table.updateMany(
       { _id: { $in: tableIds } },
-      { $set: { isAvailable: true, currentBookingId: null } },
+      { $set: { isAvailable: true, currentBookingId: null, status: 'available' } },
     );
   }
 
