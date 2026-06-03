@@ -7,11 +7,12 @@ import {
   ActivityIndicator,
   AppState,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { paymentAPI } from "@/services/api";
+import { paymentAPI, bookingAPI } from "@/services/api";
 
 const POLL_INTERVAL = 3000;
 const PAYMENT_TIMEOUT = 10 * 60 * 1000;
@@ -85,12 +86,26 @@ export default function PayosPaymentScreen() {
         setStatus("CANCELLED");
         return true;
       }
-      if (Date.now() - startedAt.current > PAYMENT_TIMEOUT) {
-        setStatus("EXPIRED");
+    } catch {
+      // ignore
+    }
+
+    // Fallback: check trực tiếp booking status từ database
+    try {
+      const bookingRes = await bookingAPI.getById(bookingId);
+      const bookingStatus = bookingRes.data?.booking?.status;
+      if (bookingStatus === "paid") {
+        setStatus("PAID");
+        setTimeout(navigateToSuccess, 800);
         return true;
       }
     } catch {
       // ignore
+    }
+
+    if (Date.now() - startedAt.current > PAYMENT_TIMEOUT) {
+      setStatus("EXPIRED");
+      return true;
     }
     return false;
   }, [bookingId, navigateToSuccess]);
@@ -179,6 +194,25 @@ export default function PayosPaymentScreen() {
           </Text>
         )}
 
+        {!isFinal && (
+          <TouchableOpacity
+            style={s.forceBtn}
+            onPress={() => {
+              Alert.alert(
+                "Xác nhận",
+                "Bạn đã chắc chắn đã thanh toán thành công qua PayOS?",
+                [
+                  { text: "Chưa, kiểm tra lại", style: "cancel" },
+                  { text: "Đã thanh toán rồi", onPress: navigateToSuccess },
+                ],
+              );
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.forceBtnText}>Tôi đã thanh toán rồi</Text>
+          </TouchableOpacity>
+        )}
+
         {isFinal && status !== "PAID" && (
           <Text style={s.backBtn} onPress={() => router.back()}>
             Quay lại
@@ -240,6 +274,20 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#fff",
+  },
+  forceBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  forceBtnText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    textAlign: "center",
   },
   backBtn: {
     fontSize: 16,
