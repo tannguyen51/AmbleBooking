@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { bookingAPI, paymentAPI } from "@/services/api";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
 import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
@@ -42,7 +42,7 @@ interface VoucherItem {
   isPercent: boolean;
 }
 
-const TABLE_TYPE_LABELS: Record<string, string> = {
+const TABLE_TYPE_LABELS: Record<string, TranslationKey> = {
   vip: "booking.select.typeVIP",
   view: "booking.select.typeView",
   regular: "booking.select.typeRegular",

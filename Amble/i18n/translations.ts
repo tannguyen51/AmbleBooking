@@ -107,6 +107,7 @@ export type TranslationKey =
   | "home.sectionAll"
   | "home.sectionBudget"
   | "home.sectionFavorites"
+  | "home.sectionSearchResults"
   | "home.filterTitle"
   | "home.filterSubtitle"
   | "home.filterLocation"
@@ -205,6 +206,7 @@ export type TranslationKey =
   | "profile.updateSuccess"
   | "profile.passwordMismatch"
   | "profile.passwordChangeSuccess"
+  | "profile.fillRequired"
 
   // Chat
   | "chat.headerTitle"
@@ -927,6 +929,7 @@ const translations: Translations = {
     "home.sectionAll": "Tất cả nhà hàng",
     "home.sectionBudget": "Quán ngon giá tốt",
     "home.sectionFavorites": "Yêu thích của bạn",
+    "home.sectionSearchResults": "Kết quả tìm kiếm",
     "home.filterTitle": "Bộ lọc",
     "home.filterSubtitle": "Tùy chỉnh nhanh theo nhu cầu",
     "home.filterLocation": "Vị trí",
@@ -1023,6 +1026,7 @@ const translations: Translations = {
     "profile.updateSuccess": "Hồ sơ đã được cập nhật!",
     "profile.passwordMismatch": "Mật khẩu không khớp",
     "profile.passwordChangeSuccess": "Đổi mật khẩu thành công!",
+    "profile.fillRequired": "Vui lòng điền đầy đủ thông tin",
 
     "chat.headerTitle": "munchmap AI",
     "chat.headerOnline": "Luôn sẵn sàng hỗ trợ",
@@ -1715,6 +1719,7 @@ const translations: Translations = {
     "home.sectionAll": "All Restaurants",
     "home.sectionBudget": "Great Value Eats",
     "home.sectionFavorites": "Your Favorites",
+    "home.sectionSearchResults": "Search Results",
     "home.filterTitle": "Filters",
     "home.filterSubtitle": "Customize by your needs",
     "home.filterLocation": "Location",
@@ -1811,6 +1816,7 @@ const translations: Translations = {
     "profile.updateSuccess": "Profile updated successfully!",
     "profile.passwordMismatch": "Passwords don't match",
     "profile.passwordChangeSuccess": "Password changed successfully!",
+    "profile.fillRequired": "Please fill in all required fields",
 
     "chat.headerTitle": "munchmap AI",
     "chat.headerOnline": "Always ready to help",
@@ -2502,6 +2508,7 @@ const translations: Translations = {
     "home.sectionAll": "全部餐厅",
     "home.sectionBudget": "超值美食",
     "home.sectionFavorites": "您的收藏",
+    "home.sectionSearchResults": "搜索结果",
     "home.filterTitle": "筛选",
     "home.filterSubtitle": "按需求定制",
     "home.filterLocation": "位置",
@@ -2596,6 +2603,7 @@ const translations: Translations = {
     "profile.updateSuccess": "Profile updated successfully!",
     "profile.passwordMismatch": "Passwords don't match",
     "profile.passwordChangeSuccess": "Password changed successfully!",
+    "profile.fillRequired": "请填写所有必填字段",
     "chat.headerTitle": "munchmap AI",
     "chat.headerOnline": "Always ready to help",
     "chat.inputPlaceholder": "Message munchmap AI...",
@@ -3256,6 +3264,7 @@ const translations: Translations = {
     "home.sectionAll": "모든 레스토랑",
     "home.sectionBudget": "가성비 맛집",
     "home.sectionFavorites": "즐겨찾기",
+    "home.sectionSearchResults": "검색 결과",
     "home.filterTitle": "필터",
     "home.filterSubtitle": "필요에 따라 맞춤 설정",
     "home.filterLocation": "위치",
@@ -3350,6 +3359,7 @@ const translations: Translations = {
     "profile.updateSuccess": "Profile updated successfully!",
     "profile.passwordMismatch": "Passwords don't match",
     "profile.passwordChangeSuccess": "Password changed successfully!",
+    "profile.fillRequired": "모든 필수 필드를 채워주세요",
     "chat.headerTitle": "munchmap AI",
     "chat.headerOnline": "Always ready to help",
     "chat.inputPlaceholder": "Message munchmap AI...",
@@ -4010,6 +4020,7 @@ const translations: Translations = {
     "home.sectionAll": "すべてのレストラン",
     "home.sectionBudget": "お得なグルメ",
     "home.sectionFavorites": "お気に入り",
+    "home.sectionSearchResults": "検索結果",
     "home.filterTitle": "フィルター",
     "home.filterSubtitle": "ニーズに合わせてカスタマイズ",
     "home.filterLocation": "場所",
@@ -4104,6 +4115,7 @@ const translations: Translations = {
     "profile.updateSuccess": "Profile updated successfully!",
     "profile.passwordMismatch": "Passwords don't match",
     "profile.passwordChangeSuccess": "Password changed successfully!",
+    "profile.fillRequired": "すべての必須項目を入力してください",
     "chat.headerTitle": "munchmap AI",
     "chat.headerOnline": "Always ready to help",
     "chat.inputPlaceholder": "Message munchmap AI...",

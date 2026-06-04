@@ -9,7 +9,7 @@ export function ExternalLink({ href, ...rest }: Props) {
     <Link
       target="_blank"
       {...rest}
-      href={href}
+      href={href as any}
       onPress={async (event) => {
         if (process.env.EXPO_OS !== 'web') {
           event.preventDefault();

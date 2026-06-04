@@ -939,6 +939,7 @@ export default function DetailScreen() {
               params: {
                 restaurantId: restaurant._id,
                 restaurantName: restaurant.name,
+                restaurantAddress: restaurant.address,
               },
             })
           }
