@@ -23,7 +23,7 @@ import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
-const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get("window");
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const LUNCH_TIMES = [
   "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
