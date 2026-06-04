@@ -19,12 +19,8 @@ import AdminCard from "../../components/admin/AdminCard";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const MANAGEABLE_STATUSES = new Set([
-  "pending",
-  "pending_payment",
-  "confirmed",
-  "paid",
-  "released",
-  "no_show",
+  "pending", "confirmed", "occupied", "completed",
+  "cancelled", "declined", "no_show",
 ]);
 
 interface BookingRefund {
@@ -45,6 +41,7 @@ interface BookingItem {
   restaurantId?: { name?: string };
   tableId?: { name?: string };
   refund?: BookingRefund;
+  payment?: { status?: string };
 }
 
 const formatVnd = (amount?: number) =>
@@ -53,47 +50,38 @@ const formatVnd = (amount?: number) =>
 const getStatusTone = (
   status: string,
 ): "warning" | "success" | "danger" | "info" | "default" => {
-  if (status === "pending" || status === "pending_payment") return "warning";
-  if (status === "paid" || status === "completed" || status === "confirmed") return "success";
-  if (status === "cancelled") return "danger";
-  if (status === "refund_pending" || status === "refunded") return "info";
-  if (status === "released") return "info";
-  if (status === "no_show") return "danger";
+  if (status === "pending") return "warning";
+  if (status === "confirmed" || status === "completed") return "success";
+  if (status === "occupied" || status === "cancelled") return "danger";
+  if (status === "no_show" || status === "declined") return "info";
   return "default";
 };
 
 export default function AdminBookingsScreen() {
   const { t } = useTranslation();
 
-  const BOOKING_FILTERS = [
-    { value: "all", label: t("admin.bookings.all") },
+  const BOOKING_FILTERS: { value: string; label: string }[] = [
+    { value: "all", label: t("common.all") },
     { value: "pending", label: t("admin.bookings.statusPending") },
     { value: "confirmed", label: t("admin.bookings.statusConfirmed") },
-    { value: "paid", label: t("admin.bookings.statusPaid") },
-    { value: "refund_pending", label: t("admin.bookings.statusRefundPending") },
-    { value: "refunded", label: t("admin.bookings.statusRefunded") },
-    { value: "released", label: "Đã release" },
-    { value: "no_show", label: "No-show" },
-    { value: "cancelled", label: t("admin.bookings.statusCancelled") },
+    { value: "occupied", label: t("admin.bookings.statusOccupied") },
     { value: "completed", label: t("admin.bookings.statusCompleted") },
-  ] as const;
+    { value: "cancelled", label: t("admin.bookings.statusCancelled") },
+    { value: "no_show", label: t("admin.bookings.statusNoShow") },
+  ];
 
   const STATUS_LABELS: Record<string, string> = {
-    "pending": t("admin.bookings.statusPending"),
-    "pending_payment": t("admin.bookings.statusUnpaid"),
-    "confirmed": t("admin.bookings.statusConfirmed"),
-    "paid": t("admin.bookings.statusPaid"),
-    "completed": t("admin.bookings.statusCompleted"),
-    "cancelled": t("admin.bookings.statusCancelled"),
-    "refund_pending": t("admin.bookings.statusRefundPending"),
-    "refunded": t("admin.bookings.statusRefunded"),
-    "released": "Đã release",
-    "no_show": "No-show",
-    "all": t("admin.bookings.all"),
+    pending: t("admin.bookings.statusPending"),
+    confirmed: t("admin.bookings.statusConfirmed"),
+    occupied: t("admin.bookings.statusOccupied"),
+    completed: t("admin.bookings.statusCompleted"),
+    cancelled: t("admin.bookings.statusCancelled"),
+    declined: t("admin.bookings.statusDeclined"),
+    no_show: t("admin.bookings.statusNoShow"),
   };
 
   const [status, setStatus] = useState<
-    "all" | "pending" | "confirmed" | "paid" | "refund_pending" | "refunded" | "released" | "no_show" | "cancelled" | "completed"
+    "all" | "pending" | "confirmed" | "occupied" | "completed" | "cancelled" | "no_show"
   >("all");
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
@@ -133,24 +121,10 @@ export default function AdminBookingsScreen() {
     loadBookings(true);
   }, [status]);
 
-  const setStatusAction = async (item: BookingItem, nextStatus: string) => {
-    const statusMap: Record<string, string> = {
-      "pending": "pending",
-      "pending_payment": "pending_payment",
-      "confirmed": "confirmed",
-      "paid": "paid",
-      "completed": "completed",
-      "cancelled": "cancelled",
-      "refund_pending": "refund_pending",
-      "refunded": "refunded",
-    };
-    const actualStatus = Object.entries(statusMap).find(([, v]) => v === nextStatus)?.[0] || nextStatus;
-    try {
-      await adminAPI.updateBookingStatus(item._id, { status: actualStatus });
-      await loadBookings(true);
-    } catch (error: any) {
-      Alert.alert(t("common.error"), error?.response?.data?.message || t("common.error"));
-    }
+  const setStatusAction = (item: BookingItem, newStatus: string) => {
+    setSelectedBooking(item);
+    setTargetStatus(newStatus);
+    setStatusDialogVisible(true);
   };
 
   const applyFilters = () => {
@@ -281,7 +255,7 @@ export default function AdminBookingsScreen() {
                 {item.bookingDetails?.date || ""} {item.bookingDetails?.time || ""}
               </Text>
 
-              {item.status === "refund_pending" || item.status === "refunded" ? (
+              {item.payment?.status === "refund_pending" || item.payment?.status === "refunded" ? (
                 <View style={styles.refundBox}>
                   <Text style={styles.refundTitle}>{t("admin.bookings.refundTitle")}</Text>
                   <Text style={styles.refundRow}>
@@ -311,7 +285,7 @@ export default function AdminBookingsScreen() {
                       {item.refund?.accountName?.trim() || "—"}
                     </Text>
                   </Text>
-                  {item.status === "refund_pending" &&
+                  {item.payment?.status === "refund_pending" &&
                   item.refund?.accountNumber?.trim() ? (
                     <TouchableOpacity
                       style={styles.copyBtn}
@@ -325,7 +299,7 @@ export default function AdminBookingsScreen() {
                       <Text style={styles.copyBtnText}>{t("admin.bookings.copyInfo")}</Text>
                     </TouchableOpacity>
                   ) : null}
-                  {item.status === "refund_pending" &&
+                  {item.payment?.status === "refund_pending" &&
                   !item.refund?.bankName?.trim() &&
                   !item.refund?.accountNumber?.trim() ? (
                     <Text style={styles.refundWarning}>
@@ -335,7 +309,7 @@ export default function AdminBookingsScreen() {
                 </View>
               ) : null}
 
-              {false && item.status === "refund_pending" ? (
+              {false && item.payment?.status === "refund_pending" ? (
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.actionPrimary]}

@@ -233,8 +233,9 @@ export type TranslationKey =
   | "history.tabCompleted"
   | "history.tabCancelled"
   | "history.statusPending"
-  | "history.statusPendingPayment"
   | "history.statusConfirmed"
+  | "history.statusOccupied"
+  | "history.statusNoShow"
   | "history.statusPaid"
   | "history.statusCompleted"
   | "history.statusCancelled"
@@ -329,12 +330,6 @@ export type TranslationKey =
   | "booking.select.deposit"
   | "booking.select.continue"
   | "booking.select.loading"
-  | "booking.select.lunch"
-  | "booking.select.dinner"
-  | "booking.select.expectedTime"
-  | "booking.select.minutes"
-  | "booking.select.quickEat"
-  | "booking.select.longer"
 
   // Booking - Confirm
   | "booking.confirm.title"
@@ -717,9 +712,9 @@ export type TranslationKey =
   | "admin.bookings.quickFilter"
   | "admin.bookings.statusPending"
   | "admin.bookings.statusConfirmed"
-  | "admin.bookings.statusPaid"
-  | "admin.bookings.statusRefundPending"
-  | "admin.bookings.statusRefunded"
+  | "admin.bookings.statusOccupied"
+  | "admin.bookings.statusNoShow"
+  | "admin.bookings.statusDeclined"
   | "admin.bookings.statusCancelled"
   | "admin.bookings.statusCompleted"
   | "admin.bookings.refundTitle"
@@ -1049,13 +1044,11 @@ const translations: Translations = {
     "history.tabCompleted": "Đã xong",
     "history.tabCancelled": "Đã hủy",
     "history.statusPending": "Chờ xác nhận",
-    "history.statusPendingPayment": "Chờ thanh toán",
     "history.statusConfirmed": "Đã xác nhận",
-    "history.statusPaid": "Đã thanh toán",
+    "history.statusOccupied": "Đang dùng",
+    "history.statusNoShow": "Vắng mặt",
     "history.statusCompleted": "Hoàn thành",
     "history.statusCancelled": "Đã hủy",
-    "history.statusRefundPending": "Chờ hoàn tiền",
-    "history.statusRefunded": "Đã hoàn tiền",
     "history.statusUnpaid": "Chưa thanh toán",
     "history.countdownPayment": "Còn {time} để thanh toán",
     "history.depositLabel": "Tiền cọc",
@@ -1143,12 +1136,6 @@ const translations: Translations = {
     "booking.select.deposit": "Tiền cọc",
     "booking.select.continue": "Tiếp tục đặt bàn",
     "booking.select.loading": "Đang tải bàn...",
-    "booking.select.lunch": "Buổi trưa",
-    "booking.select.dinner": "Buổi tối",
-    "booking.select.expectedTime": "Thời gian dự kiến",
-    "booking.select.minutes": "phút",
-    "booking.select.quickEat": "Ăn nhanh",
-    "booking.select.longer": "Ăn lâu hơn",
 
     "booking.confirm.title": "Xác nhận đặt bàn",
     "booking.confirm.restaurant": "Nhà hàng",
@@ -1514,9 +1501,9 @@ const translations: Translations = {
     "admin.bookings.quickFilter": "Trạng thái nhanh",
     "admin.bookings.statusPending": "Chờ xác nhận",
     "admin.bookings.statusConfirmed": "Đã xác nhận",
-    "admin.bookings.statusPaid": "Đã thanh toán",
-    "admin.bookings.statusRefundPending": "Chờ hoàn tiền",
-    "admin.bookings.statusRefunded": "Đã hoàn tiền",
+    "admin.bookings.statusOccupied": "Đang dùng",
+    "admin.bookings.statusNoShow": "Vắng mặt",
+    "admin.bookings.statusDeclined": "Từ chối",
     "admin.bookings.statusCancelled": "Đã hủy",
     "admin.bookings.statusCompleted": "Hoàn thành",
     "admin.bookings.all": "Tất cả",
@@ -1837,13 +1824,11 @@ const translations: Translations = {
     "history.tabCompleted": "Completed",
     "history.tabCancelled": "Cancelled",
     "history.statusPending": "Pending Confirmation",
-    "history.statusPendingPayment": "Pending Payment",
     "history.statusConfirmed": "Confirmed",
-    "history.statusPaid": "Paid",
+    "history.statusOccupied": "In Use",
+    "history.statusNoShow": "No Show",
     "history.statusCompleted": "Completed",
     "history.statusCancelled": "Cancelled",
-    "history.statusRefundPending": "Refund Pending",
-    "history.statusRefunded": "Refunded",
     "history.statusUnpaid": "Unpaid",
     "history.countdownPayment": "{time} left to pay",
     "history.depositLabel": "Deposit",
@@ -1931,12 +1916,6 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
-    "booking.select.lunch": "Lunch",
-    "booking.select.dinner": "Dinner",
-    "booking.select.expectedTime": "Expected time",
-    "booking.select.minutes": "min",
-    "booking.select.quickEat": "Quick eat",
-    "booking.select.longer": "Stay longer",
 
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
@@ -2302,9 +2281,9 @@ const translations: Translations = {
     "admin.bookings.quickFilter": "Quick Status",
     "admin.bookings.statusPending": "Pending",
     "admin.bookings.statusConfirmed": "Confirmed",
-    "admin.bookings.statusPaid": "Paid",
-    "admin.bookings.statusRefundPending": "Refund Pending",
-    "admin.bookings.statusRefunded": "Refunded",
+    "admin.bookings.statusOccupied": "In Use",
+    "admin.bookings.statusNoShow": "No Show",
+    "admin.bookings.statusDeclined": "Declined",
     "admin.bookings.statusCancelled": "Cancelled",
     "admin.bookings.statusCompleted": "Completed",
     "admin.bookings.all": "All",
@@ -2620,13 +2599,11 @@ const translations: Translations = {
     "history.tabCompleted": "Completed",
     "history.tabCancelled": "Cancelled",
     "history.statusPending": "Pending Confirmation",
-    "history.statusPendingPayment": "Pending Payment",
     "history.statusConfirmed": "Confirmed",
-    "history.statusPaid": "Paid",
+    "history.statusOccupied": "使用中",
+    "history.statusNoShow": "未到",
     "history.statusCompleted": "Completed",
     "history.statusCancelled": "Cancelled",
-    "history.statusRefundPending": "Refund Pending",
-    "history.statusRefunded": "Refunded",
     "history.statusUnpaid": "Unpaid",
     "history.countdownPayment": "{time} left to pay",
     "history.depositLabel": "Deposit",
@@ -2712,12 +2689,6 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
-    "booking.select.lunch": "Lunch",
-    "booking.select.dinner": "Dinner",
-    "booking.select.expectedTime": "Expected time",
-    "booking.select.minutes": "min",
-    "booking.select.quickEat": "Quick eat",
-    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -3066,9 +3037,9 @@ const translations: Translations = {
     "admin.bookings.quickFilter": "Quick Status",
     "admin.bookings.statusPending": "Pending",
     "admin.bookings.statusConfirmed": "Confirmed",
-    "admin.bookings.statusPaid": "Paid",
-    "admin.bookings.statusRefundPending": "Refund Pending",
-    "admin.bookings.statusRefunded": "Refunded",
+    "admin.bookings.statusOccupied": "使用中",
+    "admin.bookings.statusNoShow": "未到",
+    "admin.bookings.statusDeclined": "已拒绝",
     "admin.bookings.statusCancelled": "Cancelled",
     "admin.bookings.statusCompleted": "Completed",
     "admin.bookings.all": "All",
@@ -3374,13 +3345,11 @@ const translations: Translations = {
     "history.tabCompleted": "Completed",
     "history.tabCancelled": "Cancelled",
     "history.statusPending": "Pending Confirmation",
-    "history.statusPendingPayment": "Pending Payment",
     "history.statusConfirmed": "Confirmed",
-    "history.statusPaid": "Paid",
+    "history.statusOccupied": "사용 중",
+    "history.statusNoShow": "노쇼",
     "history.statusCompleted": "Completed",
     "history.statusCancelled": "Cancelled",
-    "history.statusRefundPending": "Refund Pending",
-    "history.statusRefunded": "Refunded",
     "history.statusUnpaid": "Unpaid",
     "history.countdownPayment": "{time} left to pay",
     "history.depositLabel": "Deposit",
@@ -3466,12 +3435,6 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
-    "booking.select.lunch": "Lunch",
-    "booking.select.dinner": "Dinner",
-    "booking.select.expectedTime": "Expected time",
-    "booking.select.minutes": "min",
-    "booking.select.quickEat": "Quick eat",
-    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -3820,9 +3783,9 @@ const translations: Translations = {
     "admin.bookings.quickFilter": "Quick Status",
     "admin.bookings.statusPending": "Pending",
     "admin.bookings.statusConfirmed": "Confirmed",
-    "admin.bookings.statusPaid": "Paid",
-    "admin.bookings.statusRefundPending": "Refund Pending",
-    "admin.bookings.statusRefunded": "Refunded",
+    "admin.bookings.statusOccupied": "사용 중",
+    "admin.bookings.statusNoShow": "노쇼",
+    "admin.bookings.statusDeclined": "거절됨",
     "admin.bookings.statusCancelled": "Cancelled",
     "admin.bookings.statusCompleted": "Completed",
     "admin.bookings.all": "All",
@@ -4128,13 +4091,11 @@ const translations: Translations = {
     "history.tabCompleted": "Completed",
     "history.tabCancelled": "Cancelled",
     "history.statusPending": "Pending Confirmation",
-    "history.statusPendingPayment": "Pending Payment",
     "history.statusConfirmed": "Confirmed",
-    "history.statusPaid": "Paid",
+    "history.statusOccupied": "利用中",
+    "history.statusNoShow": "不参加",
     "history.statusCompleted": "Completed",
     "history.statusCancelled": "Cancelled",
-    "history.statusRefundPending": "Refund Pending",
-    "history.statusRefunded": "Refunded",
     "history.statusUnpaid": "Unpaid",
     "history.countdownPayment": "{time} left to pay",
     "history.depositLabel": "Deposit",
@@ -4220,12 +4181,6 @@ const translations: Translations = {
     "booking.select.deposit": "Deposit",
     "booking.select.continue": "Continue Booking",
     "booking.select.loading": "Loading tables...",
-    "booking.select.lunch": "Lunch",
-    "booking.select.dinner": "Dinner",
-    "booking.select.expectedTime": "Expected time",
-    "booking.select.minutes": "min",
-    "booking.select.quickEat": "Quick eat",
-    "booking.select.longer": "Stay longer",
     "booking.confirm.title": "Confirm Booking",
     "booking.confirm.restaurant": "Restaurant",
     "booking.confirm.selectedTable": "Selected Table",
@@ -4574,9 +4529,9 @@ const translations: Translations = {
     "admin.bookings.quickFilter": "Quick Status",
     "admin.bookings.statusPending": "Pending",
     "admin.bookings.statusConfirmed": "Confirmed",
-    "admin.bookings.statusPaid": "Paid",
-    "admin.bookings.statusRefundPending": "Refund Pending",
-    "admin.bookings.statusRefunded": "Refunded",
+    "admin.bookings.statusOccupied": "In Use",
+    "admin.bookings.statusNoShow": "No Show",
+    "admin.bookings.statusDeclined": "Declined",
     "admin.bookings.statusCancelled": "Cancelled",
     "admin.bookings.statusCompleted": "Completed",
     "admin.bookings.all": "All",

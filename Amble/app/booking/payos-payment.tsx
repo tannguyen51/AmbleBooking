@@ -95,8 +95,8 @@ export default function PayosPaymentScreen() {
     // Fallback: check trực tiếp booking status từ database
     try {
       const bookingRes = await bookingAPI.getById(bookingId);
-      const bookingStatus = bookingRes.data?.booking?.status;
-      if (bookingStatus === "paid") {
+      const bookingData = bookingRes.data?.booking;
+      if (bookingData?.payment?.status === "paid" || payosStatus === "PAID" || payosStatus === "COMPLETED") {
         setStatus("PAID");
         setTimeout(navigateToSuccess, 800);
         return true;

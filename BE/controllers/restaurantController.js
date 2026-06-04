@@ -146,7 +146,7 @@ exports.createReview = async (req, res) => {
       _id: bookingId,
       userId: req.user._id,
       restaurantId: req.params.id,
-      status: { $in: ['confirmed', 'paid', 'completed'] },
+      status: { $in: ['confirmed', 'occupied', 'completed'] },
     }).lean();
 
     if (!booking) {

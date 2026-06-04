@@ -120,7 +120,6 @@ export const bookingAPI = {
     paymentMethod: string;
     voucherCode?: string;
     voucherDiscount?: number;
-    durationAdjustment?: number;
   }) => api.post("/booking/create", data),
 
   // Lịch sử booking của user

@@ -17,7 +17,7 @@ import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import ReleaseModal from "../../components/partner/ReleaseModal";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 
-type OrderStatus = "all" | "booked" | "cancelled" | "no_show" | "released";
+type OrderStatus = "all" | "booked" | "cancelled" | "no_show";
 
 interface PartnerOrder {
   id: string;
@@ -52,25 +52,21 @@ const EMPTY_COUNTS: OrderCounts = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Chờ xử lý",
-  pending_payment: "Chờ thanh toán",
+  pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
-  paid: "Đã thanh toán",
-  completed: "Hoàn thành",
+  occupied: "Đang dùng",
+  completed: "Hoàn tất",
   cancelled: "Đã hủy",
-  released: "Đã release",
-  no_show: "No-show",
+  no_show: "Vắng mặt",
 };
 
-const STATUS_STYLES: Record<string, { color: string; backgroundColor: string; borderColor?: string }> = {
+const STATUS_STYLES: Record<string, { color: string; backgroundColor: string }> = {
   pending: { color: "#E69A00", backgroundColor: "#FFF7E2" },
-  pending_payment: { color: "#E69A00", backgroundColor: "#FFF7E2" },
-  confirmed: { color: "#22C55E", backgroundColor: "#E7F8EE" },
-  paid: { color: "#3B82F6", backgroundColor: "#EFF6FF" },
-  completed: { color: "#22C55E", backgroundColor: "#E7F8EE" },
-  cancelled: { color: "#F04444", backgroundColor: "#FEE2E2", borderColor: "#F04444" },
-  released: { color: "#8B5CF6", backgroundColor: "#F5F3FF", borderColor: "#C4B5FD" },
-  no_show: { color: "#EF4444", backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+  confirmed: { color: "#16A34A", backgroundColor: "#E6F7E6" },
+  occupied: { color: "#DC2626", backgroundColor: "#FFE6E6" },
+  completed: { color: "#6B7280", backgroundColor: "#F3F4F6" },
+  cancelled: { color: "#DC2626", backgroundColor: "#FFE6E6" },
+  no_show: { color: "#6B7280", backgroundColor: "#F3F4F6" },
 };
 
 const FILTER_CONFIG = [
@@ -114,9 +110,9 @@ export default function PartnerOrdersScreen() {
   const { partner } = usePartnerAuthStore();
   const canRelease = (status: string) => {
     if (!["owner", "manager"].includes(partner?.role || "")) return false;
-    return ["pending", "confirmed", "paid"].includes(status);
+    return ["pending", "confirmed"].includes(status);
   };
-  const canCheckIn = (status: string) => ["confirmed", "paid"].includes(status);
+  const canCheckIn = (status: string) => ["confirmed"].includes(status);
 
   useFocusEffect(
     useCallback(() => {
@@ -127,10 +123,10 @@ export default function PartnerOrdersScreen() {
 
   const displayedOrders = useMemo(() => {
     if (activeFilter === "booked") {
-      return orders.filter((o) => !["cancelled", "released", "no_show"].includes(o.status));
+      return orders.filter((o) => !["cancelled", "no_show"].includes(o.status));
     }
     if (activeFilter === "no_show") {
-      return orders.filter((o) => o.status === "no_show" || o.status === "released");
+      return orders.filter((o) => o.status === "no_show");
     }
     if (activeFilter === "cancelled") {
       return orders.filter((o) => o.status === "cancelled");
@@ -235,8 +231,6 @@ export default function PartnerOrdersScreen() {
                       statusStyle && {
                         color: statusStyle.color,
                         backgroundColor: statusStyle.backgroundColor,
-                        borderColor: statusStyle.borderColor,
-                        borderWidth: statusStyle.borderColor ? 1 : 0,
                       },
                     ]}
                   >

@@ -28,18 +28,6 @@ const bookingSchema = new mongoose.Schema(
       partySize: { type: Number, required: true },
       purpose: { type: String, default: "casual" },
       specialRequests: { type: String, default: "" },
-      // Thông tin thời lượng
-      mealTime: {
-        type: String,
-        enum: ['lunch', 'dinner', ''],
-        default: '',
-      },
-      duration: { type: Number, default: 120 },       // phút
-      durationAdjustment: { type: Number, default: 0 }, // -30, 0, +30
-      expectedEndTime: { type: String, default: '' },   // HH:mm
-      bufferTime: { type: Number, default: 15 },        // phút dọn bàn
-      // Grace period
-      gracePeriodEndTime: { type: String, default: '' }, // HH:mm
     },
     pricing: {
       depositAmount: { type: Number, required: true },
@@ -53,25 +41,26 @@ const bookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "draft",
         "pending",
-        "pending_payment",
         "confirmed",
-        "paid",
+        "occupied",
         "completed",
         "cancelled",
-        "refund_pending",
-        "refunded",
-        "released",
+        "declined",
         "no_show",
       ],
-      default: "draft",
+      default: "pending",
     },
     payment: {
+      status: {
+        type: String,
+        enum: ["unpaid", "paid", "refund_pending", "refunded"],
+        default: "unpaid",
+      },
       transactionId: String,
       method: {
         type: String,
-        enum: ["momo", "bank", "credit", "apple", "payos"],
+        enum: ["momo", "bank", "credit", "apple", "payos", "cash"],
       },
       paidAt: Date,
       expectedContent: String,
@@ -79,11 +68,23 @@ const bookingSchema = new mongoose.Schema(
       bankCode: String,
       accountNumber: String,
       amount: Number,
+      payosOrderCode: Number,
+      payosPaymentLinkId: String,
+      payosStatus: String,
     },
-    conversationSessionId: String,
-    confirmedAt: Date,
-    cancelledAt: Date,
-    cancellationReason: String,
+    // Nguồn đặt
+    source: {
+      type: String,
+      enum: ['app', 'walkin', 'phone', 'facebook', 'google', 'zalo', 'other'],
+      default: 'app',
+    },
+    // Thông tin khách (cho walk-in)
+    customerInfo: {
+      name:  { type: String, default: '' },
+      phone: { type: String, default: '' },
+      email: { type: String, default: '' },
+    },
+    // Refund
     refund: {
       refundPercent: { type: Number, default: 0 },
       refundAmount: { type: Number, default: 0 },
@@ -93,19 +94,11 @@ const bookingSchema = new mongoose.Schema(
       accountNumber: { type: String, default: "" },
       accountName: { type: String, default: "" },
     },
-    // Release flow (Owner/Manager)
-    releaseReason: {
-      type: String,
-      enum: ['no_show', 'late', 'customer_cancel', 'emergency_clean', 'other', ''],
-      default: '',
-    },
-    releaseNote: { type: String, default: '' },
-    releasedAt: Date,
-    releasedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Partner',
-    },
-    isAutoReleased: { type: Boolean, default: false },
+    confirmedAt: Date,
+    cancelledAt: Date,
+    cancellationReason: String,
+    walkedInAt: Date,
+    completedAt: Date,
   },
   { timestamps: true },
 );

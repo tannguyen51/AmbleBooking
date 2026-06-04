@@ -249,7 +249,7 @@ export default function DetailScreen() {
 
         return (
           String(bookingRestaurantId || "") === String(id) &&
-          ["confirmed", "paid", "completed"].includes(bookingStatus) &&
+          ["confirmed", "occupied", "completed"].includes(bookingStatus) &&
           !reviewedBookingIds.has(String(b._id))
         );
       });

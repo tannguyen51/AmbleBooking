@@ -27,8 +27,7 @@ const tableSchema = new mongoose.Schema(
     // isActive = bàn tồn tại và không bị ẩn bởi partner
     isActive: { type: Boolean, default: true },
 
-    // isAvailable = bàn đang trống (không có booking confirmed/paid)
-    // Được cập nhật tự động khi tạo/hủy booking (giữ để tương thích ngược)
+    // isAvailable = derived từ status (luôn đồng bộ qua pre-save hook)
     isAvailable: { type: Boolean, default: true },
 
     // Trạng thái hiển thị của bàn (UI color mapping)
@@ -47,5 +46,11 @@ const tableSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Đồng bộ isAvailable với status
+tableSchema.pre('save', function (next) {
+  this.isAvailable = this.status === 'available';
+  next();
+});
 
 module.exports = mongoose.model('Table', tableSchema);

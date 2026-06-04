@@ -27,10 +27,6 @@ const bookingRoutes = require("./routes/booking");
 const aiRoutes = require("./routes/ai");
 const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
-const { startBookingAutoCompleteJob } = require("./services/bookingAutoCompleteService");
-const { startTableCleanupJob } = require("./services/tableCleanupService");
-const { startPendingPaymentCleanupJob } = require("./services/pendingPaymentCleanupService");
-const { startPendingConfirmationCleanupJob } = require("./services/bookingPendingConfirmationCleanupService");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
@@ -71,10 +67,6 @@ mongoose
   .connect(mongoUri)
   .then(() => {
     console.log("MongoDB connected");
-    startBookingAutoCompleteJob();
-    startTableCleanupJob();
-    startPendingPaymentCleanupJob();
-    startPendingConfirmationCleanupJob();
   })
   .catch((err) => console.error("MongoDB error:", err));
 
