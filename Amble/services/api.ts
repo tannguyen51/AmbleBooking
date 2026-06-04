@@ -290,22 +290,62 @@ export const analyticsAPI = {
 
 // ── Admin Analytics ──────────────────────────────────
 export const adminAnalyticsAPI = {
-  getOverview: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/overview", { params: { restaurantId, from, to } }),
-  getUserActivity: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/users", { params: { restaurantId, from, to } }),
-  getSearchDiscovery: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/search", { params: { restaurantId, from, to } }),
-  getBookingFunnel: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/funnel", { params: { restaurantId, from, to } }),
-  getTableSelection: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/tables", { params: { restaurantId, from, to } }),
-  getCancellationMetrics: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/cancellation", { params: { restaurantId, from, to } }),
-  getPeakHours: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/peak-hours", { params: { restaurantId, from, to } }),
-  getAIMetrics: (restaurantId: string, from?: string, to?: string) =>
-    api.get("/admin/analytics/ai", { params: { restaurantId, from, to } }),
+  getOverview: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/overview", { params });
+  },
+  getUserActivity: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/users", { params });
+  },
+  getSearchDiscovery: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/search", { params });
+  },
+  getBookingFunnel: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/funnel", { params });
+  },
+  getTableSelection: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/tables", { params });
+  },
+  getCancellationMetrics: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/cancellation", { params });
+  },
+  getPeakHours: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/peak-hours", { params });
+  },
+  getAIMetrics: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/ai", { params });
+  },
 };
 
 // ── Admin ──────────────────────────────────────────────

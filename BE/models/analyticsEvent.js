@@ -10,7 +10,7 @@ const analyticsEventSchema = new mongoose.Schema({
     type: String,
     enum: [
       'page_view', 'search', 'restaurant_view', 'table_view',
-      'booking_start', 'booking_complete', 'booking_cancel',
+      'booking_start', 'booking_complete', 'booking_confirm', 'booking_cancel',
       'checkin', 'complete', 'no_show', 'walkin',
       'ai_chat_start', 'ai_chat_complete',
     ],

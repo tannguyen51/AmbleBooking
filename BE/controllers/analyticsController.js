@@ -7,8 +7,12 @@ const User = require("../models/user");
 // ── Helpers ──────────────────────────────────────────────────
 
 const getRestaurantId = (req) => {
-  // Partner: từ token. Admin: từ query param
   return req.partner?.restaurantId || req.query.restaurantId || null;
+};
+
+const getRestaurantFilter = (req) => {
+  const rid = getRestaurantId(req);
+  return rid ? { restaurantId: rid } : {};
 };
 
 const getDateRange = (from, to) => {
@@ -39,7 +43,7 @@ const buildEventFilter = (restaurantId, events, from, to) => {
 exports.getOverview = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
@@ -53,33 +57,30 @@ exports.getOverview = async (req, res) => {
       cancelledBookings,
       completedBookings,
     ] = await Promise.all([
-      Booking.countDocuments({
-        restaurantId,
+      Booking.countDocuments({ ...rFilter,
         createdAt: {
           $gte: new Date(start),
           $lte: new Date(end + "T23:59:59.999Z"),
         },
       }),
-      Booking.countDocuments({ restaurantId, "bookingDetails.date": today }),
+      Booking.countDocuments({ ...rFilter, "bookingDetails.date": today }),
       Booking.aggregate([
         {
           $match: {
-            restaurantId: new mongoose.Types.ObjectId(restaurantId),
+            ...rFilter,
             "payment.status": "paid",
           },
         },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
-      Booking.countDocuments({
-        restaurantId,
+      Booking.countDocuments({ ...rFilter,
         status: "cancelled",
         createdAt: {
           $gte: new Date(start),
           $lte: new Date(end + "T23:59:59.999Z"),
         },
       }),
-      Booking.countDocuments({
-        restaurantId,
+      Booking.countDocuments({ ...rFilter,
         status: "completed",
         createdAt: {
           $gte: new Date(start),
@@ -118,15 +119,14 @@ exports.getOverview = async (req, res) => {
 exports.getUserActivity = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
     // Unique users who booked in period
-    const bookingUsers = await Booking.distinct("userId", {
-      restaurantId,
+    const bookingUsers = await Booking.distinct("userId", { ...rFilter,
       createdAt: {
         $gte: new Date(start),
         $lte: new Date(end + "T23:59:59.999Z"),
@@ -139,7 +139,7 @@ exports.getUserActivity = async (req, res) => {
     const allUserBookings = await Booking.aggregate([
       {
         $match: {
-          restaurantId: new mongoose.Types.ObjectId(restaurantId),
+          ...rFilter,
           userId: {
             $in: bookingUsers.map((id) => new mongoose.Types.ObjectId(id)),
           },
@@ -158,7 +158,7 @@ exports.getUserActivity = async (req, res) => {
     const dailyActive = await Booking.aggregate([
       {
         $match: {
-          restaurantId: new mongoose.Types.ObjectId(restaurantId),
+          ...rFilter,
           createdAt: {
             $gte: periodStart,
             $lte: new Date(end + "T23:59:59.999Z"),
@@ -194,14 +194,14 @@ exports.getUserActivity = async (req, res) => {
 exports.getSearchDiscovery = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
     const searchEvents = await AnalyticsEvent.find(
-      buildEventFilter(restaurantId, ["search"], start, end),
+      buildEventFilter(restaurantId || null, ["search"], start, end),
     ).lean();
 
     // Extract keywords from metadata
@@ -222,7 +222,7 @@ exports.getSearchDiscovery = async (req, res) => {
 
     // View events
     const viewEvents = await AnalyticsEvent.countDocuments(
-      buildEventFilter(restaurantId, ["restaurant_view"], start, end),
+      buildEventFilter(restaurantId || null, ["restaurant_view"], start, end),
     );
 
     return res.json({
@@ -247,7 +247,7 @@ exports.getSearchDiscovery = async (req, res) => {
 exports.getBookingFunnel = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
@@ -257,7 +257,7 @@ exports.getBookingFunnel = async (req, res) => {
 
     // Get funnel from events
     const events = await AnalyticsEvent.find(
-      buildEventFilter(restaurantId, null, start, end),
+      buildEventFilter(restaurantId || null, null, start, end),
     ).lean();
 
     const funnel = {
@@ -268,8 +268,7 @@ exports.getBookingFunnel = async (req, res) => {
     };
 
     // Get from actual bookings
-    const bookingStatuses = await Booking.find({
-      restaurantId,
+    const bookingStatuses = await Booking.find({ ...rFilter,
       createdAt: { $gte: startDate, $lte: endDate },
     })
       .select("status")
@@ -309,14 +308,13 @@ exports.getBookingFunnel = async (req, res) => {
 exports.getTableSelection = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
-    const bookings = await Booking.find({
-      restaurantId,
+    const bookings = await Booking.find({ ...rFilter,
       createdAt: {
         $gte: new Date(start),
         $lte: new Date(end + "T23:59:59.999Z"),
@@ -359,14 +357,13 @@ exports.getTableSelection = async (req, res) => {
 exports.getCancellationMetrics = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
-    const allBookings = await Booking.find({
-      restaurantId,
+    const allBookings = await Booking.find({ ...rFilter,
       createdAt: {
         $gte: new Date(start),
         $lte: new Date(end + "T23:59:59.999Z"),
@@ -414,14 +411,13 @@ exports.getCancellationMetrics = async (req, res) => {
 exports.getPeakHours = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
-    const bookings = await Booking.find({
-      restaurantId,
+    const bookings = await Booking.find({ ...rFilter,
       "bookingDetails.date": { $gte: start, $lte: end },
       status: { $nin: ["cancelled", "declined"] },
     })
@@ -476,22 +472,22 @@ exports.getPeakHours = async (req, res) => {
 exports.getAIMetrics = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
-    if (!restaurantId) {
+    if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
 
     const { start, end } = getDateRange(req.query.from, req.query.to);
 
     const aiStarts = await AnalyticsEvent.countDocuments(
-      buildEventFilter(restaurantId, ["ai_chat_start"], start, end),
+      buildEventFilter(restaurantId || null, ["ai_chat_start"], start, end),
     );
     const aiCompletes = await AnalyticsEvent.countDocuments(
-      buildEventFilter(restaurantId, ["ai_chat_complete"], start, end),
+      buildEventFilter(restaurantId || null, ["ai_chat_complete"], start, end),
     );
 
     const aiUserEvents = await AnalyticsEvent.distinct(
       "userId",
-      buildEventFilter(restaurantId, ["ai_chat_start", "ai_chat_complete"], start, end),
+      buildEventFilter(restaurantId || null, ["ai_chat_start", "ai_chat_complete"], start, end),
     );
 
     return res.json({
@@ -520,8 +516,7 @@ exports.recordEvent = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    await AnalyticsEvent.create({
-      restaurantId,
+    await AnalyticsEvent.create({ ...rFilter,
       event,
       userId: userId || null,
       sessionId: sessionId || "",

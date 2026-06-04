@@ -1,687 +1,449 @@
 import React, { useState, useCallback } from "react";
 import {
-  View,
-  Text,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
+  View, Text, SafeAreaView, ScrollView, TouchableOpacity,
+  ActivityIndicator, StyleSheet, RefreshControl,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { analyticsAPI } from "../../services/api";
+import { LinearGradient } from "expo-linear-gradient";
+import { analyticsAPI, adminAnalyticsAPI } from "../../services/api";
+// api is resolved via callApi wrapper below
+import KpiCard from "../../components/analytics/KpiCard";
+import BarChart from "../../components/analytics/BarChart";
+import LineChart from "../../components/analytics/LineChart";
+import PieChart from "../../components/analytics/PieChart";
+import FunnelChart from "../../components/analytics/FunnelChart";
+import Heatmap from "../../components/analytics/Heatmap";
 
+const BG = "#0D0D0D";
+const CARD = "#1A1A1A";
+const CARD2 = "#2D2D2D";
+const TEXT = "#FFFFFF";
+const TEXT_SEC = "#9CA3AF";
 const PRIMARY = "#FF6B35";
-const BG = "#F8F9FA";
 
 type Period = "7days" | "30days" | "90days";
-
 const PERIODS: { key: Period; label: string }[] = [
   { key: "7days", label: "7 ngày" },
   { key: "30days", label: "30 ngày" },
   { key: "90days", label: "90 ngày" },
 ];
 
-type TabKey =
-  | "overview"
-  | "users"
-  | "search"
-  | "funnel"
-  | "tables"
-  | "cancellation"
-  | "ai";
-
+type TabKey = "overview" | "users" | "booking" | "tables" | "cancel" | "ai" | "peak";
 const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: "overview", label: "Tổng quan", icon: "stats-chart-outline" },
-  { key: "users", label: "Người dùng", icon: "people-outline" },
-  { key: "search", label: "Tìm kiếm", icon: "search-outline" },
-  { key: "funnel", label: "Phễu", icon: "funnel-outline" },
-  { key: "tables", label: "Bàn", icon: "grid-outline" },
-  { key: "cancellation", label: "Hủy", icon: "close-circle-outline" },
-  { key: "ai", label: "AI", icon: "chatbubbles-outline" },
+  { key: "overview", label: "Overview", icon: "stats-chart" },
+  { key: "users", label: "Users", icon: "people" },
+  { key: "booking", label: "Booking", icon: "calendar" },
+  { key: "tables", label: "Tables", icon: "grid" },
+  { key: "cancel", label: "Cancel", icon: "close-circle" },
+  { key: "ai", label: "AI", icon: "chatbubbles" },
+  { key: "peak", label: "Peak Hours", icon: "time" },
 ];
 
-export default function AnalyticsScreen() {
+const getDateRange = (p: Period) => {
+  const end = new Date().toISOString().slice(0, 10);
+  const ms = p === "7days" ? 7 : p === "30days" ? 30 : 90;
+  const start = new Date(Date.now() - ms * 86400000).toISOString().slice(0, 10);
+  return { from: start, to: end };
+};
+
+const calcTrend = (current: number, previous: number): { value: number; isUp: boolean } | undefined => {
+  if (previous === 0) return undefined;
+  const pct = Math.round(((current - previous) / previous) * 100);
+  return { value: Math.abs(pct), isUp: pct >= 0 };
+};
+
+interface Props { isAdmin?: boolean }
+
+export default function AnalyticsScreen({ isAdmin = false }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [period, setPeriod] = useState<Period>("30days");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<any>({});
+  const api = isAdmin ? adminAnalyticsAPI : analyticsAPI;
 
-  const getDateRange = (p: Period) => {
-    const end = new Date().toISOString().slice(0, 10);
-    const start = new Date(
-      Date.now() -
-        (p === "7days" ? 7 : p === "30days" ? 30 : 90) * 86400000,
-    )
-      .toISOString()
-      .slice(0, 10);
-    return { from: start, to: end };
-  };
+  // Wrap admin API calls to shift params: adminAPI(restaurantId, from, to) → call(from, to)
+  const callApi = useCallback((method: string, from?: string, to?: string) => {
+    const fn = (api as any)[method];
+    if (!fn) return Promise.reject(new Error("Unknown method"));
+    if (isAdmin) {
+      // adminAPI: (restaurantId?, from?, to?) → skip restaurantId for system-wide
+      return fn(undefined, from, to);
+    }
+    return fn(from, to);
+  }, [api, isAdmin]);
+
+  const fetchTab = useCallback(async (tab: TabKey, p: Period) => {
+    const { from, to } = getDateRange(p);
+    const ms = p === "7days" ? 14 : p === "30days" ? 60 : 180;
+    const prevFrom = new Date(Date.now() - ms * 86400000).toISOString().slice(0, 10);
+    const prevTo = from;
+
+    try {
+      switch (tab) {
+        case "overview": {
+          const [res, prevRes] = await Promise.all([
+            callApi("getOverview", from, to),
+            callApi("getOverview", prevFrom, prevTo),
+          ]);
+          setData((d: any) => ({ ...d, overview: res.data.data, overviewPrev: prevRes.data.data }));
+          break;
+        }
+        case "users": {
+          const [res, prevRes] = await Promise.all([
+            callApi("getUserActivity", from, to),
+            callApi("getUserActivity", prevFrom, prevTo),
+          ]);
+          setData((d: any) => ({ ...d, users: res.data.data, usersPrev: prevRes.data.data }));
+          break;
+        }
+        case "booking": {
+          const res = await callApi("getBookingFunnel", from, to);
+          setData((d: any) => ({ ...d, funnel: res.data.data }));
+          break;
+        }
+        case "tables": {
+          const res = await callApi("getTableSelection", from, to);
+          setData((d: any) => ({ ...d, tables: res.data.data }));
+          break;
+        }
+        case "cancel": {
+          const [res, prevRes] = await Promise.all([
+            callApi("getCancellationMetrics", from, to),
+            callApi("getCancellationMetrics", prevFrom, prevTo),
+          ]);
+          setData((d: any) => ({ ...d, cancel: res.data.data, cancelPrev: prevRes.data.data }));
+          break;
+        }
+        case "ai": {
+          const [res, prevRes] = await Promise.all([
+            callApi("getAIMetrics", from, to),
+            callApi("getAIMetrics", prevFrom, prevTo),
+          ]);
+          setData((d: any) => ({ ...d, ai: res.data.data, aiPrev: prevRes.data.data }));
+          break;
+        }
+        case "peak": {
+          const res = await callApi("getPeakHours", from, to);
+          setData((d: any) => ({ ...d, peak: res.data.data }));
+          break;
+        }
+      }
+    } catch (err) {
+      console.error("[analytics]", err);
+    }
+  }, [api]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [activeTab, period]),
+      setLoading(true);
+      fetchTab(activeTab, period).finally(() => setLoading(false));
+    }, [activeTab, period, fetchTab])
   );
 
-  const fetchData = async () => {
-    setLoading(true);
-    const { from, to } = getDateRange(period);
-    try {
-      let res;
-      switch (activeTab) {
-        case "overview":
-          res = await analyticsAPI.getOverview(from, to);
-          setData({ overview: res.data.data });
-          break;
-        case "users":
-          res = await analyticsAPI.getUserActivity(from, to);
-          setData({ users: res.data.data });
-          break;
-        case "search":
-          res = await analyticsAPI.getSearchDiscovery(from, to);
-          setData({ search: res.data.data });
-          break;
-        case "funnel":
-          res = await analyticsAPI.getBookingFunnel(from, to);
-          setData({ funnel: res.data.data });
-          break;
-        case "tables":
-          res = await analyticsAPI.getTableSelection(from, to);
-          setData({ tables: res.data.data });
-          break;
-        case "cancellation":
-          res = await analyticsAPI.getCancellationMetrics(from, to);
-          setData({ cancellation: res.data.data });
-          break;
-        case "ai":
-          res = await analyticsAPI.getAIMetrics(from, to);
-          setData({ ai: res.data.data });
-          break;
-      }
-    } catch (err) {
-      console.error("[analytics] fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTab(activeTab, period);
+    setRefreshing(false);
   };
 
-  // Render bar chart (simple colored bars)
-  const renderBar = (
-    label: string,
-    value: number,
-    max: number,
-    color = PRIMARY,
-  ) => (
-    <View key={label} style={styles.barRow}>
-      <Text style={styles.barLabel}>{label}</Text>
-      <View style={styles.barTrack}>
-        <View
-          style={[
-            styles.barFill,
-            {
-              width: max > 0 ? `${(value / max) * 100}%` : "0%",
-              backgroundColor: color,
-            },
-          ]}
-        />
-      </View>
-      <Text style={styles.barValue}>{value}</Text>
+  const SectionTitle = ({ title, icon }: { title: string; icon?: string }) => (
+    <View style={s.sectionHeader}>
+      {icon && <Ionicons name={icon as any} size={14} color={PRIMARY} />}
+      <Text style={s.sectionTitle}>{title}</Text>
     </View>
   );
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <ActivityIndicator
-          size="large"
-          color={PRIMARY}
-          style={{ marginTop: 60 }}
-        />
-      );
-    }
+  if (loading) {
+    return (
+      <SafeAreaView style={s.container}>
+        <View style={s.center}><ActivityIndicator size="large" color={PRIMARY} /></View>
+      </SafeAreaView>
+    );
+  }
 
-    // Overview Tab
-    if (activeTab === "overview" && data.overview) {
-      const d = data.overview;
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="calendar-outline"
-              label="Tổng booking"
-              value={d.totalBookings}
-              color="#16A34A"
-            />
-            <KpiCard
-              icon="today-outline"
-              label="Booking hôm nay"
-              value={d.todayBookings}
-              color={PRIMARY}
-            />
-          </View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="cash-outline"
-              label="Doanh thu"
-              value={`${(d.totalRevenue / 1000).toFixed(0)}k`}
-              color="#2563EB"
-            />
-            <KpiCard
-              icon="checkmark-circle-outline"
-              label="Hoàn tất"
-              value={`${d.completionRate}%`}
-              color="#16A34A"
-            />
-          </View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="close-circle-outline"
-              label="Hủy"
-              value={`${d.cancelRate}%`}
-              color="#DC2626"
-            />
-            <KpiCard
-              icon="flag-outline"
-              label="Hoàn thành"
-              value={d.completedBookings}
-              color="#6B7280"
-            />
-          </View>
+  const renderOverview = () => {
+    const d = data.overview || {};
+    const p = data.overviewPrev || {};
+    return (
+      <View style={s.tabContent}>
+        <View style={s.kpiRow}>
+          <KpiCard icon="calendar" label="Total Bookings" value={d.totalBookings || 0} color={PRIMARY} trend={calcTrend(d.totalBookings, p.totalBookings)} />
+          <KpiCard icon="cash" label="Revenue" value={`${((d.totalRevenue || 0) / 1000000).toFixed(1)}M`} color="#16A34A" trend={calcTrend(d.totalRevenue, p.totalRevenue)} />
         </View>
-      );
-    }
-
-    // Users Tab
-    if (activeTab === "users" && data.users) {
-      const d = data.users;
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="people-outline"
-              label="Tổng users"
-              value={d.totalUsers}
-              color="#2563EB"
-            />
-            <KpiCard
-              icon="person-add-outline"
-              label="Mới"
-              value={d.newUsers}
-              color="#16A34A"
-            />
-          </View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="person-remove-outline"
-              label="Quay lại"
-              value={d.returningUsers}
-              color={PRIMARY}
-            />
-            <KpiCard
-              icon="trending-up-outline"
-              label="Giữ chân"
-              value={
-                d.totalUsers > 0
-                  ? `${Math.round((d.returningUsers / d.totalUsers) * 100)}%`
-                  : "0%"
-              }
-              color="#6B7280"
-            />
-          </View>
-          {d.dailyActive?.length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>
-                Người dùng hoạt động theo ngày
-              </Text>
-              {d.dailyActive.map((da: any) =>
-                renderBar(
-                  da.date,
-                  da.count,
-                  Math.max(...d.dailyActive.map((x: any) => x.count), 1),
-                ),
-              )}
-            </View>
-          )}
+        <View style={s.kpiRow}>
+          <KpiCard icon="people" label="Today" value={d.todayBookings || 0} color="#2563EB" />
+          <KpiCard icon="checkmark" label="Completed" value={`${d.completionRate || 0}%`} color="#16A34A" />
         </View>
-      );
-    }
-
-    // Search Tab
-    if (activeTab === "search" && data.search) {
-      const d = data.search;
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="search-outline"
-              label="Tìm kiếm"
-              value={d.totalSearches}
-              color={PRIMARY}
-            />
-            <KpiCard
-              icon="people-outline"
-              label="User tìm"
-              value={d.uniqueSearchUsers}
-              color="#2563EB"
-            />
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Từ khóa phổ biến</Text>
-            {d.topKeywords?.length > 0 ? (
-              d.topKeywords.map((kw: any) =>
-                renderBar(
-                  kw.keyword,
-                  kw.count,
-                  d.topKeywords[0]?.count || 1,
-                  "#E69A00",
-                ),
-              )
-            ) : (
-              <Text style={styles.emptyText}>Chưa có dữ liệu</Text>
-            )}
-          </View>
+        <View style={s.card}>
+          <SectionTitle title="Monthly Trend" icon="trending-up" />
+          <LineChart data={[{ label: "W1", value: 0 }, { label: "W2", value: 0 }]} lineColor={PRIMARY} />
+          <Text style={s.emptyHint}>Data accumulates as bookings are made</Text>
         </View>
-      );
-    }
+      </View>
+    );
+  };
 
-    // Funnel Tab
-    if (activeTab === "funnel" && data.funnel) {
-      const d = data.funnel;
-      const stages = [
-        { label: "Xem nhà hàng", value: d.funnel?.restaurantViews || 0 },
-        { label: "Bắt đầu đặt", value: d.funnel?.bookingStarted || 0 },
-        { label: "Đặt thành công", value: d.funnel?.bookingCompleted || 0 },
-        { label: "Xác nhận", value: d.funnel?.bookingConfirmed || 0 },
-      ];
-      const maxVal = Math.max(...stages.map((s) => s.value), 1);
-      return (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Phễu đặt bàn</Text>
-          {stages.map((stage, i) => (
-            <View key={stage.label}>
-              <View style={styles.funnelRow}>
-                <Text style={styles.funnelLabel}>{stage.label}</Text>
-                <Text style={styles.funnelValue}>{stage.value}</Text>
+  const renderUsers = () => {
+    const d = data.users || {};
+    const p = data.usersPrev || {};
+    return (
+      <View style={s.tabContent}>
+        <View style={s.kpiRow}>
+          <KpiCard icon="people" label="Total Users" value={d.totalUsers || 0} color="#2563EB" trend={calcTrend(d.totalUsers, p.totalUsers)} />
+          <KpiCard icon="person-add" label="New" value={d.newUsers || 0} color="#16A34A" trend={calcTrend(d.newUsers, p.newUsers)} />
+        </View>
+        <View style={s.kpiRow}>
+          <KpiCard icon="refresh" label="Returning" value={d.returningUsers || 0} color={PRIMARY} trend={calcTrend(d.returningUsers, p.returningUsers)} />
+          <KpiCard icon="people" label="Active/Day" value={d.dailyActive?.[0]?.count || 0} color="#8B5CF6" />
+        </View>
+        {d.dailyActive?.length > 0 && (
+          <View style={s.card}>
+            <SectionTitle title="Daily Active Users" icon="trending-up" />
+            <LineChart data={d.dailyActive.map((da: any) => ({ label: da.date.slice(5), value: da.count }))} lineColor="#2563EB" />
+          </View>
+        )}
+        {d.totalUsers > 0 && (
+          <View style={s.card}>
+            <SectionTitle title="User Ratio" icon="pie-chart" />
+            <View style={s.pieRow}>
+              <PieChart data={[
+                { label: "New", value: d.newUsers || 0, color: "#2563EB" },
+                { label: "Returning", value: d.returningUsers || 0, color: PRIMARY },
+              ]} />
+              <View style={s.legendCol}>
+                <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: "#2563EB" }]} /><Text style={s.legendText}>New {d.newUsers || 0}</Text></View>
+                <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: PRIMARY }]} /><Text style={s.legendText}>Returning {d.returningUsers || 0}</Text></View>
               </View>
-              <View
-                style={[
-                  styles.funnelBar,
-                  {
-                    width: `${(stage.value / maxVal) * 100}%`,
-                    backgroundColor:
-                      i === stages.length - 1 ? "#16A34A" : PRIMARY,
-                  },
-                ]}
-              />
-              {i < stages.length - 1 && d.funnelConversion && (
-                <Text style={styles.conversionText}>
-                  ▼{" "}
-                  {d.funnelConversion[
-                    ["viewToStart", "startToBook", "bookToConfirm"][i] || ""
-                  ]}
-                  %
-                </Text>
-              )}
             </View>
-          ))}
-        </View>
-      );
-    }
+          </View>
+        )}
+      </View>
+    );
+  };
 
-    // Tables Tab
-    if (activeTab === "tables" && data.tables) {
-      const d = data.tables;
-      const types = [
-        {
-          key: "vip",
-          label: "VIP",
-          value: d.tableTypeRatio?.vip || 0,
-          color: "#E69A00",
-        },
-        {
-          key: "view",
-          label: "View",
-          value: d.tableTypeRatio?.view || 0,
-          color: "#2563EB",
-        },
-        {
-          key: "regular",
-          label: "Regular",
-          value: d.tableTypeRatio?.regular || 0,
-          color: "#16A34A",
-        },
-        {
-          key: "standard",
-          label: "Standard",
-          value: d.tableTypeRatio?.standard || 0,
-          color: "#6B7280",
-        },
-      ];
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="star-outline"
-              label="VIP"
-              value={d.vipTableBookings}
-              color="#E69A00"
-            />
-            <KpiCard
-              icon="grid-outline"
-              label="Standard"
-              value={d.standardTableBookings}
-              color="#6B7280"
-            />
+  const renderBooking = () => {
+    const d = data.funnel?.funnel || {};
+    const conv = data.funnel?.funnelConversion || {};
+    const steps = [
+      { label: "🏪 Restaurant Views", value: d.restaurantViews || 0 },
+      { label: "📋 Booking Started", value: d.bookingStarted || 0 },
+      { label: "✅ Booking Completed", value: d.bookingCompleted || 0 },
+      { label: "✔ Confirmed", value: d.bookingConfirmed || 0 },
+    ];
+    return (
+      <View style={s.tabContent}>
+        <View style={s.card}>
+          <SectionTitle title="Booking Funnel" icon="funnel" />
+          <View style={s.conversionRow}>
+            <View style={s.convItem}><Text style={s.convVal}>{conv.viewToStart || 0}%</Text><Text style={s.convLabel}>View→Start</Text></View>
+            <View style={s.convItem}><Text style={s.convVal}>{conv.startToBook || 0}%</Text><Text style={s.convLabel}>Start→Book</Text></View>
+            <View style={s.convItem}><Text style={s.convVal}>{conv.bookToConfirm || 0}%</Text><Text style={s.convLabel}>Book→Confirm</Text></View>
           </View>
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Tỉ lệ loại bàn</Text>
-            {types.map((t) => renderBar(t.label, t.value, 100, t.color))}
-          </View>
+          <FunnelChart steps={steps} />
         </View>
-      );
-    }
+      </View>
+    );
+  };
 
-    // Cancellation Tab
-    if (activeTab === "cancellation" && data.cancellation) {
-      const d = data.cancellation;
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="close-circle-outline"
-              label="Hủy"
-              value={d.totalCancelled}
-              color="#DC2626"
-            />
-            <KpiCard
-              icon="eye-off-outline"
-              label="No-show"
-              value={d.totalNoShow}
-              color="#E69A00"
-            />
-          </View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="trending-down-outline"
-              label="Tỉ lệ hủy"
-              value={`${d.cancelRate}%`}
-              color="#DC2626"
-            />
-            <KpiCard
-              icon="trending-up-outline"
-              label="Tỉ lệ no-show"
-              value={`${d.noShowRate}%`}
-              color="#E69A00"
-            />
-          </View>
-          {d.cancelReasons?.length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Lý do hủy</Text>
-              {d.cancelReasons.map((r: any) =>
-                renderBar(
-                  r.reason.length > 20
-                    ? r.reason.slice(0, 20) + "..."
-                    : r.reason,
-                  r.count,
-                  d.cancelReasons[0]?.count || 1,
-                  "#DC2626",
-                ),
-              )}
+  const renderTables = () => {
+    const d = data.tables || {};
+    const ratio = d.tableTypeRatio || {};
+    const hasData = d.totalBookings > 0;
+    return (
+      <View style={s.tabContent}>
+        <View style={s.kpiRow}>
+          <KpiCard icon="star" label="VIP Bookings" value={d.vipTableBookings || 0} color="#E69A00" />
+          <KpiCard icon="grid" label="Standard" value={d.standardTableBookings || 0} color="#6B7280" />
+        </View>
+        {hasData ? (
+          <View style={s.card}>
+            <SectionTitle title="Table Type Ratio" icon="pie-chart" />
+            <View style={s.pieRow}>
+              <PieChart data={[
+                { label: "VIP", value: ratio.vip || 0, color: "#E69A00" },
+                { label: "View", value: ratio.view || 0, color: "#2563EB" },
+                { label: "Regular", value: ratio.regular || 0, color: "#16A34A" },
+                { label: "Standard", value: ratio.standard || 0, color: "#6B7280" },
+              ]} />
+              <View style={s.legendCol}>
+                {[{ l: "VIP", c: "#E69A00" }, { l: "View", c: "#2563EB" }, { l: "Regular", c: "#16A34A" }, { l: "Standard", c: "#6B7280" }].map((x, i) => (
+                  <View key={i} style={s.legendItem}><View style={[s.legendDot, { backgroundColor: x.c }]} /><Text style={s.legendText}>{x.l} {ratio[x.l.toLowerCase()] || 0}%</Text></View>
+                ))}
+              </View>
             </View>
-          )}
-        </View>
-      );
-    }
-
-    // AI Tab
-    if (activeTab === "ai" && data.ai) {
-      const d = data.ai;
-      return (
-        <View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="chatbubbles-outline"
-              label="Chat AI"
-              value={d.totalChats}
-              color={PRIMARY}
-            />
-            <KpiCard
-              icon="people-outline"
-              label="User AI"
-              value={d.uniqueUsers}
-              color="#2563EB"
-            />
           </View>
-          <View style={styles.kpiRow}>
-            <KpiCard
-              icon="checkmark-circle-outline"
-              label="Đặt qua AI"
-              value={d.completedBookings}
-              color="#16A34A"
-            />
-            <KpiCard
-              icon="trending-up-outline"
-              label="Tỉ lệ CVR"
-              value={`${d.conversionRate}%`}
-              color={PRIMARY}
-            />
+        ) : <View style={s.card}><Text style={s.emptyHint}>No booking data yet</Text></View>}
+        {hasData && (
+          <View style={s.card}>
+            <SectionTitle title="Popularity by Type" icon="bar-chart" />
+            <BarChart data={[
+              { label: "VIP", value: ratio.vip || 0, color: "#E69A00" },
+              { label: "View", value: ratio.view || 0, color: "#2563EB" },
+              { label: "Reg", value: ratio.regular || 0, color: "#16A34A" },
+              { label: "Std", value: ratio.standard || 0, color: "#6B7280" },
+            ]} />
           </View>
-        </View>
-      );
-    }
+        )}
+      </View>
+    );
+  };
 
-    return null;
+  const renderCancel = () => {
+    const d = data.cancel || {};
+    const p = data.cancelPrev || {};
+    return (
+      <View style={s.tabContent}>
+        <View style={s.kpiRow}>
+          <KpiCard icon="close-circle" label="Cancelled" value={d.totalCancelled || 0} color="#DC2626" trend={calcTrend(d.totalCancelled, p.totalCancelled)} />
+          <KpiCard icon="eye-off" label="No-Show" value={d.totalNoShow || 0} color="#E69A00" trend={calcTrend(d.totalNoShow, p.totalNoShow)} />
+        </View>
+        <View style={s.kpiRow}>
+          <KpiCard icon="trending-down" label="Cancel Rate" value={`${d.cancelRate || 0}%`} color="#DC2626" />
+          <KpiCard icon="trending-up" label="No-Show Rate" value={`${d.noShowRate || 0}%`} color="#E69A00" />
+        </View>
+        {d.cancelReasons?.length > 0 && (
+          <View style={s.card}>
+            <SectionTitle title="Cancellation Reasons" icon="list" />
+            {d.cancelReasons.map((r: any, i: number) => (
+              <View key={i} style={s.reasonRow}>
+                <Text style={s.reasonLabel}>{r.reason?.length > 28 ? r.reason.slice(0, 28) + "..." : r.reason}</Text>
+                <View style={s.reasonBar}><View style={[s.reasonFill, { width: `${Math.min((r.count / Math.max(1, ...d.cancelReasons.map((x: any) => x.count))) * 100, 100)}%` }]} /></View>
+                <Text style={s.reasonCount}>{r.count}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderAI = () => {
+    const d = data.ai || {};
+    const p = data.aiPrev || {};
+    return (
+      <View style={s.tabContent}>
+        <View style={s.kpiRow}>
+          <KpiCard icon="chatbubbles" label="AI Chats" value={d.totalChats || 0} color={PRIMARY} trend={calcTrend(d.totalChats, p.totalChats)} />
+          <KpiCard icon="people" label="AI Users" value={d.uniqueUsers || 0} color="#2563EB" />
+        </View>
+        <View style={s.kpiRow}>
+          <KpiCard icon="checkmark-circle" label="AI Bookings" value={d.completedBookings || 0} color="#16A34A" trend={calcTrend(d.completedBookings, p.completedBookings)} />
+          <KpiCard icon="trending-up" label="CVR" value={`${d.conversionRate || 0}%`} color={PRIMARY} />
+        </View>
+      </View>
+    );
+  };
+
+  const renderPeak = () => {
+    const d = data.peak || {};
+    const heatmapData = d.heatmap || [];
+    const peakHours = d.peakHours || [];
+    return (
+      <View style={s.tabContent}>
+        <View style={s.card}>
+          <SectionTitle title="Peak Hours Heatmap" icon="time" />
+          <Text style={s.heatmapSub}>Booking density by day & hour</Text>
+          <Heatmap data={heatmapData} />
+        </View>
+        {peakHours.length > 0 && (
+          <View style={s.card}>
+            <SectionTitle title="Top Peak Slots" icon="bar-chart" />
+            <BarChart data={peakHours.slice(0, 5).map((p: any) => ({
+              label: `${p.hour}:00`,
+              value: p.bookings,
+              color: p.bookings > 30 ? "#FF6B35" : p.bookings > 15 ? "#E69A00" : "#2563EB",
+            }))} />
+            <Text style={s.insight}>⚡ Peak: Day {peakHours[0]?.dayOfWeek} at {peakHours[0]?.hour}:00 ({peakHours[0]?.bookings || 0})</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "overview": return renderOverview();
+      case "users": return renderUsers();
+      case "booking": return renderBooking();
+      case "tables": return renderTables();
+      case "cancel": return renderCancel();
+      case "ai": return renderAI();
+      case "peak": return renderPeak();
+      default: return null;
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📊 Phân tích</Text>
-        <View style={styles.periodRow}>
+    <SafeAreaView style={s.container}>
+      <LinearGradient colors={["#1A1A1A", "#0D0D0D"]} style={s.header}>
+        <Text style={s.headerTitle}>📊 Analytics</Text>
+        <View style={s.periodRow}>
           {PERIODS.map((p) => (
-            <TouchableIndicator
-              key={p.key}
-              label={p.label}
-              isActive={period === p.key}
-              onPress={() => setPeriod(p.key)}
-            />
+            <TouchableOpacity key={p.key} style={[s.periodBtn, period === p.key && s.periodBtnActive]} onPress={() => setPeriod(p.key)}>
+              <Text style={[s.periodText, period === p.key && s.periodTextActive]}>{p.label}</Text>
+            </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </LinearGradient>
 
-      <View style={styles.tabRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={s.tabBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabScroll}>
           {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab.key && styles.tabTextActive,
-                ]}
-              >
-                {tab.label}
-              </Text>
+            <TouchableOpacity key={tab.key} style={[s.tab, activeTab === tab.key && s.tabActive]} onPress={() => setActiveTab(tab.key)}>
+              <Ionicons name={tab.icon as any} size={14} color={activeTab === tab.key ? "#fff" : TEXT_SEC} />
+              <Text style={[s.tabText, activeTab === tab.key && s.tabTextActive]}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}>
         {renderContent()}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// KPI Card component
-function KpiCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: string;
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <View style={styles.kpiCard}>
-      <View style={[styles.kpiIconWrap, { backgroundColor: color + "20" }]}>
-        <Ionicons name={icon as any} size={20} color={color} />
-      </View>
-      <Text style={styles.kpiValue}>{value}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
-    </View>
-  );
-}
-
-// Touchable period indicator
-function TouchableIndicator({
-  label,
-  isActive,
-  onPress,
-}: {
-  label: string;
-  isActive: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.periodBtn, isActive && styles.periodBtnActive]}
-      onPress={onPress}
-    >
-      <Text style={[styles.periodText, isActive && styles.periodTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: "#fff",
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 12,
-  },
+  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
+  headerTitle: { fontSize: 24, fontWeight: "700", color: TEXT, marginBottom: 8 },
   periodRow: { flexDirection: "row", gap: 8 },
-  periodBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
-  },
+  periodBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: CARD2 },
   periodBtnActive: { backgroundColor: PRIMARY },
-  periodText: { fontSize: 13, color: "#6B7280", fontWeight: "500" },
+  periodText: { fontSize: 12, color: TEXT_SEC, fontWeight: "500" },
   periodTextActive: { color: "#fff" },
-  tabRow: {
-    backgroundColor: "#fff",
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginRight: 6,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-  },
+  tabBar: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: "#333" },
+  tabScroll: { paddingHorizontal: 12, paddingVertical: 8, gap: 6, flexDirection: "row" },
+  tab: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: CARD2 },
   tabActive: { backgroundColor: PRIMARY },
-  tabText: { fontSize: 13, color: "#6B7280", fontWeight: "500" },
+  tabText: { fontSize: 12, color: TEXT_SEC, fontWeight: "500" },
   tabTextActive: { color: "#fff" },
-  content: { flex: 1, padding: 16 },
-  kpiRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  kpiCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  kpiIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  kpiValue: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
-  kpiLabel: { fontSize: 11, color: "#6B7280", marginTop: 2 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 12,
-  },
-  barRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  barLabel: { fontSize: 12, color: "#374151", width: 100 },
-  barTrack: {
-    flex: 1,
-    height: 20,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 10,
-    marginHorizontal: 8,
-    overflow: "hidden",
-  },
-  barFill: { height: "100%", borderRadius: 10 },
-  barValue: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#374151",
-    width: 40,
-    textAlign: "right",
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    textAlign: "center",
-    padding: 20,
-  },
-  funnelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  funnelLabel: { fontSize: 13, color: "#374151" },
-  funnelValue: { fontSize: 13, fontWeight: "600", color: "#1A1A1A" },
-  funnelBar: { height: 24, borderRadius: 6, marginBottom: 2 },
-  conversionText: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginBottom: 12,
-    marginLeft: 4,
-  },
+  scroll: { flex: 1 },
+  tabContent: { padding: 16, gap: 12 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  kpiRow: { flexDirection: "row", gap: 10 },
+  card: { backgroundColor: CARD, borderRadius: 14, padding: 16 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: "600", color: TEXT },
+  pieRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 },
+  legendCol: { gap: 6 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { fontSize: 11, color: TEXT_SEC },
+  conversionRow: { flexDirection: "row", justifyContent: "space-around", marginBottom: 16 },
+  convItem: { alignItems: "center" },
+  convVal: { fontSize: 18, fontWeight: "700", color: PRIMARY },
+  convLabel: { fontSize: 10, color: TEXT_SEC, marginTop: 2 },
+  reasonRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+  reasonLabel: { fontSize: 11, color: TEXT_SEC, width: 120 },
+  reasonBar: { flex: 1, height: 16, backgroundColor: CARD2, borderRadius: 8, marginHorizontal: 6, overflow: "hidden" },
+  reasonFill: { height: "100%", backgroundColor: "#DC2626", borderRadius: 8 },
+  reasonCount: { fontSize: 12, fontWeight: "700", color: TEXT, width: 30, textAlign: "right" },
+  heatmapSub: { fontSize: 11, color: TEXT_SEC, marginBottom: 12, marginTop: -8 },
+  insight: { fontSize: 12, color: PRIMARY, fontWeight: "600", marginTop: 12, textAlign: "center" },
+  emptyHint: { fontSize: 12, color: TEXT_SEC, textAlign: "center", padding: 20 },
 });
