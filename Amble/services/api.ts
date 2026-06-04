@@ -236,8 +236,8 @@ export const partnerDashboardAPI = {
     api.post(`/partner/bookings/${bookingId}/release`, data),
   checkInBooking: (bookingId: string) =>
     api.post(`/partner/bookings/${bookingId}/check-in`),
-  checkOutBooking: (bookingId: string) =>
-    api.post(`/partner/bookings/${bookingId}/check-out`),
+  completeBooking: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/complete`),
   setCleaningDone: (tableId: string) =>
     api.put(`/partner/tables/${tableId}/cleaning-done`),
 };
