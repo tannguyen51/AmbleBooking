@@ -681,16 +681,10 @@ export default function SelectTableScreen() {
           {/* Chi tiết thông tin bàn */}
           <View style={s.detailBody}>
             <Text style={s.detailTextItem}>• Bàn {selectedGroup.capacity.min} - {selectedGroup.capacity.max} người</Text>
-            {selectedGroup.features.length > 0 ? (
+            {selectedGroup.features.length > 0 &&
               selectedGroup.features.map((feat, i) => (
                 <Text key={i} style={s.detailTextItem}>• {feat}</Text>
-              ))
-            ) : (
-              <>
-                <Text style={s.detailTextItem}>• Hướng: Đông</Text>
-                <Text style={s.detailTextItem}>• Có hỗ trợ máy lạnh</Text>
-              </>
-            )}
+              ))}
             {selectedGroup.description && (
               <Text style={s.detailDesc}>{selectedGroup.description}</Text>
             )}
