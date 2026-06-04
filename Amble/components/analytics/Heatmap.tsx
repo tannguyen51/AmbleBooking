@@ -17,7 +17,7 @@ const DAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const HOURS = [10, 11, 12, 13, 14, 17, 18, 19, 20, 21]; // Restaurant hours
 
 const getColor = (value: number, max: number): string => {
-  if (value === 0) return "#1A1A1A";
+  if (value === 0) return "#F3F4F6";
   const ratio = value / max;
   if (ratio > 0.75) return "#FF6B35";    // do cam (cao)
   if (ratio > 0.5) return "#E69A00";      // cam (trung binh cao)

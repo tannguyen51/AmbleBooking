@@ -5,7 +5,6 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { analyticsAPI, adminAnalyticsAPI } from "../../services/api";
 // api is resolved via callApi wrapper below
 import KpiCard from "../../components/analytics/KpiCard";
@@ -15,11 +14,11 @@ import PieChart from "../../components/analytics/PieChart";
 import FunnelChart from "../../components/analytics/FunnelChart";
 import Heatmap from "../../components/analytics/Heatmap";
 
-const BG = "#0D0D0D";
-const CARD = "#1A1A1A";
-const CARD2 = "#2D2D2D";
-const TEXT = "#FFFFFF";
-const TEXT_SEC = "#9CA3AF";
+const BG = "#F8F9FA";
+const CARD = "#FFFFFF";
+const CARD2 = "#F3F4F6";
+const TEXT = "#1A1A1A";
+const TEXT_SEC = "#6B7280";
 const PRIMARY = "#FF6B35";
 
 type Period = "7days" | "30days" | "90days";
@@ -377,7 +376,7 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
 
   return (
     <SafeAreaView style={s.container}>
-      <LinearGradient colors={["#1A1A1A", "#0D0D0D"]} style={s.header}>
+      <View style={s.header}>
         <Text style={s.headerTitle}>📊 Analytics</Text>
         <View style={s.periodRow}>
           {PERIODS.map((p) => (
@@ -386,7 +385,7 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
             </TouchableOpacity>
           ))}
         </View>
-      </LinearGradient>
+      </View>
 
       <View style={s.tabBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabScroll}>
@@ -409,8 +408,8 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
-  headerTitle: { fontSize: 24, fontWeight: "700", color: TEXT, marginBottom: 8 },
+  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  headerTitle: { fontSize: 22, fontWeight: "700", color: TEXT, marginBottom: 8 },
   periodRow: { flexDirection: "row", gap: 8 },
   periodBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: CARD2 },
   periodBtnActive: { backgroundColor: PRIMARY },

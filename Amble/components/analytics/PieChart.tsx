@@ -51,7 +51,7 @@ export default function PieChart({ data, size = 140 }: PieChartProps) {
           />
         ))}
         {/* Inner circle for doughnut effect */}
-        <Circle cx={size/2} cy={size/2} r={r - 10} fill="#1A1A1A" />
+        <Circle cx={size/2} cy={size/2} r={r - 10} fill="#FFFFFF" />
       </Svg>
       <View style={styles.centerLabel}>
         <Text style={styles.centerValue}>{total}</Text>

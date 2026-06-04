@@ -10,7 +10,6 @@ export default function AdminLayout() {
       <Stack.Screen name="restaurants" />
       <Stack.Screen name="analytics" />
       <Stack.Screen name="bookings" />
-      <Stack.Screen name="routes" />
     </Stack>
   );
 }

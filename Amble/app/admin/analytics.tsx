@@ -1,15 +1,17 @@
 import React from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import AnalyticsScreen from "../(partner)/analytics";
+import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 
 export default function AdminAnalyticsPage() {
   return (
-    <SafeAreaView style={s.container}>
+    <View style={s.container}>
       <AnalyticsScreen isAdmin />
-    </SafeAreaView>
+      <AdminBottomNav />
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
 });
