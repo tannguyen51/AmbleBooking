@@ -787,7 +787,7 @@ export default function SelectTableScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={s.gradientBtnTxt}>Đặt bàn</Text>
+              <Text style={s.gradientBtnTxt}>{t("restaurant.bookTable")}</Text>
               <Ionicons name="chevron-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
