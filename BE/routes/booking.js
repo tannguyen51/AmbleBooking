@@ -19,6 +19,7 @@ router.put("/:bookingId/confirm", bookingController.confirmBooking);
 router.get("/:bookingId/refund-preview", bookingController.getRefundPreview);
 router.delete("/:bookingId/cancel", bookingController.cancelBooking); // ← mới
 router.get("/user/:userId", bookingController.getUserBookings);
+router.get("/notifications/:userId", bookingController.getUserNotifications);
 router.get("/:bookingId", bookingController.getBookingById);
 
 

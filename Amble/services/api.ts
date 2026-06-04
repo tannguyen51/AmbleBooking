@@ -130,6 +130,8 @@ export const bookingAPI = {
   // Chi tiết 1 booking
   getById: (bookingId: string) => api.get(`/booking/${bookingId}`),
 
+  getNotifications: (userId: string) => api.get(`/booking/notifications/${userId}`),
+
   // Hủy booking
   cancel: (
     bookingId: string,

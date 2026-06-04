@@ -182,7 +182,6 @@ export default function SelectTableScreen() {
   // Multi-step flow state
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedGroup, setSelectedGroup] = useState<TableGroup | null>(null);
-  const [timeFilter, setTimeFilter] = useState<"all" | "lunch" | "dinner">("all");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // ── Ngày ──────────────────────────────────────────────
@@ -191,21 +190,6 @@ export default function SelectTableScreen() {
 
   // ── Giờ ───────────────────────────────────────────────
   const [time, setTime] = useState("19:00");
-
-  // ── Thời lượng ────────────────────────────────────────
-  const [durationAdjustment, setDurationAdjustment] = useState(0);
-  const mealTime = getMealTime(time);
-  const duration = getDefaultDuration(mealTime, guests);
-  const bufferTime = getBufferTime(mealTime, guests);
-  const finalDuration = Math.max(60, duration + durationAdjustment);
-  const expectedEndTime = calcEndTime(time, finalDuration);
-
-  const TIMES = [...LUNCH_TIMES, ...DINNER_TIMES];
-
-  // ── Effect: reset adjustment khi đổi guests hoặc time ──
-  useEffect(() => {
-    setDurationAdjustment(0);
-  }, [guests, time]);
 
   // ── Fetch tables — chạy lại mỗi khi màn hình được focus ──
   useFocusEffect(
@@ -251,11 +235,6 @@ export default function SelectTableScreen() {
         date: dateStr,
         time,
         partySize: guests.toString(),
-        mealTime,
-        duration: finalDuration.toString(),
-        bufferTime: bufferTime.toString(),
-        expectedEndTime,
-        durationAdjustment: durationAdjustment.toString(),
       },
     });
   };
@@ -265,28 +244,6 @@ export default function SelectTableScreen() {
     const viewSize = event.nativeEvent.layoutMeasurement.width;
     const index = Math.round(scrollOffset / viewSize);
     setActiveImageIndex(index);
-  };
-
-  const getFilteredTimes = () => {
-    if (timeFilter === "lunch") {
-      return TIMES.filter((t) => {
-        const h = parseInt(t.split(":")[0]);
-        return h >= 11 && h <= 14;
-      });
-    }
-    if (timeFilter === "dinner") {
-      return TIMES.filter((t) => {
-        const h = parseInt(t.split(":")[0]);
-        return h >= 17 && h <= 21;
-      });
-    }
-    return TIMES;
-  };
-
-  const toggleTimeFilter = () => {
-    if (timeFilter === "all") setTimeFilter("lunch");
-    else if (timeFilter === "lunch") setTimeFilter("dinner");
-    else setTimeFilter("all");
   };
 
   const next7Days = getNext7Days();
@@ -356,11 +313,7 @@ export default function SelectTableScreen() {
     );
 
     const guestOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const filteredTimes = getFilteredTimes();
-
-    let timeFilterLabel = "Cả ngày";
-    if (timeFilter === "lunch") timeFilterLabel = "Bữa trưa";
-    if (timeFilter === "dinner") timeFilterLabel = "Bữa tối";
+    const filteredTimes = ALL_TIMES;
 
     return (
       <View style={{ flex: 1 }}>
@@ -493,9 +446,6 @@ export default function SelectTableScreen() {
           <View style={s.section}>
             <View style={s.timeHeader}>
               <Text style={s.sectionTitle}>Chọn khung giờ</Text>
-              <TouchableOpacity style={s.timeFilterBtn} onPress={toggleTimeFilter} activeOpacity={0.8}>
-                <Text style={s.timeFilterTxt}>{timeFilterLabel}</Text>
-              </TouchableOpacity>
             </View>
 
             <View style={s.timeGrid}>
@@ -684,64 +634,7 @@ export default function SelectTableScreen() {
             <Text style={s.specificCount}>{t("booking.select.legendAvailable")}: {selectedGroup.tables.length}</Text>
           </View>
 
-          {/* Thời lượng dự kiến & Điều chỉnh thời lượng */}
-          {selectedTableId && (
-            <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-              <Text style={s.specificTitle}>{t("booking.select.expectedTime")}</Text>
-              
-              <View style={s.durationBox}>
-                <Ionicons name="time-outline" size={16} color={PRIMARY} />
-                <Text style={s.durationLabel}>
-                  {t("booking.select.expectedTime")}: {time} – {expectedEndTime}
-                </Text>
-                <Text style={s.durationValue}>
-                  ({finalDuration} {t("booking.select.minutes")})
-                </Text>
-              </View>
 
-              <View style={s.adjustRow}>
-                <TouchableOpacity
-                  style={[
-                    s.adjustBtn,
-                    durationAdjustment === -30 && s.adjustBtnActive,
-                  ]}
-                  onPress={() => setDurationAdjustment(durationAdjustment === -30 ? 0 : -30)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    s.adjustBtnTxt,
-                    durationAdjustment === -30 && s.adjustBtnTxtActive,
-                  ]}>
-                    {t("booking.select.quickEat")}
-                  </Text>
-                  <Text style={[
-                    s.adjustBtnSub,
-                    durationAdjustment === -30 && s.adjustBtnSubActive,
-                  ]}>-30 {t("booking.select.minutes")}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    s.adjustBtn,
-                    durationAdjustment === 30 && s.adjustBtnActive,
-                  ]}
-                  onPress={() => setDurationAdjustment(durationAdjustment === 30 ? 0 : 30)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    s.adjustBtnTxt,
-                    durationAdjustment === 30 && s.adjustBtnTxtActive,
-                  ]}>
-                    {t("booking.select.longer")}
-                  </Text>
-                  <Text style={[
-                    s.adjustBtnSub,
-                    durationAdjustment === 30 && s.adjustBtnSubActive,
-                  ]}>+30 {t("booking.select.minutes")}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </ScrollView>
 
         {/* Nút đặt bàn cuối cùng */}
@@ -832,7 +725,7 @@ const s = StyleSheet.create({
   },
   dateBox: {
     width: "23%",
-    aspectRatio: 0.9,
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
@@ -862,7 +755,7 @@ const s = StyleSheet.create({
   },
   guestBox: {
     width: "18%",
-    aspectRatio: 1,
+    paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
@@ -871,14 +764,18 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
   },
   guestTxt: {
-    fontSize: 14,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#1A1A1A",
+    textAlign: "center",
+    textAlignVertical: "center",
+    includeFontPadding: false,
   },
 
   // State Active styles
   boxActive: {
     borderColor: PRIMARY,
+    backgroundColor: "#FFF0E6",
   },
   textActive: {
     color: PRIMARY,
@@ -950,16 +847,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  timeFilterBtn: {
-    backgroundColor: "#1A1A1A",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  timeFilterTxt: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
+  timeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
   timeGrid: {
     flexDirection: "row",
@@ -968,7 +860,7 @@ const s = StyleSheet.create({
   },
   timeBox: {
     width: "18%",
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
@@ -978,8 +870,10 @@ const s = StyleSheet.create({
   },
   timeTxt: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#4B5563",
+    textAlign: "center",
+    textAlignVertical: "center",
   },
 
   // Bottom Fixed Bar

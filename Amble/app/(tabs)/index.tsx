@@ -28,7 +28,7 @@ import {
 } from "react-native-safe-area-context";
 import { useAuthStore } from "../../store/authStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
-import { restaurantAPI } from "../../services/api";
+import { restaurantAPI, bookingAPI } from "../../services/api";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../../components/AmbleLogo";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -76,6 +76,8 @@ interface Category {
   icon: IconName;
   label: string;
   key: string;
+  bg: string;
+  iconColor: string;
 }
 
 type FilterState = {
@@ -105,12 +107,12 @@ const CATEGORY_PRESET_LABEL: Record<string, string> = {
 
 // ─── Constants ────────────────────────────────────────────
 const CATEGORIES: Category[] = [
-  { icon: "home", label: "Gần đây", key: "local" },
-  { icon: "heart", label: "Hẹn hò", key: "date" },
-  { icon: "people", label: "Gia đình", key: "family" },
-  { icon: "briefcase", label: "Công việc", key: "business" },
-  { icon: "people-circle", label: "Nhóm bạn", key: "group" },
-  { icon: "gift", label: "Sinh nhật", key: "celebration" },
+  { icon: "home", label: "Gần đây", key: "local", bg: "#FFF3ED", iconColor: "#FF6B35" },
+  { icon: "heart", label: "Hẹn hò", key: "date", bg: "#FCE7F3", iconColor: "#EC4899" },
+  { icon: "people", label: "Gia đình", key: "family", bg: "#FEF3C7", iconColor: "#F59E0B" },
+  { icon: "briefcase", label: "Công việc", key: "business", bg: "#DBEAFE", iconColor: "#3B82F6" },
+  { icon: "people-circle", label: "Nhóm bạn", key: "group", bg: "#D1FAE5", iconColor: "#10B981" },
+  { icon: "gift", label: "Sinh nhật", key: "celebration", bg: "#EDE9FE", iconColor: "#8B5CF6" },
 ];
 
 const QUICK_TAGS = ["Món Việt", "Đồ Âu", "Rooftop", "Nhật Bản", "Lẩu nướng"];
@@ -466,6 +468,11 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Notifications
+  const [notifVisible, setNotifVisible] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+
   // Search & filter
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -546,6 +553,27 @@ export default function HomeScreen() {
     setDraftFilters(initialFilters);
     setAppliedFilters(initialFilters);
     fetchData();
+  };
+
+  // ── Notifications ─────────────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    if (!user?._id) return;
+    setNotifLoading(true);
+    try {
+      const res = await bookingAPI.getNotifications(user._id);
+      setNotifications(res.data?.notifications || []);
+    } catch (err) {
+      console.error("[notifications]", err);
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [user]);
+
+  const unreadCount = notifications.length;
+
+  const handleBellPress = () => {
+    fetchNotifications();
+    setNotifVisible(true);
   };
 
   // ── Toggle favourite ───────────────────────────────────────
@@ -848,10 +876,15 @@ export default function HomeScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerIconBtn}
+                onPress={handleBellPress}
                 activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 18 }}>🔔</Text>
-                <View style={styles.notifDot} />
+                {unreadCount > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeNum}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -865,6 +898,45 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.greetingSub}>{t("home.greetingSubtitle")}</Text>
           </View>
+
+          {/* Notification Modal */}
+          <Modal visible={notifVisible} transparent animationType="fade" onRequestClose={() => setNotifVisible(false)}>
+            <TouchableOpacity style={styles.notifOverlay} activeOpacity={1} onPress={() => setNotifVisible(false)}>
+              <View style={styles.notifSheet}>
+                <View style={styles.notifHeader}>
+                  <Text style={styles.notifTitle}>Thông báo</Text>
+                  <TouchableOpacity onPress={() => setNotifVisible(false)}>
+                    <Ionicons name="close" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+                {notifLoading ? (
+                  <ActivityIndicator color={PRIMARY} style={{ margin: 30 }} />
+                ) : notifications.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}>
+                    <Ionicons name="notifications-off-outline" size={36} color="#D1D5DB" />
+                    <Text style={{ color: '#9CA3AF', marginTop: 8, fontSize: 13 }}>Không có thông báo</Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 320 }}>
+                    {notifications.map((n, i) => (
+                      <TouchableOpacity
+                        key={n.id}
+                        style={[styles.notifItem, i < notifications.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }]}
+                        onPress={() => { setNotifVisible(false); router.push('/history'); }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.notifDot, { backgroundColor: n.type === 'upcoming' ? '#FF6B35' : '#16A34A' }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.notifItemTitle}>{n.title}</Text>
+                          <Text style={styles.notifItemSub}>{n.subtitle}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
 
           {/* Search bar */}
           <View style={styles.searchBar}>
@@ -1395,8 +1467,8 @@ export default function HomeScreen() {
                 }
                 activeOpacity={0.75}
               >
-                <View style={[styles.catIcon, styles.catIconInactive]}>
-                  <Ionicons name={cat.icon} size={22} color="#555" />
+                <View style={[styles.catIcon, { backgroundColor: cat.bg }]}>
+                  <Ionicons name={cat.icon} size={22} color={cat.iconColor} />
                 </View>
                 <Text style={styles.catLabel}>{catLabelMap[cat.key] || cat.label}</Text>
               </TouchableOpacity>
@@ -1806,15 +1878,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   badgeNum: { fontSize: 9, fontWeight: "800", color: "#fff" },
-  notifDot: {
+  notifBadge: {
     position: "absolute",
-    top: 9,
-    right: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: PRIMARY,
+    top: 2,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
+  notifBadgeNum: { fontSize: 10, fontWeight: "800", color: "#fff" },
+
+  // Notification Modal
+  notifOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-start",
+  },
+  notifSheet: {
+    backgroundColor: "#fff",
+    marginTop: 120,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  notifHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  notifTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
+  notifItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  notifDot: { width: 10, height: 10, borderRadius: 5 },
+  notifItemTitle: { fontSize: 14, fontWeight: "600", color: "#1A1A1A" },
+  notifItemSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
 
   greetingWrap: { marginBottom: 18 },
   greetingName: {
@@ -2109,7 +2224,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  catIconInactive: { backgroundColor: "#FFF3ED" },
   catLabel: {
     fontSize: 9,
     fontWeight: "600",

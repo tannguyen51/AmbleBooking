@@ -444,6 +444,32 @@ exports.getUserBookings = async (req, res) => {
 };
 
 // ── GET /api/booking/:bookingId ───────────────────────────
+
+// ── GET /api/booking/notifications/:userId ─────────────────────
+exports.getUserNotifications = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const now = new Date();
+    const inOneHour = new Date(now.getTime() + 60 * 60 * 1000);
+    const today = now.toISOString().slice(0, 10);
+    const upcoming = await Booking.find({ userId, status: 'confirmed', 'bookingDetails.date': today }).populate('restaurantId', 'name images').lean();
+    const upcomingSoon = upcoming.filter(b => {
+      if (!b.bookingDetails?.time) return false;
+      const bt = new Date(today + 'T' + b.bookingDetails.time);
+      return bt > now && bt <= inOneHour;
+    });
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const recentlyConfirmed = await Booking.find({ userId, status: { $in: ['confirmed', 'occupied', 'completed'] }, confirmedAt: { $gte: yesterday } }).populate('restaurantId', 'name images').lean();
+    const notifications = [];
+    upcomingSoon.forEach(b => { notifications.push({ id: 'upcoming_' + b._id, type: 'upcoming', title: 'Sắp đến giờ đặt bàn', subtitle: (b.restaurantId?.name || 'Nhà hàng') + ' • ' + (b.bookingDetails?.time || ''), bookingId: b._id, read: false, createdAt: b.bookingDetails?.date + 'T' + b.bookingDetails?.time }); });
+    recentlyConfirmed.forEach(b => { notifications.push({ id: 'confirmed_' + b._id, type: 'confirmed', title: 'Đơn đặt bàn đã được xác nhận', subtitle: (b.restaurantId?.name || 'Nhà hàng') + ' • ' + (b.bookingDetails?.date || '') + ' ' + (b.bookingDetails?.time || ''), bookingId: b._id, read: false, createdAt: b.confirmedAt }); });
+    notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return res.json({ success: true, notifications, unread: notifications.length });
+  } catch (err) {
+    console.error('[getUserNotifications]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
 const PAYMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút
 
 const attachPaymentTimer = (booking) => {

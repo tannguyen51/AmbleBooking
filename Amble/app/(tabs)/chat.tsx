@@ -366,10 +366,7 @@ export default function ChatScreen() {
           {/* AI avatar */}
           {!isUser && (
             <View style={s.aiAvatar}>
-              <Image
-                source={require("../../assets/images/chatbot-speech-bubble.png")}
-                style={s.aiAvatarImg}
-              />
+              <Ionicons name="chatbubble-ellipses" size={16} color={PRIMARY} />
             </View>
           )}
 
@@ -499,10 +496,7 @@ export default function ChatScreen() {
         >
           <View style={s.headerLeft}>
             <View style={s.headerAvatar}>
-              <Image
-                source={require("../../assets/images/chatbot-speech-bubble.png")}
-                style={s.headerAvatarImg}
-              />
+              <Ionicons name="chatbubble-ellipses" size={20} color={PRIMARY} />
             </View>
             <View>
               <Text style={s.headerTitle}>{t("chat.headerTitle")}</Text>
@@ -544,10 +538,7 @@ export default function ChatScreen() {
         {loading && (
           <View style={s.typing}>
           <View style={s.typingAvatar}>
-              <Image
-                source={require("../../assets/images/chatbot-speech-bubble.png")}
-                style={s.typingAvatarImg}
-              />
+              <Ionicons name="chatbubble-ellipses" size={14} color={PRIMARY} />
             </View>
             <View style={s.typingBubble}>
               <ActivityIndicator size="small" color={PRIMARY} />
