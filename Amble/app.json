@@ -47,7 +47,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "79cd0e80-dc0d-48de-bd50-b418e9102b01"
       }
-    }
+    },
+    "owner": "xuantan51"
   }
 }
