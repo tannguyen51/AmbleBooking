@@ -2,6 +2,7 @@ const Booking = require("../models/booking");
 const Table = require("../models/table");
 const Restaurant = require("../models/restaurant");
 const paymentConfig = require("../config/paymentConfig");
+const AnalyticsEvent = require('../models/analyticsEvent');
 
 const buildVietQrImageUrl = (amount, content) => {
   if (!paymentConfig.accountNumber || !paymentConfig.accountName) return null;
@@ -243,6 +244,15 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+      try {
+        await AnalyticsEvent.create({
+          restaurantId,
+          event: 'booking_start',
+          userId,
+          metadata: { bookingId: booking._id, partySize, tableId, paymentMethod },
+        });
+      } catch (_) {}
+
     return res.json({
       success: true,
       booking,
@@ -280,6 +290,15 @@ exports.confirmBooking = async (req, res) => {
       currentBookingId: booking._id,
       status: 'reserved',
     });
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'booking_confirm',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
 
     return res.json({ success: true, booking });
   } catch (err) {
@@ -465,7 +484,7 @@ exports.getBookingById = async (req, res) => {
 // ── DELETE /api/booking/:bookingId/cancel ─────────────────
 exports.cancelBooking = async (req, res) => {
   try {
-    const { reason } = req.body;
+    const { reason, refundAccount } = req.body;
     const booking = await Booking.findById(req.params.bookingId);
 
     if (!booking)
@@ -482,6 +501,13 @@ exports.cancelBooking = async (req, res) => {
 
     if (booking.payment?.status === "paid") {
       booking.payment.status = "refund_pending";
+      booking.refund = {
+        ...(booking.refund || {}),
+        requestedAt: new Date(),
+        bankName: String(refundAccount?.bankName || "").trim(),
+        accountNumber: String(refundAccount?.accountNumber || "").trim(),
+        accountName: String(refundAccount?.accountName || "").trim(),
+      };
     }
     booking.status = "cancelled";
     booking.cancelledAt = new Date();
@@ -494,6 +520,15 @@ exports.cancelBooking = async (req, res) => {
       currentBookingId: null,
       status: 'available',
     });
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'booking_cancel',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id, reason: booking.cancellationReason },
+        });
+      } catch (_) {}
 
     return res.json({
       success: true,
@@ -527,7 +562,7 @@ exports.releaseBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
     }
 
-    if (['cancelled', 'completed', 'no_show'].includes(booking.status)) {
+    if (['cancelled', 'completed', 'occupied', 'no_show'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể release booking ở trạng thái: ${booking.status}`,
@@ -542,6 +577,17 @@ exports.releaseBooking = async (req, res) => {
 
     // Giải phóng bàn
     await updateTableForRelease(booking.tableId, 'available');
+
+      if (reason === 'no_show') {
+        try {
+          await AnalyticsEvent.create({
+            restaurantId: booking.restaurantId,
+            event: 'no_show',
+            userId: booking.userId,
+            metadata: { bookingId: booking._id },
+          });
+        } catch (_) {}
+      }
 
     return res.json({
       success: true,
@@ -578,6 +624,15 @@ exports.checkInBooking = async (req, res) => {
       status: 'occupied',
     });
 
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'checkin',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
+
     return res.json({ success: true, message: 'Khách đã check-in' });
   } catch (err) {
     console.error('[checkInBooking]', err);
@@ -601,7 +656,7 @@ exports.completeBooking = async (req, res) => {
     }
 
     booking.status = 'completed';
-    booking.completedAt = Date.now();
+    booking.completedAt = new Date();
     await booking.save();
 
     // Cập nhật trạng thái bàn → available
@@ -610,6 +665,15 @@ exports.completeBooking = async (req, res) => {
       isAvailable: true,
       currentBookingId: null,
     });
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'complete',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
 
     return res.json({ success: true, message: 'Đã hoàn thành booking' });
   } catch (err) {

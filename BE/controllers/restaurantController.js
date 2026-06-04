@@ -2,6 +2,7 @@ const Restaurant = require('../models/restaurant');
 const Review = require('../models/review');
 const Booking = require('../models/booking');
 const User = require('../models/user');
+const AnalyticsEvent = require('../models/analyticsEvent');
 
 // Tạo regex không phân biệt có dấu / không dấu
 function fuzzyRegex(str) {
@@ -99,6 +100,16 @@ exports.getById = async (req, res) => {
     if (!restaurant) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy nhà hàng' });
     }
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: req.params.id,
+          event: 'restaurant_view',
+          userId: req.user?._id,
+          metadata: {},
+        });
+      } catch (_) {}
+
     return res.json({ success: true, restaurant });
   } catch (err) {
     if (err.name === 'CastError') {

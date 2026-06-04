@@ -268,6 +268,26 @@ export const partnerStaffAPI = {
     api.put(`/partner/staff/${staffId}/change-password`, data),
 };
 
+// ── Partner Analytics ──────────────────────────────────
+export const analyticsAPI = {
+  getOverview: (from?: string, to?: string) =>
+    api.get("/partner/analytics/overview", { params: { from, to } }),
+  getUserActivity: (from?: string, to?: string) =>
+    api.get("/partner/analytics/users", { params: { from, to } }),
+  getSearchDiscovery: (from?: string, to?: string) =>
+    api.get("/partner/analytics/search", { params: { from, to } }),
+  getBookingFunnel: (from?: string, to?: string) =>
+    api.get("/partner/analytics/funnel", { params: { from, to } }),
+  getTableSelection: (from?: string, to?: string) =>
+    api.get("/partner/analytics/tables", { params: { from, to } }),
+  getCancellationMetrics: (from?: string, to?: string) =>
+    api.get("/partner/analytics/cancellation", { params: { from, to } }),
+  getPeakHours: (from?: string, to?: string) =>
+    api.get("/partner/analytics/peak-hours", { params: { from, to } }),
+  getAIMetrics: (from?: string, to?: string) =>
+    api.get("/partner/analytics/ai", { params: { from, to } }),
+};
+
 // ── Admin ──────────────────────────────────────────────
 export const adminAPI = {
   getDashboard: () => api.get("/admin/dashboard"),
