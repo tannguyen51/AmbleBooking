@@ -24,41 +24,6 @@ const BOOKING_VOUCHERS = [
   { code: "VIP50", discount: 50000, minBill: 200000, isPercent: false },
 ];
 
-const parseBookingDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return null;
-  const iso = `${dateStr}T${timeStr}:00`;
-  const parsed = new Date(iso);
-  if (!Number.isNaN(parsed.getTime())) return parsed;
-
-  const [y, m, d] = String(dateStr).split("-").map(Number);
-  const [hh, mm] = String(timeStr).split(":").map(Number);
-  if (!y || !m || !d || Number.isNaN(hh) || Number.isNaN(mm)) return null;
-  return new Date(y, m - 1, d, hh, mm, 0, 0);
-};
-
-const computeRefund = (booking) => {
-  const bookingDate = parseBookingDateTime(
-    booking?.bookingDetails?.date,
-    booking?.bookingDetails?.time,
-  );
-  if (!bookingDate) {
-    return {
-      hoursRemaining: 0,
-      refundPercent: 0,
-      refundAmount: 0,
-    };
-  }
-
-  const now = new Date();
-  const diffMs = bookingDate.getTime() - now.getTime();
-  const hoursRemaining = Math.max(0, diffMs / (1000 * 60 * 60));
-  const refundPercent = hoursRemaining >= 24 ? 100 : hoursRemaining >= 12 ? 50 : 0;
-  const depositAmount = Math.max(0, Number(booking?.pricing?.depositAmount || 0));
-  const refundAmount = Math.max(0, Math.round((depositAmount * refundPercent) / 100));
-
-  return { hoursRemaining, refundPercent, refundAmount };
-};
-
 // ── GET /api/booking/vouchers ────────────────────────────
 exports.getBookingVouchers = async (req, res) => {
   return res.json({ success: true, vouchers: BOOKING_VOUCHERS });
@@ -88,14 +53,15 @@ exports.getRefundPreview = async (req, res) => {
         .json({ success: false, message: "Booking không tồn tại" });
     }
 
-    const { hoursRemaining, refundPercent, refundAmount } = computeRefund(booking);
+    const isPaid = booking.payment?.status === "paid";
+    const depositAmount = booking.pricing?.depositAmount || 0;
 
     return res.json({
       success: true,
       preview: {
-        hoursRemaining,
-        refundPercent,
-        refundAmount,
+        isPaid,
+        refundAmount: isPaid ? depositAmount : 0,
+        refundPercent: isPaid ? 100 : 0,
       },
     });
   } catch (err) {
@@ -136,6 +102,16 @@ exports.createBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Nhà hàng không tồn tại" });
 
+    // Kiểm tra ngày mở cửa (U1)
+    const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const dayOfWeek = dayNames[new Date(date + 'T' + normalizedTime).getDay()];
+    if (restaurant.openDays && restaurant.openDays.length > 0 && !restaurant.openDays.includes(dayOfWeek)) {
+      return res.status(400).json({
+        success: false,
+        message: `Nhà hàng không mở cửa ngày này. Ngày hoạt động: ${restaurant.openDays.join(', ')}`,
+      });
+    }
+
     const table = await Table.findById(tableId);
     if (!table)
       return res
@@ -153,6 +129,22 @@ exports.createBooking = async (req, res) => {
         success: false,
         message: `Bàn phù hợp cho ${table.capacity.min}–${table.capacity.max} người`,
       });
+    }
+
+    // ── Atomic lock bàn (R1 fix) ──
+    // Non-PayOS: lock ngay lập tức. PayOS: không lock (để webhook lock)
+    if (paymentMethod !== "payos") {
+      const locked = await Table.findOneAndUpdate(
+        { _id: tableId, status: 'available' },
+        { status: 'reserved', isAvailable: false, currentBookingId: null },
+        { new: false }
+      );
+      if (!locked) {
+        return res.status(409).json({
+          success: false,
+          message: "Bàn này vừa được người khác đặt. Vui lòng chọn bàn khác.",
+        });
+      }
     }
 
     const depositAmount = table.pricing.baseDeposit;
@@ -234,13 +226,10 @@ exports.createBooking = async (req, res) => {
       await booking.save();
     }
 
-    // Cập nhật trạng thái bàn → đã đặt (chỉ với các phương thức đã xác nhận)
-    // PayOS: không lock bàn, chỉ lock khi thanh toán thành công
+    // Cập nhật currentBookingId (bàn đã được atomically lock ở trên)
     if (paymentMethod !== "payos") {
       await Table.findByIdAndUpdate(tableId, {
-        isAvailable: false,
         currentBookingId: booking._id,
-        status: 'reserved',
       });
     }
 
@@ -284,12 +273,21 @@ exports.confirmBooking = async (req, res) => {
     booking.confirmedAt = new Date();
     await booking.save();
 
-    // Lock bàn khi partner xác nhận booking
-    await Table.findByIdAndUpdate(booking.tableId, {
-      isAvailable: false,
-      currentBookingId: booking._id,
-      status: 'reserved',
-    });
+    // Atomic lock bàn khi xác nhận (T3 fix)
+    const locked = await Table.findOneAndUpdate(
+      { _id: booking.tableId, status: { $in: ['available', 'reserved'] } },
+      { status: 'reserved', isAvailable: false, currentBookingId: booking._id },
+      { new: false }
+    );
+    if (!locked) {
+      // Rollback booking status nếu không lock được bàn
+      booking.status = "pending";
+      await booking.save();
+      return res.status(409).json({
+        success: false,
+        message: "Bàn không còn trống, không thể xác nhận.",
+      });
+    }
 
       try {
         await AnalyticsEvent.create({
@@ -640,6 +638,35 @@ exports.checkInBooking = async (req, res) => {
   }
 };
 
+// ── POST /api/booking/:bookingId/decline ──────────────
+exports.declineBooking = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking)
+      return res.status(404).json({ success: false, message: "Booking không tồn tại" });
+
+    if (!["pending"].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể từ chối booking ở trạng thái: ${booking.status}`,
+      });
+    }
+
+    booking.status = "declined";
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = reason || "Nhà hàng từ chối";
+    await booking.save();
+
+    // Bàn pending không lock nên không cần release
+
+    return res.json({ success: true, message: "Đã từ chối booking", booking });
+  } catch (err) {
+    console.error("[declineBooking]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
 // ── POST /api/booking/:bookingId/complete ──────────────
 exports.completeBooking = async (req, res) => {
   try {
@@ -678,26 +705,6 @@ exports.completeBooking = async (req, res) => {
     return res.json({ success: true, message: 'Đã hoàn thành booking' });
   } catch (err) {
     console.error('[completeBooking]', err);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
-  }
-};
-
-// ── PUT /api/booking/table/:tableId/cleaning-done ───────
-exports.setCleaningDone = async (req, res) => {
-  try {
-    const table = await Table.findById(req.params.tableId);
-    if (!table) {
-      return res.status(404).json({ success: false, message: 'Bàn không tồn tại' });
-    }
-
-    table.status = 'available';
-    table.isAvailable = true;
-    table.currentBookingId = null;
-    await table.save();
-
-    return res.json({ success: true, message: 'Bàn đã sẵn sàng' });
-  } catch (err) {
-    console.error('[setCleaningDone]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };

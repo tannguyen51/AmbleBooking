@@ -24,7 +24,7 @@ const {
   releaseBooking,
   checkInBooking,
   completeBooking,
-  setCleaningDone,
+  declineBooking,
 } = require("../controllers/bookingController");
 
 // Dashboard routes
@@ -50,9 +50,9 @@ const releaseAccess = (req, res, next) => {
   next();
 };
 router.post("/bookings/:bookingId/release", protectPartner, releaseAccess, releaseBooking);
-router.post("/bookings/:bookingId/check-in", protectPartner, checkPermission('orders', 'read'), checkInBooking);
-router.post("/bookings/:bookingId/complete", protectPartner, checkPermission('orders', 'read'), completeBooking);
-router.put("/tables/:tableId/cleaning-done", protectPartner, checkPermission('tables', 'update'), setCleaningDone);
+router.post("/bookings/:bookingId/check-in", protectPartner, checkPermission('orders', 'checkin'), checkInBooking);
+router.post("/bookings/:bookingId/decline", protectPartner, checkPermission('orders', 'decline'), declineBooking);
+router.post("/bookings/:bookingId/complete", protectPartner, checkPermission('orders', 'complete'), completeBooking);
 
 // Restaurant profile routes
 router.get("/restaurant-profile", protectPartner, checkPermission('restaurant', 'read'), getRestaurantProfile);

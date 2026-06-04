@@ -29,6 +29,7 @@ const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
 const analyticsRoutes = require("./routes/analytics");
 const adminAnalyticsRoutes = require("./routes/adminAnalytics");
+const { startBookingCleanupJob } = require("./services/bookingCleanupService");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ mongoose
   .connect(mongoUri)
   .then(() => {
     console.log("MongoDB connected");
+    startBookingCleanupJob();
   })
   .catch((err) => console.error("MongoDB error:", err));
 

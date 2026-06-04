@@ -114,6 +114,7 @@ export default function PartnerOrdersScreen() {
   };
   const canCheckIn = (status: string) => ["confirmed"].includes(status);
   const canComplete = (status: string) => ["occupied"].includes(status);
+  const canDecline = (status: string) => ["pending"].includes(status);
 
   useFocusEffect(
     useCallback(() => {
@@ -164,6 +165,16 @@ export default function PartnerOrdersScreen() {
       loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể hoàn tất.");
+    }
+  };
+
+  const handleDecline = async (bookingId: string) => {
+    try {
+      await partnerDashboardAPI.declineBooking(bookingId);
+      Alert.alert("Thành công", "Đã từ chối booking.");
+      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+    } catch (error: any) {
+      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể từ chối.");
     }
   };
 
@@ -230,6 +241,7 @@ export default function PartnerOrdersScreen() {
             const canReleaseOrder = canRelease(order.status);
             const canCheckInOrder = canCheckIn(order.status);
             const canCompleteOrder = canComplete(order.status);
+            const canDeclineOrder = canDecline(order.status);
 
             return (
               <View key={order.id} style={styles.orderCard}>
@@ -294,6 +306,16 @@ export default function PartnerOrdersScreen() {
                       <Text style={styles.releaseBtnTxt}>Release</Text>
                     </TouchableOpacity>
                   )}
+                  {canDeclineOrder && (
+                    <TouchableOpacity
+                      style={styles.declineBtn}
+                      onPress={() => handleDecline(order.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="close-outline" size={16} color="#EF4444" />
+                      <Text style={styles.declineBtnTxt}>Từ chối</Text>
+                    </TouchableOpacity>
+                  )}
                   {canCompleteOrder && (
                     <TouchableOpacity
                       style={styles.completeBtn}
@@ -304,7 +326,7 @@ export default function PartnerOrdersScreen() {
                       <Text style={styles.completeBtnTxt}>Hoàn tất</Text>
                     </TouchableOpacity>
                   )}
-                  {!canReleaseOrder && !canCheckInOrder && !canCompleteOrder && (
+                  {!canReleaseOrder && !canCheckInOrder && !canCompleteOrder && !canDeclineOrder && (
                     <Text style={styles.noActionText}>{STATUS_LABELS[order.status] || order.status}</Text>
                   )}
                 </View>
@@ -388,6 +410,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF2F2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
   releaseBtnTxt: { fontSize: 12, fontWeight: "800", color: "#EF4444" },
+  declineBtn: {
+    flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
+  },
+  declineBtnTxt: { fontSize: 12, fontWeight: "800", color: "#EF4444" },
   completeBtn: {
     flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#BBF7D0",
     backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
