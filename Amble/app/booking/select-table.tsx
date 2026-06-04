@@ -710,7 +710,7 @@ export default function SelectTableScreen() {
                 );
               })}
             </View>
-            <Text style={s.specificCount}>Còn {selectedGroup.tables.length} bàn trống!!</Text>
+            <Text style={s.specificCount}>{t("booking.select.legendAvailable")}: {selectedGroup.tables.length}</Text>
           </View>
 
           {/* Thời lượng dự kiến & Điều chỉnh thời lượng */}
