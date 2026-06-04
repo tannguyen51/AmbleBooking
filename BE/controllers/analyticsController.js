@@ -43,6 +43,7 @@ const buildEventFilter = (restaurantId, events, from, to) => {
 exports.getOverview = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -119,6 +120,7 @@ exports.getOverview = async (req, res) => {
 exports.getUserActivity = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -194,6 +196,7 @@ exports.getUserActivity = async (req, res) => {
 exports.getSearchDiscovery = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -247,6 +250,7 @@ exports.getSearchDiscovery = async (req, res) => {
 exports.getBookingFunnel = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -308,6 +312,7 @@ exports.getBookingFunnel = async (req, res) => {
 exports.getTableSelection = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -357,6 +362,7 @@ exports.getTableSelection = async (req, res) => {
 exports.getCancellationMetrics = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -411,6 +417,7 @@ exports.getCancellationMetrics = async (req, res) => {
 exports.getPeakHours = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -472,6 +479,7 @@ exports.getPeakHours = async (req, res) => {
 exports.getAIMetrics = async (req, res) => {
   try {
     const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -516,7 +524,8 @@ exports.recordEvent = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    await AnalyticsEvent.create({ ...rFilter,
+    await AnalyticsEvent.create({
+      restaurantId,
       event,
       userId: userId || null,
       sessionId: sessionId || "",
