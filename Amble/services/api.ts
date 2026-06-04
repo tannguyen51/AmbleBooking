@@ -7,6 +7,8 @@ const BASE_URL =
 
 export const API_BASE_URL = BASE_URL;
 
+console.log('[api] Base URL:', BASE_URL);
+
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
@@ -120,7 +122,6 @@ export const bookingAPI = {
     paymentMethod: string;
     voucherCode?: string;
     voucherDiscount?: number;
-    durationAdjustment?: number;
   }) => api.post("/booking/create", data),
 
   // Lịch sử booking của user
@@ -237,8 +238,10 @@ export const partnerDashboardAPI = {
     api.post(`/partner/bookings/${bookingId}/release`, data),
   checkInBooking: (bookingId: string) =>
     api.post(`/partner/bookings/${bookingId}/check-in`),
-  checkOutBooking: (bookingId: string) =>
-    api.post(`/partner/bookings/${bookingId}/check-out`),
+  declineBooking: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/decline`),
+  completeBooking: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/complete`),
   setCleaningDone: (tableId: string) =>
     api.put(`/partner/tables/${tableId}/cleaning-done`),
 };
@@ -267,6 +270,86 @@ export const partnerStaffAPI = {
   ) => api.post(`/partner/staff/${staffId}/resend-credentials`, data || {}),
   changePassword: (staffId: string, data: { newPassword: string }) =>
     api.put(`/partner/staff/${staffId}/change-password`, data),
+};
+
+// ── Partner Analytics ──────────────────────────────────
+export const analyticsAPI = {
+  getOverview: (from?: string, to?: string) =>
+    api.get("/partner/analytics/overview", { params: { from, to } }),
+  getUserActivity: (from?: string, to?: string) =>
+    api.get("/partner/analytics/users", { params: { from, to } }),
+  getSearchDiscovery: (from?: string, to?: string) =>
+    api.get("/partner/analytics/search", { params: { from, to } }),
+  getBookingFunnel: (from?: string, to?: string) =>
+    api.get("/partner/analytics/funnel", { params: { from, to } }),
+  getTableSelection: (from?: string, to?: string) =>
+    api.get("/partner/analytics/tables", { params: { from, to } }),
+  getCancellationMetrics: (from?: string, to?: string) =>
+    api.get("/partner/analytics/cancellation", { params: { from, to } }),
+  getPeakHours: (from?: string, to?: string) =>
+    api.get("/partner/analytics/peak-hours", { params: { from, to } }),
+  getAIMetrics: (from?: string, to?: string) =>
+    api.get("/partner/analytics/ai", { params: { from, to } }),
+};
+
+// ── Admin Analytics ──────────────────────────────────
+export const adminAnalyticsAPI = {
+  getOverview: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/overview", { params });
+  },
+  getUserActivity: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/users", { params });
+  },
+  getSearchDiscovery: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/search", { params });
+  },
+  getBookingFunnel: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/funnel", { params });
+  },
+  getTableSelection: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/tables", { params });
+  },
+  getCancellationMetrics: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/cancellation", { params });
+  },
+  getPeakHours: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/peak-hours", { params });
+  },
+  getAIMetrics: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/ai", { params });
+  },
 };
 
 // ── Admin ──────────────────────────────────────────────

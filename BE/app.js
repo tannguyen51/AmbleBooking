@@ -27,13 +27,13 @@ const bookingRoutes = require("./routes/booking");
 const aiRoutes = require("./routes/ai");
 const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
-const { startBookingAutoCompleteJob } = require("./services/bookingAutoCompleteService");
-const { startTableCleanupJob } = require("./services/tableCleanupService");
-const { startPendingPaymentCleanupJob } = require("./services/pendingPaymentCleanupService");
-const { startPendingConfirmationCleanupJob } = require("./services/bookingPendingConfirmationCleanupService");
+const analyticsRoutes = require("./routes/analytics");
+const adminAnalyticsRoutes = require("./routes/adminAnalytics");
+const { startBookingCleanupJob } = require("./services/bookingCleanupService");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
+app.set('trust proxy', 1);
 app.use(cors({
   origin: process.env.CORS_ORIGIN || "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -71,10 +71,7 @@ mongoose
   .connect(mongoUri)
   .then(() => {
     console.log("MongoDB connected");
-    startBookingAutoCompleteJob();
-    startTableCleanupJob();
-    startPendingPaymentCleanupJob();
-    startPendingConfirmationCleanupJob();
+    startBookingCleanupJob();
   })
   .catch((err) => console.error("MongoDB error:", err));
 
@@ -89,6 +86,8 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/partner/analytics", analyticsRoutes);
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: " munchmap API is running!" });

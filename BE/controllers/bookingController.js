@@ -2,11 +2,7 @@ const Booking = require("../models/booking");
 const Table = require("../models/table");
 const Restaurant = require("../models/restaurant");
 const paymentConfig = require("../config/paymentConfig");
-const {
-  computeBookingDuration,
-  detectMealTime,
-  GRACE_PERIOD_MIN,
-} = require("../services/bookingDuration");
+const AnalyticsEvent = require('../models/analyticsEvent');
 
 const buildVietQrImageUrl = (amount, content) => {
   if (!paymentConfig.accountNumber || !paymentConfig.accountName) return null;
@@ -27,41 +23,6 @@ const BOOKING_VOUCHERS = [
   { code: "GENZ2025", discount: 20000, minBill: 100000, isPercent: false },
   { code: "VIP50", discount: 50000, minBill: 200000, isPercent: false },
 ];
-
-const parseBookingDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return null;
-  const iso = `${dateStr}T${timeStr}:00`;
-  const parsed = new Date(iso);
-  if (!Number.isNaN(parsed.getTime())) return parsed;
-
-  const [y, m, d] = String(dateStr).split("-").map(Number);
-  const [hh, mm] = String(timeStr).split(":").map(Number);
-  if (!y || !m || !d || Number.isNaN(hh) || Number.isNaN(mm)) return null;
-  return new Date(y, m - 1, d, hh, mm, 0, 0);
-};
-
-const computeRefund = (booking) => {
-  const bookingDate = parseBookingDateTime(
-    booking?.bookingDetails?.date,
-    booking?.bookingDetails?.time,
-  );
-  if (!bookingDate) {
-    return {
-      hoursRemaining: 0,
-      refundPercent: 0,
-      refundAmount: 0,
-    };
-  }
-
-  const now = new Date();
-  const diffMs = bookingDate.getTime() - now.getTime();
-  const hoursRemaining = Math.max(0, diffMs / (1000 * 60 * 60));
-  const refundPercent = hoursRemaining >= 24 ? 100 : hoursRemaining >= 12 ? 50 : 0;
-  const depositAmount = Math.max(0, Number(booking?.pricing?.depositAmount || 0));
-  const refundAmount = Math.max(0, Math.round((depositAmount * refundPercent) / 100));
-
-  return { hoursRemaining, refundPercent, refundAmount };
-};
 
 // ── GET /api/booking/vouchers ────────────────────────────
 exports.getBookingVouchers = async (req, res) => {
@@ -92,14 +53,15 @@ exports.getRefundPreview = async (req, res) => {
         .json({ success: false, message: "Booking không tồn tại" });
     }
 
-    const { hoursRemaining, refundPercent, refundAmount } = computeRefund(booking);
+    const isPaid = booking.payment?.status === "paid";
+    const depositAmount = booking.pricing?.depositAmount || 0;
 
     return res.json({
       success: true,
       preview: {
-        hoursRemaining,
-        refundPercent,
-        refundAmount,
+        isPaid,
+        refundAmount: isPaid ? depositAmount : 0,
+        refundPercent: isPaid ? 100 : 0,
       },
     });
   } catch (err) {
@@ -140,6 +102,16 @@ exports.createBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Nhà hàng không tồn tại" });
 
+    // Kiểm tra ngày mở cửa (U1)
+    const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const dayOfWeek = dayNames[new Date(date + 'T' + normalizedTime).getDay()];
+    if (restaurant.openDays && restaurant.openDays.length > 0 && !restaurant.openDays.includes(dayOfWeek)) {
+      return res.status(400).json({
+        success: false,
+        message: `Nhà hàng không mở cửa ngày này. Ngày hoạt động: ${restaurant.openDays.join(', ')}`,
+      });
+    }
+
     const table = await Table.findById(tableId);
     if (!table)
       return res
@@ -157,6 +129,22 @@ exports.createBooking = async (req, res) => {
         success: false,
         message: `Bàn phù hợp cho ${table.capacity.min}–${table.capacity.max} người`,
       });
+    }
+
+    // ── Atomic lock bàn (R1 fix) ──
+    // Non-PayOS: lock ngay lập tức. PayOS: không lock (để webhook lock)
+    if (paymentMethod !== "payos") {
+      const locked = await Table.findOneAndUpdate(
+        { _id: tableId, status: 'available' },
+        { status: 'reserved', isAvailable: false, currentBookingId: null },
+        { new: false }
+      );
+      if (!locked) {
+        return res.status(409).json({
+          success: false,
+          message: "Bàn này vừa được người khác đặt. Vui lòng chọn bàn khác.",
+        });
+      }
     }
 
     const depositAmount = table.pricing.baseDeposit;
@@ -179,40 +167,19 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // ── Kiểm tra trùng lặp thời gian (time overlap) ──
-    const computeEndFallback = (bookingTime) => {
-      const [h, m] = bookingTime.split(':').map(Number);
-      const total = h * 60 + m + 120;
-      const eh = Math.floor(total / 60) % 24;
-      const em = total % 60;
-      return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-    };
-
-    const durationAdjustment = Math.max(-30, Math.min(30, Number(req.body.durationAdjustment || 0)));
-    const durationInfo = computeBookingDuration(normalizedTime, partySize, durationAdjustment);
-
-    const existingBookings = await Booking.find({
+    // ── Kiểm tra trùng lặp thời gian ──
+    const existingBooking = await Booking.findOne({
       tableId,
       'bookingDetails.date': date,
-      status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid'] },
-    }).lean();
-
-    for (const existing of existingBookings) {
-      const existingStart = (existing.bookingDetails?.time || '').padStart(5, '0').slice(0, 5);
-      const existingEnd = (existing.bookingDetails?.expectedEndTime || computeEndFallback(existingStart)).padStart(5, '0').slice(0, 5);
-      const newStart = normalizedTime;
-      const newEnd = durationInfo.expectedEndTime;
-
-      // Hai khung giờ overlap nếu: start_new < end_existing AND end_new > start_existing
-      if (newStart < existingEnd && newEnd > existingStart) {
-        return res.status(409).json({
-          success: false,
-          message: `Khung giờ ${existingStart}-${existingEnd} đã có booking. Vui lòng chọn giờ khác.`,
-        });
-      }
+      'bookingDetails.time': normalizedTime,
+      status: { $in: ['pending', 'confirmed', 'occupied'] }
+    });
+    if (existingBooking) {
+      return res.status(409).json({
+        success: false,
+        message: `Bàn này đã được đặt lúc ${normalizedTime}. Vui lòng chọn giờ khác.`
+      });
     }
-
-    const isPayos = paymentMethod === "payos";
 
     const booking = await Booking.create({
       bookingNumber,
@@ -225,12 +192,6 @@ exports.createBooking = async (req, res) => {
         partySize,
         purpose: purpose || "casual",
         specialRequests: specialRequests || "",
-        mealTime: durationInfo.mealTime,
-        duration: durationInfo.duration,
-        durationAdjustment: durationInfo.durationAdjustment,
-        expectedEndTime: durationInfo.expectedEndTime,
-        bufferTime: durationInfo.buffer,
-        gracePeriodEndTime: durationInfo.gracePeriodEndTime,
       },
       pricing: {
         depositAmount,
@@ -240,8 +201,12 @@ exports.createBooking = async (req, res) => {
           ? { code: voucherCode, discountValue: discount }
           : undefined,
       },
-      payment: paymentMethod ? { method: paymentMethod } : undefined,
-      status: isPayos ? "pending" : paymentMethod === "bank" ? "pending_payment" : "pending",
+      payment: {
+        method: paymentMethod || 'app',
+        status: 'unpaid',
+      },
+      status: "pending",
+      source: paymentMethod || 'app',
     });
 
     if (paymentMethod === "bank") {
@@ -256,20 +221,26 @@ exports.createBooking = async (req, res) => {
         bankCode: paymentConfig.bankCode,
         accountNumber: paymentConfig.accountNumber,
         amount: totalAmount,
+        status: 'unpaid',
       };
-      booking.status = "pending_payment";
       await booking.save();
     }
 
-    // Cập nhật trạng thái bàn → đã đặt (chỉ với các phương thức đã xác nhận)
-    // PayOS: không lock bàn, chỉ lock khi thanh toán thành công
+    // Cập nhật currentBookingId (bàn đã được atomically lock ở trên)
     if (paymentMethod !== "payos") {
       await Table.findByIdAndUpdate(tableId, {
-        isAvailable: false,
         currentBookingId: booking._id,
-        status: 'reserved',
       });
     }
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId,
+          event: 'booking_start',
+          userId,
+          metadata: { bookingId: booking._id, partySize, tableId, paymentMethod },
+        });
+      } catch (_) {}
 
     return res.json({
       success: true,
@@ -291,7 +262,7 @@ exports.confirmBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (!['pending', 'pending_payment', 'paid'].includes(booking.status)) {
+    if (!['pending'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể xác nhận booking ở trạng thái: ${booking.status}`,
@@ -302,50 +273,34 @@ exports.confirmBooking = async (req, res) => {
     booking.confirmedAt = new Date();
     await booking.save();
 
-    // Lock bàn khi partner xác nhận booking
-    await Table.findByIdAndUpdate(booking.tableId, {
-      isAvailable: false,
-      currentBookingId: booking._id,
-      status: 'reserved',
-    });
+    // Atomic lock bàn khi xác nhận (T3 fix)
+    const locked = await Table.findOneAndUpdate(
+      { _id: booking.tableId, status: { $in: ['available', 'reserved'] } },
+      { status: 'reserved', isAvailable: false, currentBookingId: booking._id },
+      { new: false }
+    );
+    if (!locked) {
+      // Rollback booking status nếu không lock được bàn
+      booking.status = "pending";
+      await booking.save();
+      return res.status(409).json({
+        success: false,
+        message: "Bàn không còn trống, không thể xác nhận.",
+      });
+    }
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'booking_confirm',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
 
     return res.json({ success: true, booking });
   } catch (err) {
     console.error("[confirmBooking]", err);
-    return res.status(500).json({ success: false, message: "Lỗi server" });
-  }
-};
-
-// ── POST /api/booking/:bookingId/payment ──────────────────
-exports.processPayment = async (req, res) => {
-  try {
-    const { method } = req.body;
-    const VALID = ["momo", "zalopay", "bank", "credit"];
-    if (!method || !VALID.includes(method)) {
-      return res.status(400).json({
-        success: false,
-        message: "Phương thức thanh toán không hợp lệ",
-      });
-    }
-
-    const booking = await Booking.findById(req.params.bookingId);
-    if (!booking)
-      return res
-        .status(404)
-        .json({ success: false, message: "Booking không tồn tại" });
-    if (booking.status === "paid")
-      return res
-        .status(400)
-        .json({ success: false, message: "Booking đã được thanh toán" });
-
-    const transactionId = `TXN-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    booking.status = "paid";
-    booking.payment = { transactionId, method, paidAt: new Date() };
-    await booking.save();
-
-    return res.json({ success: true, booking, transactionId });
-  } catch (err) {
-    console.error("[processPayment]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
@@ -359,7 +314,7 @@ exports.getPaymentQr = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (booking.status === "paid") {
+    if (booking.payment?.status === "paid") {
       return res
         .status(400)
         .json({ success: false, message: "Booking đã được thanh toán" });
@@ -387,9 +342,6 @@ exports.getPaymentQr = async (req, res) => {
       accountNumber: paymentConfig.accountNumber,
       amount,
     };
-    if (booking.status !== "pending_payment") {
-      booking.status = "pending_payment";
-    }
     await booking.save();
 
     return res.json({
@@ -437,7 +389,7 @@ exports.vietqrWebhook = async (req, res) => {
         .json({ success: false, message: "Không tìm thấy booking" });
     }
 
-    if (booking.status === "paid") {
+    if (booking.payment?.status === "paid") {
       return res.json({ success: true, bookingId: booking._id });
     }
 
@@ -454,9 +406,9 @@ exports.vietqrWebhook = async (req, res) => {
         .json({ success: false, message: "Số tiền không đủ" });
     }
 
-    booking.status = "paid";
     booking.payment = {
       ...(booking.payment || {}),
+      status: "paid",
       method: "bank",
       transactionId: transactionId || `VQR-${Date.now()}`,
       paidAt: paidAt ? new Date(paidAt) : new Date(),
@@ -495,7 +447,7 @@ exports.getUserBookings = async (req, res) => {
 const PAYMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút
 
 const attachPaymentTimer = (booking) => {
-  if (!booking || booking.status !== "pending_payment") return;
+  if (!booking || booking.payment?.status !== 'unpaid') return;
   const createdAt = booking.createdAt;
   if (!createdAt) return;
   const expiresAt = new Date(new Date(createdAt).getTime() + PAYMENT_TIMEOUT_MS);
@@ -538,48 +490,24 @@ exports.cancelBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (["cancelled", "completed", "refund_pending", "refunded", "released", "no_show"].includes(booking.status)) {
+    if (["cancelled", "completed", "occupied"].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể hủy booking ở trạng thái: ${booking.status}`,
       });
     }
 
-    const { hoursRemaining, refundPercent, refundAmount } = computeRefund(booking);
-    const bankName = String(refundAccount?.bankName || "").trim();
-    const accountNumber = String(refundAccount?.accountNumber || "").trim();
-    const accountName = String(refundAccount?.accountName || "").trim();
-
-    if (refundAmount > 0) {
-      if (!bankName || !accountNumber || !accountName) {
-        return res.status(400).json({
-          success: false,
-          message: "Vui lòng nhập đầy đủ thông tin hoàn tiền.",
-        });
-      }
-      booking.status = "refund_pending";
+    if (booking.payment?.status === "paid") {
+      booking.payment.status = "refund_pending";
       booking.refund = {
-        refundPercent,
-        refundAmount,
+        ...(booking.refund || {}),
         requestedAt: new Date(),
-        refundedAt: null,
-        bankName,
-        accountNumber,
-        accountName,
-      };
-    } else {
-      booking.status = "cancelled";
-      booking.refund = {
-        refundPercent,
-        refundAmount,
-        requestedAt: null,
-        refundedAt: null,
-        bankName: "",
-        accountNumber: "",
-        accountName: "",
+        bankName: String(refundAccount?.bankName || "").trim(),
+        accountNumber: String(refundAccount?.accountNumber || "").trim(),
+        accountName: String(refundAccount?.accountName || "").trim(),
       };
     }
-
+    booking.status = "cancelled";
     booking.cancelledAt = new Date();
     booking.cancellationReason = reason || "Người dùng hủy";
     await booking.save();
@@ -591,18 +519,19 @@ exports.cancelBooking = async (req, res) => {
       status: 'available',
     });
 
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'booking_cancel',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id, reason: booking.cancellationReason },
+        });
+      } catch (_) {}
+
     return res.json({
       success: true,
       booking,
-      message:
-        refundAmount > 0
-          ? "Yêu cầu hoàn tiền đã được ghi nhận"
-          : "Hủy booking thành công",
-      refund: {
-        hoursRemaining,
-        refundPercent,
-        refundAmount,
-      },
+      message: "Hủy booking thành công",
     });
   } catch (err) {
     console.error("[cancelBooking]", err);
@@ -624,52 +553,44 @@ const updateTableForRelease = async (tableId, nextStatus) => {
 // Chỉ Owner & Manager mới có quyền (check ở route layer)
 exports.releaseBooking = async (req, res) => {
   try {
-    const { reason, note } = req.body;
-    const VALID_REASONS = ['no_show', 'late', 'customer_cancel', 'emergency_clean', 'other'];
-
-    if (!reason || !VALID_REASONS.includes(reason)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vui lòng chọn lý do release hợp lệ.',
-      });
-    }
+    const { reason } = req.body;
 
     const booking = await Booking.findById(req.params.bookingId);
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
     }
 
-    if (['cancelled', 'released', 'no_show', 'completed', 'refunded'].includes(booking.status)) {
+    if (['cancelled', 'completed', 'occupied', 'no_show'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể release booking ở trạng thái: ${booking.status}`,
       });
     }
 
-    // Xác định trạng thái mới
-    const newBookingStatus = reason === 'no_show' ? 'no_show' : 'released';
-    const tableNextStatus = reason === 'emergency_clean' ? 'cleaning' : 'available';
-
+    const newBookingStatus = reason === 'no_show' ? 'no_show' : 'cancelled';
     booking.status = newBookingStatus;
-    booking.releaseReason = reason;
-    booking.releaseNote = note || '';
-    booking.releasedAt = new Date();
-    if (req.partner) {
-      booking.releasedBy = req.partner._id;
-    }
     booking.cancelledAt = new Date();
-    booking.cancellationReason = `Release: ${reason}${note ? ' - ' + note : ''}`;
+    booking.cancellationReason = reason || 'Released by staff';
     await booking.save();
 
     // Giải phóng bàn
-    await updateTableForRelease(booking.tableId, tableNextStatus);
+    await updateTableForRelease(booking.tableId, 'available');
+
+      if (reason === 'no_show') {
+        try {
+          await AnalyticsEvent.create({
+            restaurantId: booking.restaurantId,
+            event: 'no_show',
+            userId: booking.userId,
+            metadata: { bookingId: booking._id },
+          });
+        } catch (_) {}
+      }
 
     return res.json({
       success: true,
       booking,
-      message: reason === 'no_show'
-        ? 'Đã đánh dấu No-show và giải phóng bàn'
-        : 'Đã giải phóng bàn thành công',
+      message: 'Đã giải phóng bàn thành công',
     });
   } catch (err) {
     console.error('[releaseBooking]', err);
@@ -685,19 +606,30 @@ exports.checkInBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
     }
 
-    if (!['confirmed', 'paid'].includes(booking.status)) {
+    if (!['confirmed'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể check-in booking ở trạng thái: ${booking.status}`,
       });
     }
 
-    // Chỉ cập nhật trạng thái bàn → occupied, KHÔNG đổi booking status
-    // (giữ nguyên confirmed/paid để cleanup service không release nhầm)
+    booking.status = 'occupied';
+    await booking.save();
+
+    // Cập nhật trạng thái bàn → occupied
     await Table.findByIdAndUpdate(booking.tableId, {
       isAvailable: false,
       status: 'occupied',
     });
+
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'checkin',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
 
     return res.json({ success: true, message: 'Khách đã check-in' });
   } catch (err) {
@@ -706,49 +638,73 @@ exports.checkInBooking = async (req, res) => {
   }
 };
 
-// ── POST /api/booking/:bookingId/check-out ──────────────
-exports.checkOutBooking = async (req, res) => {
+// ── POST /api/booking/:bookingId/decline ──────────────
+exports.declineBooking = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking)
+      return res.status(404).json({ success: false, message: "Booking không tồn tại" });
+
+    if (!["pending"].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể từ chối booking ở trạng thái: ${booking.status}`,
+      });
+    }
+
+    booking.status = "declined";
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = reason || "Nhà hàng từ chối";
+    await booking.save();
+
+    // Bàn pending không lock nên không cần release
+
+    return res.json({ success: true, message: "Đã từ chối booking", booking });
+  } catch (err) {
+    console.error("[declineBooking]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// ── POST /api/booking/:bookingId/complete ──────────────
+exports.completeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId);
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
     }
 
-    if (!['confirmed', 'paid', 'completed'].includes(booking.status)) {
+    if (!['occupied'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Booking chưa check-in, không thể check-out',
+        message: 'Booking chưa check-in, không thể hoàn thành',
       });
     }
 
-    // Cập nhật trạng thái bàn → cleaning
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+
+    // Cập nhật trạng thái bàn → available
     await Table.findByIdAndUpdate(booking.tableId, {
-      status: 'cleaning',
+      status: 'available',
+      isAvailable: true,
+      currentBookingId: null,
     });
 
-    return res.json({ success: true, message: 'Bàn đang được dọn dẹp' });
+      try {
+        await AnalyticsEvent.create({
+          restaurantId: booking.restaurantId,
+          event: 'complete',
+          userId: booking.userId,
+          metadata: { bookingId: booking._id },
+        });
+      } catch (_) {}
+
+    return res.json({ success: true, message: 'Đã hoàn thành booking' });
   } catch (err) {
-    console.error('[checkOutBooking]', err);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
-  }
-};
-
-// ── PUT /api/booking/table/:tableId/cleaning-done ───────
-exports.setCleaningDone = async (req, res) => {
-  try {
-    const table = await Table.findById(req.params.tableId);
-    if (!table) {
-      return res.status(404).json({ success: false, message: 'Bàn không tồn tại' });
-    }
-
-    table.status = 'available';
-    table.isAvailable = true;
-    table.currentBookingId = null;
-    await table.save();
-
-    return res.json({ success: true, message: 'Bàn đã sẵn sàng' });
-  } catch (err) {
-    console.error('[setCleaningDone]', err);
+    console.error('[completeBooking]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };

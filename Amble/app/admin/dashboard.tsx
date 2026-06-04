@@ -25,7 +25,6 @@ type DashboardStats = {
   partnersActive: number;
   restaurantsActive: number;
   bookingsToday: number;
-  pendingPayments: number;
 };
 
 const EMPTY_STATS: DashboardStats = {
@@ -35,7 +34,6 @@ const EMPTY_STATS: DashboardStats = {
   partnersActive: 0,
   restaurantsActive: 0,
   bookingsToday: 0,
-  pendingPayments: 0,
 };
 
 export default function AdminDashboard() {
@@ -48,8 +46,8 @@ export default function AdminDashboard() {
   const ACTIONS = [
     { label: t("admin.dashboard.partners"), icon: "business", path: "/admin/partners" },
     { label: t("admin.dashboard.restaurants"), icon: "restaurant", path: "/admin/restaurants" },
+    { label: "Phân tích", icon: "stats-chart", path: "/admin/analytics" },
     { label: t("admin.dashboard.orders"), icon: "calendar", path: "/admin/bookings" },
-    { label: t("admin.dashboard.routes"), icon: "map", path: "/admin/routes" },
   ];
 
   const loadStats = async () => {
@@ -94,7 +92,6 @@ export default function AdminDashboard() {
             <StatCard label={t("admin.dashboard.statsActivePartners")} value={stats.partnersActive} />
             <StatCard label={t("admin.dashboard.statsRestaurants")} value={stats.restaurantsActive} />
             <StatCard label={t("admin.dashboard.statsOrders")} value={stats.bookingsToday} />
-            <StatCard label={t("admin.dashboard.statsPendingPayments")} value={stats.pendingPayments} />
           </View>
         )}
 

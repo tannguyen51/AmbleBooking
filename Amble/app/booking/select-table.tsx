@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
   View,
@@ -25,39 +25,10 @@ const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
 const { width: SCREEN_W } = Dimensions.get("window");
 
-const LUNCH_TIMES = [
-  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+const ALL_TIMES = [
+  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00',
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
-
-const DINNER_TIMES = [
-  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
-];
-
-// ── Thời lượng mặc định (khớp với backend) ──────────────
-const getDefaultDuration = (mealTime: string, partySize: number): number => {
-  if (partySize >= 9) return 180;
-  if (mealTime === 'lunch') return partySize <= 4 ? 90 : 120;
-  return partySize <= 4 ? 120 : 150;
-};
-
-const getBufferTime = (mealTime: string, partySize: number): number => {
-  if (partySize >= 9) return 30;
-  if (mealTime === 'lunch') return partySize <= 4 ? 15 : 20;
-  return partySize <= 4 ? 20 : 25;
-};
-
-const getMealTime = (time: string): 'lunch' | 'dinner' => {
-  const hour = parseInt(time.split(':')[0], 10);
-  return hour >= 11 && hour < 15 ? 'lunch' : 'dinner';
-};
-
-const calcEndTime = (start: string, dur: number): string => {
-  const [h, m] = start.split(':').map(Number);
-  const t = h * 60 + m + dur;
-  const eh = Math.floor(t / 60) % 24;
-  const em = t % 60;
-  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-};
 
 const TABLE_TYPE_CONFIG: Record<
   string,

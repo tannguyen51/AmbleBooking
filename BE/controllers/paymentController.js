@@ -187,7 +187,7 @@ exports.handlePayosWebhook = async (req, res) => {
         transactionId: webhookData.data?.transactionId || `PAYOS-${Date.now()}`,
         paidAt: new Date(),
       };
-      booking.status = "paid";
+      booking.payment.status = "paid";
       await booking.save();
 
       // Lock bàn sau khi thanh toán thành công
@@ -220,7 +220,7 @@ exports.getPaymentStatus = async (req, res) => {
     }
 
     // Nếu booking đã được webhook cập nhật → trả về ngay
-    if (booking.status === "paid") {
+    if (booking.payment?.status === "paid") {
       return res.json({ success: true, status: "PAID", paidAt: booking.payment?.paidAt });
     }
 
@@ -249,7 +249,7 @@ exports.getPaymentStatus = async (req, res) => {
       if (payosStatus !== booking.payment?.payosStatus) {
         booking.payment = { ...(booking.payment || {}), payosStatus };
         if (payosStatus === "PAID" || payosStatus === "COMPLETED") {
-          booking.status = "paid";
+          booking.payment.status = "paid";
           booking.payment.paidAt = new Date();
           // Lock bàn sau khi thanh toán thành công
           try {

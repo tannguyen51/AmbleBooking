@@ -47,7 +47,7 @@ exports.getOverview = async (req, res) => {
       Booking.countDocuments({
         restaurantId,
         "bookingDetails.date": today,
-        status: { $in: ["pending", "confirmed", "paid", "completed"] },
+        status: { $in: ["pending", "confirmed", "occupied", "completed"] },
       }),
       Booking.find({ restaurantId, status: "pending" })
         .populate("userId", "fullName phone")
@@ -58,7 +58,7 @@ exports.getOverview = async (req, res) => {
       Booking.find({
         restaurantId,
         "bookingDetails.date": today,
-        status: { $in: ["confirmed", "paid"] },
+        status: { $in: ["confirmed"] },
       })
         .populate("userId", "fullName phone")
         .populate("tableId", "name type")
@@ -97,8 +97,6 @@ exports.getOverview = async (req, res) => {
       date: booking.bookingDetails?.date || "",
       time: booking.bookingDetails?.time || "",
       guests: booking.bookingDetails?.partySize || 0,
-      duration: booking.bookingDetails?.duration || 120,
-      expectedEndTime: booking.bookingDetails?.expectedEndTime || '',
       depositAmount: booking.pricing?.depositAmount || 0,
       status: booking.status,
     }));
@@ -111,7 +109,6 @@ exports.getOverview = async (req, res) => {
         type: table.type,
         capacity: table.capacity,
         status: table.status,
-        isAvailable: table.isAvailable,
         features: table.features || [],
         currentBooking: currentBooking
           ? {
@@ -196,12 +193,10 @@ exports.getOrders = async (req, res) => {
         const counts = {
       all: allBookings.length,
       pending: allBookings.filter((b) => b.status === "pending").length,
-      pending_payment: allBookings.filter((b) => b.status === "pending_payment").length,
       confirmed: allBookings.filter((b) => b.status === "confirmed").length,
-      paid: allBookings.filter((b) => b.status === "paid").length,
+      occupied: allBookings.filter((b) => b.status === "occupied").length,
       completed: allBookings.filter((b) => b.status === "completed").length,
       cancelled: allBookings.filter((b) => b.status === "cancelled").length,
-      released: allBookings.filter((b) => b.status === "released").length,
       no_show: allBookings.filter((b) => b.status === "no_show").length,
     };
 
@@ -246,8 +241,7 @@ exports.getTables = async (req, res) => {
         images: table.images || [],
         features: table.features || [],
         description: table.description || "",
-        isAvailable: table.isAvailable,
-        status: table.status || (table.isAvailable ? "available" : "booked"),
+        status: table.status || "available",
         currentBooking: currentBooking
           ? {
               id: currentBooking._id,
@@ -557,7 +551,7 @@ exports.deleteTable = async (req, res) => {
         .lean();
       if (
         booking &&
-        ["pending", "confirmed", "paid"].includes(booking.status)
+        ["pending", "confirmed", "occupied"].includes(booking.status)
       ) {
         return res.status(400).json({
           success: false,

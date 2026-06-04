@@ -7,17 +7,8 @@ const Route = require("../models/route");
 const AdminAudit = require("../models/adminAudit");
 
 const BOOKING_STATUSES = [
-  "draft",
-  "pending",
-  "pending_payment",
-  "confirmed",
-  "paid",
-  "completed",
-  "cancelled",
-  "refund_pending",
-  "refunded",
-  "released",
-  "no_show",
+  "pending", "confirmed", "occupied", "completed",
+  "cancelled", "declined", "no_show",
 ];
 
 const parseBool = (value) => {
@@ -56,7 +47,6 @@ exports.getDashboard = async (req, res) => {
       partnersActive,
       restaurantsActive,
       bookingsToday,
-      pendingPayments,
     ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ isActive: true }),
@@ -65,9 +55,8 @@ exports.getDashboard = async (req, res) => {
       Restaurant.countDocuments({ isActive: true }),
       Booking.countDocuments({
         "bookingDetails.date": today,
-        status: { $in: ["pending", "pending_payment", "confirmed", "paid"] },
+        status: { $in: ["pending", "confirmed", "occupied"] },
       }),
-      Booking.countDocuments({ status: "pending_payment" }),
     ]);
 
     return res.json({
@@ -79,7 +68,6 @@ exports.getDashboard = async (req, res) => {
         partnersActive,
         restaurantsActive,
         bookingsToday,
-        pendingPayments,
       },
     });
   } catch (err) {
@@ -642,16 +630,6 @@ exports.updateBookingStatus = async (req, res) => {
       booking.cancellationReason = reason || "Admin override";
     }
 
-    if (status === "paid") {
-      booking.payment = {
-        ...(booking.payment || {}),
-        method: paymentMethod || booking.payment?.method || "bank",
-        transactionId:
-          transactionId || booking.payment?.transactionId || `ADM-${Date.now()}`,
-        paidAt: booking.payment?.paidAt || new Date(),
-      };
-    }
-
     if (status === "refunded") {
       booking.refund = {
         ...(booking.refund || {}),
@@ -671,17 +649,15 @@ exports.updateBookingStatus = async (req, res) => {
       meta: { status, reason: reason || "", paymentMethod: paymentMethod || "" },
     });
 
-    if (["cancelled", "refund_pending", "refunded", "released", "no_show"].includes(status)) {
+    if (["cancelled", "declined", "no_show"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
-        isAvailable: true,
         currentBookingId: null,
         status: 'available',
       });
-    } else if (["confirmed", "paid", "completed"].includes(status)) {
+    } else if (["confirmed", "occupied"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
-        isAvailable: false,
         currentBookingId: booking._id,
-        status: status === 'completed' ? 'occupied' : 'reserved',
+        status: status === 'occupied' ? 'occupied' : 'reserved',
       });
     }
 

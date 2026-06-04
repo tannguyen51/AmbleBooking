@@ -64,11 +64,6 @@ export default function ConfirmBookingScreen() {
     date,
     time,
     partySize,
-    mealTime,
-    duration,
-    expectedEndTime,
-    durationAdjustment,
-    bufferTime,
   } = useLocalSearchParams<{
     restaurantId: string;
     restaurantName: string;
@@ -80,11 +75,6 @@ export default function ConfirmBookingScreen() {
     date?: string;
     time?: string;
     partySize?: string;
-    mealTime?: string;
-    duration?: string;
-    expectedEndTime?: string;
-    durationAdjustment?: string;
-    bufferTime?: string;
   }>();
 
   const depositAmt = parseInt(deposit || "0");
@@ -202,7 +192,6 @@ export default function ConfirmBookingScreen() {
         paymentMethod: selectedPayment,
         voucherCode: appliedVoucher?.code,
         voucherDiscount: discount,
-        durationAdjustment: parseInt(durationAdjustment || "0"),
       });
       const booking = res.data.booking;
       if (selectedPayment === "payos") {
@@ -350,14 +339,7 @@ export default function ConfirmBookingScreen() {
             <View style={s.detailRow}>
               <Ionicons name="time-outline" size={20} color="#666" />
               <Text style={s.detailLabel}>{t("booking.confirm.time")}</Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={s.detailValue}>{bookingData.time}</Text>
-                {expectedEndTime && (
-                  <Text style={{ fontSize: 11, color: '#FF6B35', fontWeight: '600', marginTop: 1 }}>
-                    {bookingData.time} – {expectedEndTime} ({duration || 120} phút)
-                  </Text>
-                )}
-              </View>
+              <Text style={s.detailValue}>{bookingData.time}</Text>
             </View>
             <View style={s.divider} />
             <View style={s.detailRow}>

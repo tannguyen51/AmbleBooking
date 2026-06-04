@@ -403,16 +403,11 @@ export default function PartnerDashboard() {
                     <Text style={styles.upcomingTimeH}>{bk.time?.split(":")[0]}</Text>
                     <Text style={styles.upcomingTimeM}>:{bk.time?.split(":")[1]}</Text>
                   </View>
-                  <View style={styles.upcomingLine} />
-                  <Text style={styles.upcomingEnd}>{bk.expectedEndTime || "--"}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.upcomingName}>{bk.userName}</Text>
                   <Text style={styles.upcomingDetail}>
                     {bk.tableNumber} • {bk.guests} khách
-                  </Text>
-                  <Text style={styles.upcomingDuration}>
-                    {bk.duration || 120} phút
                   </Text>
                 </View>
               </View>
@@ -862,9 +857,6 @@ const styles = StyleSheet.create({
   upcomingTimeBox: { alignItems: "center" },
   upcomingTimeH: { fontSize: 16, fontWeight: "900", color: "#FF6B35", lineHeight: 18 },
   upcomingTimeM: { fontSize: 11, color: "#9CA3AF", fontWeight: "700" },
-  upcomingLine: { width: 1, flex: 1, backgroundColor: "#F3F4F6", marginVertical: 4 },
-  upcomingEnd: { fontSize: 9, color: "#9CA3AF", fontWeight: "600" },
   upcomingName: { fontSize: 14, fontWeight: "800", color: "#1A1A1A" },
   upcomingDetail: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-  upcomingDuration: { fontSize: 11, color: "#FF6B35", fontWeight: "700", marginTop: 2 },
 });

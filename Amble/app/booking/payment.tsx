@@ -98,7 +98,7 @@ export default function BookingPaymentScreen() {
     try {
       const res = await bookingAPI.getById(bookingId);
       const booking = res.data?.booking;
-      if (booking?.status === "paid") {
+      if (booking?.payment?.status === "paid") {
         router.replace({
           pathname: "/booking/success" as any,
           params: {
