@@ -28,6 +28,7 @@ const aiRoutes = require("./routes/ai");
 const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
 const analyticsRoutes = require("./routes/analytics");
+const adminAnalyticsRoutes = require("./routes/adminAnalytics");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/partner/analytics", analyticsRoutes);
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: " munchmap API is running!" });

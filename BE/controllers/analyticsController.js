@@ -6,6 +6,11 @@ const User = require("../models/user");
 
 // ── Helpers ──────────────────────────────────────────────────
 
+const getRestaurantId = (req) => {
+  // Partner: từ token. Admin: từ query param
+  return req.partner?.restaurantId || req.query.restaurantId || null;
+};
+
 const getDateRange = (from, to) => {
   const end = to ? new Date(to) : new Date();
   const start = from
@@ -33,7 +38,7 @@ const buildEventFilter = (restaurantId, events, from, to) => {
 // ── GET /api/partner/analytics/overview?from=&to= ────────────
 exports.getOverview = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -112,7 +117,7 @@ exports.getOverview = async (req, res) => {
 // ── GET /api/partner/analytics/users?from=&to= ───────────────
 exports.getUserActivity = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -188,7 +193,7 @@ exports.getUserActivity = async (req, res) => {
 // ── GET /api/partner/analytics/search?from=&to= ──────────────
 exports.getSearchDiscovery = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -241,7 +246,7 @@ exports.getSearchDiscovery = async (req, res) => {
 // ── GET /api/partner/analytics/funnel?from=&to= ──────────────
 exports.getBookingFunnel = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -303,7 +308,7 @@ exports.getBookingFunnel = async (req, res) => {
 // ── GET /api/partner/analytics/tables?from=&to= ──────────────
 exports.getTableSelection = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -353,7 +358,7 @@ exports.getTableSelection = async (req, res) => {
 // ── GET /api/partner/analytics/cancellation?from=&to= ────────
 exports.getCancellationMetrics = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -408,7 +413,7 @@ exports.getCancellationMetrics = async (req, res) => {
 // ── GET /api/partner/analytics/peak-hours?from=&to= ──────────
 exports.getPeakHours = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
@@ -470,7 +475,7 @@ exports.getPeakHours = async (req, res) => {
 // ── GET /api/partner/analytics/ai?from=&to= ──────────────────
 exports.getAIMetrics = async (req, res) => {
   try {
-    const restaurantId = req.partner.restaurantId;
+    const restaurantId = getRestaurantId(req);
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Missing restaurant" });
     }
