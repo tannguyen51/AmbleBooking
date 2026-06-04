@@ -342,7 +342,7 @@ export default function SelectTableScreen() {
           <View style={s.headerTextWrapRight}>
             <Text style={s.headerTitleRight} numberOfLines={1}>{restaurantName}</Text>
             <Text style={s.headerSubRight} numberOfLines={1}>
-              {restaurantAddress || "Địa chỉ nhà hàng"}
+              {restaurantAddress || t("favorites.addressFallback")}
             </Text>
           </View>
         </View>
