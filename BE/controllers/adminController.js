@@ -641,47 +641,81 @@ exports.getBookings = async (req, res) => {
   }
 };
 
-// GET /api/admin/restaurants/:id/revenue
+// GET /api/admin/restaurants/:id/revenue?period=week|month|quarter
 exports.getRestaurantRevenue = async (req, res) => {
   try {
     const { id } = req.params;
-    const { from, to } = req.query;
+    const period = req.query.period || "month";
 
-    const match = { restaurantId: new mongoose.Types.ObjectId(id), status: { $in: ['confirmed', 'occupied', 'completed'] } };
-    if (from || to) {
-      match.createdAt = {};
-      if (from) match.createdAt.$gte = new Date(from);
-      if (to) match.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+    // Tính start/end theo period
+    const now = new Date();
+    let start, end;
+    if (period === "week") {
+      const day = now.getDay();
+      start = new Date(now);
+      start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(start.getDate() + 6);
+    } else if (period === "quarter") {
+      start = new Date(now);
+      start.setMonth(now.getMonth() - 3);
+      start.setHours(0, 0, 0, 0);
+      end = now;
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
     }
 
-    const [activeBookings, revenueAgg, monthlyAgg] = await Promise.all([
-      Booking.countDocuments(match),
+    const objId = new mongoose.Types.ObjectId(id);
+
+    // Tổng doanh thu completed trong kỳ
+    const matchCompleted = {
+      restaurantId: objId,
+      status: "completed",
+      createdAt: { $gte: start, $lte: end },
+    };
+
+    const [totalRevenue, periodBreakdown, totalBookings, avgPartySizeData] = await Promise.all([
       Booking.aggregate([
-        { $match: { restaurantId: new mongoose.Types.ObjectId(id), status: "completed" } },
+        { $match: matchCompleted },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
+      // Doanh thu theo tuần/tháng trong kỳ
       Booking.aggregate([
-        { $match: { restaurantId: new mongoose.Types.ObjectId(id), status: "completed" } },
+        { $match: matchCompleted },
         {
           $group: {
-            _id: { $month: "$completedAt" },
+            _id: { $dateToString: { format: period === "quarter" ? "%m/%Y" : period === "week" ? "%d/%m" : "%d/%m", date: "$createdAt" } },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },
         },
-        { $sort: { _id: -1 } },
-        { $limit: 6 },
+        { $sort: { _id: 1 } },
+      ]),
+      // Tổng đơn active trong kỳ
+      Booking.countDocuments({
+        restaurantId: objId,
+        status: { $in: ["confirmed", "occupied", "completed"] },
+        createdAt: { $gte: start, $lte: end },
+      }),
+      // Trung bình khách
+      Booking.aggregate([
+        { $match: { restaurantId: objId, status: { $in: ["confirmed", "occupied", "completed"] }, createdAt: { $gte: start, $lte: end } } },
+        { $group: { _id: null, avgParty: { $avg: "$bookingDetails.partySize" } } },
       ]),
     ]);
 
-    const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
-    const monthlyData = monthlyAgg.map(m => ({
-      month: m._id,
-      total: m.total,
-      count: m.count,
-    }));
+    const data = {
+      totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
+      totalBookings,
+      completedBookings: periodBreakdown.reduce((s, m) => s + m.count, 0),
+      avgPartySize: avgPartySizeData.length > 0 ? Math.round(avgPartySizeData[0].avgParty * 10) / 10 : 0,
+      period,
+      breakdown: periodBreakdown.map((m) => ({ label: m._id, total: m.total, count: m.count })),
+    };
 
-    return res.json({ success: true, data: { activeBookings, totalRevenue, monthlyData } });
+    return res.json({ success: true, data });
   } catch (err) {
     console.error("[admin/getRestaurantRevenue]", err);
     return res.status(500).json({ success: false, message: "Server error" });
