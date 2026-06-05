@@ -57,6 +57,50 @@ const PACKAGE_OPTIONS: Array<{
   },
 ];
 
+const PLAN_BENEFITS = [
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
+  {
+    feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống",
+    core: "Có",
+    premium: "Có",
+  },
+  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
+  {
+    feature: "Hiển thị trong danh sách nhà hàng trên Amble",
+    core: "Có",
+    premium: "Có",
+  },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
+  {
+    feature: "Đưa nhà hàng lên mục xu hướng / nổi bật",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Tăng khả năng tiếp cận khách hàng mới trên app",
+    core: "—",
+    premium: "Có",
+  },
+  { feature: "Phân tích lưu lượng khách", core: "—", premium: "Có" },
+  {
+    feature: "Phân tích hiệu suất bàn và khu vực",
+    core: "—",
+    premium: "Có",
+  },
+  { feature: "Phân tích hành vi khách hàng", core: "—", premium: "Có" },
+  {
+    feature: "Theo dõi tỷ lệ khách hàng quay lại",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Xuất báo cáo và thống kê nâng cao",
+    core: "—",
+    premium: "Có",
+  },
+];
+
 export default function PartnerRegisterScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -391,6 +435,33 @@ export default function PartnerRegisterScreen() {
                 })}
               </View>
 
+              <View style={styles.featureTable}>
+                <View style={[styles.featureRow, styles.featureHeaderRow]}>
+                  <Text style={[styles.featureCell, styles.featureCellName, styles.featureHeaderText]}>
+                    Tính năng
+                  </Text>
+                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
+                    Pro Plan
+                  </Text>
+                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
+                    Premium Plan
+                  </Text>
+                </View>
+                {PLAN_BENEFITS.map((benefit) => (
+                  <View key={benefit.feature} style={styles.featureRow}>
+                    <Text style={[styles.featureCell, styles.featureCellName]}>
+                      {benefit.feature}
+                    </Text>
+                    <Text style={[styles.featureCell, styles.featurePlanCell]}>
+                      {benefit.core}
+                    </Text>
+                    <Text style={[styles.featureCell, styles.featurePlanCell, styles.featurePremiumValue]}>
+                      {benefit.premium}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
               <TouchableOpacity
                 style={styles.nextBtn}
                 onPress={handleRegister}
@@ -618,6 +689,46 @@ const styles = StyleSheet.create({
   },
   packageFeeValuePremium: {
     color: "#6D28D9",
+  },
+  featureTable: {
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  featureRow: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  featureHeaderRow: {
+    borderTopWidth: 0,
+    backgroundColor: "#F9FAFB",
+  },
+  featureCell: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#374151",
+    fontWeight: "600",
+  },
+  featureCellName: {
+    flex: 1.55,
+  },
+  featurePlanCell: {
+    flex: 0.78,
+    textAlign: "center",
+  },
+  featureHeaderText: {
+    color: "#111827",
+    fontWeight: "900",
+  },
+  featurePremiumValue: {
+    color: "#6D28D9",
+    fontWeight: "800",
   },
 
   inputGroup: {

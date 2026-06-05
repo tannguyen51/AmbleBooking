@@ -56,7 +56,6 @@ const SUBSCRIPTION_PLANS: Array<{
   monthlyFee: string;
   setupFee: string;
   tone: "base" | "premium";
-  perks: string[];
 }> = [
   {
     key: "pro",
@@ -65,7 +64,6 @@ const SUBSCRIPTION_PLANS: Array<{
     monthlyFee: "Miễn phí tháng",
     setupFee: "Phí khởi tạo 799k/tháng",
     tone: "base",
-    perks: ["Quản lý hồ sơ nhà hàng", "Nhận và xử lý đặt bàn", "Quản lý bàn cơ bản"],
   },
   {
     key: "premium",
@@ -74,7 +72,74 @@ const SUBSCRIPTION_PLANS: Array<{
     monthlyFee: "699k/tháng",
     setupFee: "Phí khởi tạo 599k/tháng",
     tone: "premium",
-    perks: ["Ưu tiên hiển thị trên trang chủ", "Nhãn Premium nổi bật", "Phù hợp nhà hàng muốn tăng khách"],
+  },
+];
+
+const PLAN_BENEFITS = [
+  {
+    feature: "Quản lý đặt bàn trực tuyến",
+    core: "Có",
+    premium: "Có",
+  },
+  {
+    feature: "Quản lý thông tin khách đặt bàn",
+    core: "Có",
+    premium: "Có",
+  },
+  {
+    feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống",
+    core: "Có",
+    premium: "Có",
+  },
+  {
+    feature: "Dashboard vận hành",
+    core: "Cơ bản",
+    premium: "Nâng cao",
+  },
+  {
+    feature: "Hiển thị trong danh sách nhà hàng trên Amble",
+    core: "Có",
+    premium: "Có",
+  },
+  {
+    feature: "Ưu tiên hiển thị trong khung đề xuất",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Đưa nhà hàng lên mục xu hướng / nổi bật",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Tăng khả năng tiếp cận khách hàng mới trên app",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Phân tích lưu lượng khách",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Phân tích hiệu suất bàn và khu vực",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Phân tích hành vi khách hàng",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Theo dõi tỷ lệ khách hàng quay lại",
+    core: "—",
+    premium: "Có",
+  },
+  {
+    feature: "Xuất báo cáo và thống kê nâng cao",
+    core: "—",
+    premium: "Có",
   },
 ];
 
@@ -923,69 +988,88 @@ export default function PartnerProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.planGrid}>
-              {SUBSCRIPTION_PLANS.map((plan) => {
-                const active = selectedPlan === plan.key;
-                const isCurrent = currentPlan === plan.key;
-                const premium = plan.tone === "premium";
+            <ScrollView
+              style={styles.subscriptionScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.planGrid}>
+                {SUBSCRIPTION_PLANS.map((plan) => {
+                  const active = selectedPlan === plan.key;
+                  const isCurrent = currentPlan === plan.key;
+                  const premium = plan.tone === "premium";
 
-                return (
-                  <TouchableOpacity
-                    key={plan.key}
-                    activeOpacity={0.9}
-                    style={[
-                      styles.planCard,
-                      active && styles.planCardActive,
-                      premium && styles.planCardPremium,
-                      active && premium && styles.planCardPremiumActive,
-                    ]}
-                    onPress={() => setSelectedPlan(plan.key)}
-                  >
-                    <View style={styles.planTopRow}>
-                      <View style={styles.planTitleWrap}>
-                        <Text style={styles.planTitle}>{plan.title}</Text>
-                        <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.planRadio,
-                          active && styles.planRadioActive,
-                          premium && active && styles.planRadioPremium,
-                        ]}
-                      >
-                        {active && <Ionicons name="checkmark" size={14} color="#fff" />}
-                      </View>
-                    </View>
-
-                    <View style={styles.planPriceRow}>
-                      <Text
-                        style={[
-                          styles.planPrice,
-                          premium && styles.planPricePremium,
-                        ]}
-                      >
-                        {plan.monthlyFee}
-                      </Text>
-                      {isCurrent && <Text style={styles.currentPlanPill}>Đang dùng</Text>}
-                    </View>
-                    <Text style={styles.planSetup}>{plan.setupFee}</Text>
-
-                    <View style={styles.planPerks}>
-                      {plan.perks.map((perk) => (
-                        <View key={perk} style={styles.planPerkRow}>
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={15}
-                            color={premium ? "#7C3AED" : "#FF6B35"}
-                          />
-                          <Text style={styles.planPerkText}>{perk}</Text>
+                  return (
+                    <TouchableOpacity
+                      key={plan.key}
+                      activeOpacity={0.9}
+                      style={[
+                        styles.planCard,
+                        active && styles.planCardActive,
+                        premium && styles.planCardPremium,
+                        active && premium && styles.planCardPremiumActive,
+                      ]}
+                      onPress={() => setSelectedPlan(plan.key)}
+                    >
+                      <View style={styles.planTopRow}>
+                        <View style={styles.planTitleWrap}>
+                          <Text style={styles.planTitle}>{plan.title}</Text>
+                          <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
                         </View>
-                      ))}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                        <View
+                          style={[
+                            styles.planRadio,
+                            active && styles.planRadioActive,
+                            premium && active && styles.planRadioPremium,
+                          ]}
+                        >
+                          {active && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        </View>
+                      </View>
+
+                      <View style={styles.planPriceRow}>
+                        <Text
+                          style={[
+                            styles.planPrice,
+                            premium && styles.planPricePremium,
+                          ]}
+                        >
+                          {plan.monthlyFee}
+                        </Text>
+                        {isCurrent && <Text style={styles.currentPlanPill}>Đang dùng</Text>}
+                      </View>
+                      <Text style={styles.planSetup}>{plan.setupFee}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.featureTable}>
+                <View style={[styles.featureRow, styles.featureHeaderRow]}>
+                  <Text style={[styles.featureCell, styles.featureCellName, styles.featureHeaderText]}>
+                    Tính năng
+                  </Text>
+                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
+                    Pro Plan
+                  </Text>
+                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
+                    Premium Plan
+                  </Text>
+                </View>
+                {PLAN_BENEFITS.map((benefit) => (
+                  <View key={benefit.feature} style={styles.featureRow}>
+                    <Text style={[styles.featureCell, styles.featureCellName]}>
+                      {benefit.feature}
+                    </Text>
+                    <Text style={[styles.featureCell, styles.featurePlanCell]}>
+                      {benefit.core}
+                    </Text>
+                    <Text style={[styles.featureCell, styles.featurePlanCell, styles.featurePremiumValue]}>
+                      {benefit.premium}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
 
             <TouchableOpacity
               style={[
@@ -1335,6 +1419,9 @@ const styles = StyleSheet.create({
   subscriptionModal: {
     maxHeight: "88%",
   },
+  subscriptionScroll: {
+    maxHeight: 520,
+  },
   subscriptionModalSub: {
     marginTop: 3,
     fontSize: 12,
@@ -1442,6 +1529,47 @@ const styles = StyleSheet.create({
     color: "#374151",
     fontWeight: "600",
     lineHeight: 17,
+  },
+  featureTable: {
+    marginTop: 14,
+    marginBottom: 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  featureRow: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  featureHeaderRow: {
+    borderTopWidth: 0,
+    backgroundColor: "#F9FAFB",
+  },
+  featureCell: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#374151",
+    fontWeight: "600",
+  },
+  featureCellName: {
+    flex: 1.55,
+  },
+  featurePlanCell: {
+    flex: 0.78,
+    textAlign: "center",
+  },
+  featureHeaderText: {
+    color: "#111827",
+    fontWeight: "900",
+  },
+  featurePremiumValue: {
+    color: "#6D28D9",
+    fontWeight: "800",
   },
   payBtn: {
     marginTop: 14,
