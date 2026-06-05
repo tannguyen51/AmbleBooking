@@ -338,6 +338,11 @@ exports.approvePartner = async (req, res) => {
         .json({ success: false, message: "Partner not found" });
     }
 
+    // Kích hoạt nhà hàng của partner
+    if (partner.restaurantId) {
+      await Restaurant.findByIdAndUpdate(partner.restaurantId, { isActive: true });
+    }
+
     await logAudit({
       actorId: req.user._id,
       action: "partner.approved",
@@ -382,6 +387,11 @@ exports.rejectPartner = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Partner not found" });
+    }
+
+    // Vô hiệu hóa nhà hàng khi từ chối partner
+    if (partner.restaurantId) {
+      await Restaurant.findByIdAndUpdate(partner.restaurantId, { isActive: false });
     }
 
     await logAudit({
@@ -438,6 +448,16 @@ exports.getRestaurants = async (req, res) => {
 
     const isActiveBool = parseBool(isActive);
     if (isActiveBool !== undefined) filter.isActive = isActiveBool;
+
+    // Khi lọc isActive=true, chỉ lấy nhà hàng có partner đã được duyệt
+    if (isActiveBool === true) {
+      const approvedPartners = await Partner.find(
+        { subscriptionStatus: "active", isActive: true },
+        { _id: 1 }
+      ).lean();
+      const approvedPartnerIds = approvedPartners.map(p => p._id);
+      filter.partnerId = { $in: approvedPartnerIds };
+    }
 
     const isFeaturedBool = parseBool(isFeatured);
     if (isFeaturedBool !== undefined) filter.isFeatured = isFeaturedBool;

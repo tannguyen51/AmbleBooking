@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -18,18 +18,12 @@ import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const MANAGEABLE_STATUSES = new Set([
-  "pending", "confirmed", "occupied", "completed",
-  "cancelled", "declined", "no_show",
-]);
-
-interface BookingRefund {
-  refundPercent?: number;
-  refundAmount?: number;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-  requestedAt?: string;
+interface Restaurant {
+  _id: string;
+  name: string;
+  city?: string;
+  cuisine?: string;
+  isActive?: boolean;
 }
 
 interface BookingItem {
@@ -40,95 +34,120 @@ interface BookingItem {
   userId?: { fullName?: string; email?: string; phone?: string };
   restaurantId?: { name?: string };
   tableId?: { name?: string };
-  refund?: BookingRefund;
+  refund?: {
+    refundPercent?: number;
+    refundAmount?: number;
+    bankName?: string;
+    accountNumber?: string;
+    accountName?: string;
+    requestedAt?: string;
+  };
   payment?: { status?: string };
 }
 
 const formatVnd = (amount?: number) =>
   `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
 
-const getStatusTone = (
-  status: string,
-): "warning" | "success" | "danger" | "info" | "default" => {
-  if (status === "pending") return "warning";
-  if (status === "confirmed" || status === "completed") return "success";
-  if (status === "occupied" || status === "cancelled") return "danger";
-  if (status === "no_show" || status === "declined") return "info";
-  return "default";
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Chờ xác nhận",
+  confirmed: "Đã xác nhận",
+  occupied: "Đang dùng",
+  completed: "Hoàn tất",
+  cancelled: "Đã hủy",
+  declined: "Đã từ chối",
+  no_show: "Vắng mặt",
 };
+
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  pending: { bg: "#FFFAEB", text: "#B54708" },
+  confirmed: { bg: "#F0FDF4", text: "#067647" },
+  occupied: { bg: "#FEF2F2", text: "#D92D20" },
+  completed: { bg: "#F2F4F7", text: "#475467" },
+  cancelled: { bg: "#FEE4E2", text: "#D92D20" },
+  declined: { bg: "#F2F4F7", text: "#475467" },
+  no_show: { bg: "#F2F4F7", text: "#475467" },
+};
+
+const BOOKING_FILTERS = [
+  { key: "all", label: "Tất cả" },
+  { key: "pending", label: "Chờ XN" },
+  { key: "confirmed", label: "Đã XN" },
+  { key: "occupied", label: "Đang dùng" },
+  { key: "completed", label: "Hoàn tất" },
+  { key: "cancelled", label: "Đã hủy" },
+];
 
 export default function AdminBookingsScreen() {
   const { t } = useTranslation();
 
-  const BOOKING_FILTERS: { value: string; label: string }[] = [
-    { value: "all", label: t("common.all") },
-    { value: "pending", label: t("admin.bookings.statusPending") },
-    { value: "confirmed", label: t("admin.bookings.statusConfirmed") },
-    { value: "occupied", label: t("admin.bookings.statusOccupied") },
-    { value: "completed", label: t("admin.bookings.statusCompleted") },
-    { value: "cancelled", label: t("admin.bookings.statusCancelled") },
-    { value: "no_show", label: t("admin.bookings.statusNoShow") },
-  ];
+  // View state: "restaurants" | "bookings"
+  const [view, setView] = useState<"restaurants" | "bookings">("restaurants");
 
-  const STATUS_LABELS: Record<string, string> = {
-    pending: t("admin.bookings.statusPending"),
-    confirmed: t("admin.bookings.statusConfirmed"),
-    occupied: t("admin.bookings.statusOccupied"),
-    completed: t("admin.bookings.statusCompleted"),
-    cancelled: t("admin.bookings.statusCancelled"),
-    declined: t("admin.bookings.statusDeclined"),
-    no_show: t("admin.bookings.statusNoShow"),
-  };
+  // Restaurant list
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [restSearch, setRestSearch] = useState("");
+  const [restLoading, setRestLoading] = useState(true);
 
-  const [status, setStatus] = useState<
-    "all" | "pending" | "confirmed" | "occupied" | "completed" | "cancelled" | "no_show"
-  >("all");
-  const [search, setSearch] = useState("");
-  const [date, setDate] = useState("");
+  // Selected restaurant
+  const [selectedRestId, setSelectedRestId] = useState("");
+  const [selectedRestName, setSelectedRestName] = useState("");
+
+  // Booking list
   const [bookings, setBookings] = useState<BookingItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const limit = 20;
-
-  const loadBookings = async (reset = false) => {
-    setLoading(true);
-    try {
-      const nextPage = reset ? 1 : page + 1;
-      const res = await adminAPI.getBookings({
-        status: status === "all" ? undefined : status,
-        search: search || undefined,
-        date: date || undefined,
-        page: nextPage,
-        limit,
-      } as any);
-      const list = res.data?.bookings || [];
-      const total = Number(res.data?.total || 0);
-      const merged = reset ? list : [...bookings, ...list];
-      setBookings(merged);
-      setPage(nextPage);
-      setHasMore(merged.length < total);
-    } catch {
-      if (reset) setBookings([]);
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load restaurants
   useEffect(() => {
-    loadBookings(true);
-  }, [status]);
+    const load = async () => {
+      setRestLoading(true);
+      try {
+        const res = await adminAPI.getRestaurants({ limit: 100, isActive: true });
+        setRestaurants(res.data?.restaurants || []);
+      } catch {
+        setRestaurants([]);
+      } finally {
+        setRestLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const setStatusAction = (item: BookingItem, newStatus: string) => {
-    setSelectedBooking(item);
-    setTargetStatus(newStatus);
-    setStatusDialogVisible(true);
+  // Load bookings when restaurant or filter changes
+  useEffect(() => {
+    if (!selectedRestId) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await adminAPI.getBookings({
+          restaurantId: selectedRestId,
+          status: statusFilter === "all" ? undefined : statusFilter,
+          search: searchText || undefined,
+          limit: 100,
+        } as any);
+        setBookings(res.data?.bookings || []);
+      } catch {
+        setBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [selectedRestId, statusFilter, searchText]);
+
+  const selectRestaurant = (id: string, name: string) => {
+    setSelectedRestId(id);
+    setSelectedRestName(name);
+    setStatusFilter("all");
+    setSearchText("");
+    setView("bookings");
   };
 
-  const applyFilters = () => {
-    loadBookings(true);
+  const goBack = () => {
+    setSelectedRestId("");
+    setSelectedRestName("");
+    setView("restaurants");
   };
 
   const copyRefundInfo = async (item: BookingItem) => {
@@ -148,71 +167,105 @@ export default function AdminBookingsScreen() {
     Alert.alert(t("common.notification"), t("admin.bookings.copyInfo"));
   };
 
-  const resetFilters = () => {
-    setSearch("");
-    setDate("");
-    setStatus("all");
-    setTimeout(() => loadBookings(true), 0);
-  };
+  const filteredRestaurants = restaurants.filter((r) =>
+    r.name.toLowerCase().includes(restSearch.toLowerCase())
+  );
 
-  return (
-    <View style={styles.container}>
-      <AdminHeader title={t("admin.bookings.title")} subtitle={t("admin.bookings.subtitle")} showBack={false} />
-
-      <View style={styles.filterPanel}>
-        <Text style={styles.filterPanelTitle}>{t("admin.bookings.quickFilter")}</Text>
+  // ── Render: Restaurant List ──────────────────────────
+  if (view === "restaurants") {
+    return (
+      <View style={styles.container}>
+        <AdminHeader title="Quản lý đơn hàng" subtitle="Chọn nhà hàng để xem đơn" showBack={false} />
         <View style={styles.searchRow}>
           <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
           <TextInput
             style={styles.searchInput}
-            placeholder={t("admin.bookings.searchPlaceholder")}
+            placeholder="Tìm nhà hàng..."
             placeholderTextColor={adminTheme.colors.muted}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={applyFilters}
+            value={restSearch}
+            onChangeText={setRestSearch}
           />
         </View>
-        <View style={styles.searchRow}>
-          <Ionicons name="calendar-outline" size={16} color={adminTheme.colors.muted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t("admin.bookings.datePlaceholder")}
-            placeholderTextColor={adminTheme.colors.muted}
-            value={date}
-            onChangeText={setDate}
-            onSubmitEditing={applyFilters}
+        {restLoading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredRestaurants}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.restCard}
+                onPress={() => selectRestaurant(item._id, item.name)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.restIcon}>
+                  <Ionicons name="restaurant-outline" size={22} color={adminTheme.colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.restName}>{item.name}</Text>
+                  <Text style={styles.restSub}>
+                    {[item.city, item.cuisine].filter(Boolean).join(" • ") || "—"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={adminTheme.colors.muted} />
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyWrap}>
+                <Ionicons name="search-outline" size={40} color="#D0D5DD" />
+                <Text style={styles.emptyTitle}>Không tìm thấy nhà hàng</Text>
+              </View>
+            }
           />
-        </View>
-        <View style={styles.filterActions}>
-          <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
-            <Text style={styles.resetBtnText}>{t("admin.bookings.clearFilter")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtn} onPress={applyFilters}>
-            <Text style={styles.applyBtnText}>{t("admin.bookings.filterButton")}</Text>
-          </TouchableOpacity>
+        )}
+        <AdminBottomNav />
+      </View>
+    );
+  }
+
+  // ── Render: Booking List ─────────────────────────────
+  return (
+    <View style={styles.container}>
+      <View style={styles.bookingHeader}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={20} color={adminTheme.colors.onSurface} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bookingHeaderTitle}>{selectedRestName}</Text>
+          <Text style={styles.bookingHeaderSub}>Danh sách đơn đặt bàn</Text>
         </View>
       </View>
 
-      <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>{t("admin.bookings.quickFilter")}</Text>
-        <View style={styles.quickFilterRow}>
-          {BOOKING_FILTERS.map((item) => {
-            const active = status === item.value;
-            return (
-              <TouchableOpacity
-                key={item.value}
-                style={[styles.quickFilterChip, active && styles.quickFilterChipActive]}
-                onPress={() => setStatus(item.value)}
-              >
-                <Text
-                  style={[styles.quickFilterText, active && styles.quickFilterTextActive]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      <View style={styles.searchRow}>
+        <Ionicons name="search" size={16} color={adminTheme.colors.muted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm theo mã đơn, tên khách..."
+          placeholderTextColor={adminTheme.colors.muted}
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+      </View>
+
+      <View style={styles.filterRow}>
+        {BOOKING_FILTERS.map((f) => {
+          const active = statusFilter === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              onPress={() => setStatusFilter(f.key)}
+            >
+              <Text style={[styles.filterText, active && styles.filterTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {loading ? (
@@ -225,139 +278,79 @@ export default function AdminBookingsScreen() {
           data={bookings}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.list}
-          ListFooterComponent={
-            hasMore ? (
-              <TouchableOpacity
-                style={styles.loadMoreBtn}
-                onPress={() => loadBookings(false)}
-                disabled={loading}
-              >
-                <Text style={styles.loadMoreText}>{t("common.loading")}</Text>
-              </TouchableOpacity>
-            ) : null
+          renderItem={({ item }) => {
+            const sc = STATUS_COLORS[item.status] || STATUS_COLORS.pending;
+            return (
+              <AdminCard style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.bookingCode}>{item.bookingNumber}</Text>
+                    <Text style={styles.customerName}>
+                      {item.userId?.fullName || "—"}
+                      {item.userId?.phone ? ` • ${item.userId.phone}` : ""}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                    <Text style={[styles.statusText, { color: sc.text }]}>
+                      {STATUS_LABELS[item.status] || item.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.metaGrid}>
+                  <Text style={styles.metaText}>
+                    🪑 {item.tableId?.name || "—"} • {item.bookingDetails?.date || ""}{" "}
+                    {item.bookingDetails?.time || ""}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    👤 {item.bookingDetails?.partySize || 0} khách
+                    {item.payment?.status ? ` • ${item.payment.status === "paid" ? "💳 Đã thanh toán" : "⏳ Chưa TT"}` : ""}
+                  </Text>
+                </View>
+
+                {item.payment?.status === "refund_pending" || item.payment?.status === "refunded" ? (
+                  <View style={styles.refundBox}>
+                    <Text style={styles.refundTitle}>{t("admin.bookings.refundTitle")}</Text>
+                    <View style={styles.refundRow}>
+                      <Text style={styles.refundLabel}>{t("admin.bookings.refundAmount")}</Text>
+                      <Text style={styles.refundValue}>
+                        {formatVnd(item.refund?.refundAmount)}
+                        {item.refund?.refundPercent != null ? ` (${item.refund.refundPercent}%)` : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.refundRow}>
+                      <Text style={styles.refundLabel}>{t("admin.bookings.refundBank")}</Text>
+                      <Text style={styles.refundValue}>{item.refund?.bankName?.trim() || "—"}</Text>
+                    </View>
+                    <View style={styles.refundRow}>
+                      <Text style={styles.refundLabel}>{t("admin.bookings.refundAccount")}</Text>
+                      <Text style={styles.refundValueMono}>{item.refund?.accountNumber?.trim() || "—"}</Text>
+                    </View>
+                    <View style={styles.refundRow}>
+                      <Text style={styles.refundLabel}>{t("admin.bookings.refundHolder")}</Text>
+                      <Text style={styles.refundValue}>{item.refund?.accountName?.trim() || "—"}</Text>
+                    </View>
+                    {item.payment?.status === "refund_pending" && item.refund?.accountNumber?.trim() ? (
+                      <TouchableOpacity style={styles.copyBtn} onPress={() => copyRefundInfo(item)}>
+                        <Ionicons name="copy-outline" size={14} color={adminTheme.colors.onSurface} />
+                        <Text style={styles.copyBtnText}>{t("admin.bookings.copyInfo")}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    {item.payment?.status === "refund_pending" && !item.refund?.bankName?.trim() && !item.refund?.accountNumber?.trim() ? (
+                      <Text style={styles.refundWarning}>{t("admin.bookings.missingBankInfo")}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </AdminCard>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Ionicons name="document-text-outline" size={40} color="#D0D5DD" />
+              <Text style={styles.emptyTitle}>Không có đơn nào</Text>
+              <Text style={styles.emptySub}>Nhà hàng chưa có đơn đặt bàn phù hợp.</Text>
+            </View>
           }
-          renderItem={({ item }) => (
-            <AdminCard style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.name}>{item.bookingNumber}</Text>
-                <StatusBadge
-                  label={STATUS_LABELS[item.status] || item.status}
-                  tone={getStatusTone(item.status)}
-                />
-              </View>
-              <Text style={styles.meta}>
-                {item.restaurantId?.name || t("admin.restaurants.title")} • {item.tableId?.name || t("common.noData")}
-              </Text>
-              <Text style={styles.meta}>
-                {item.userId?.fullName || t("common.noData")}
-                {item.userId?.phone ? ` • ${item.userId.phone}` : ""}
-                {" • "}
-                {item.bookingDetails?.date || ""} {item.bookingDetails?.time || ""}
-              </Text>
-
-              {item.payment?.status === "refund_pending" || item.payment?.status === "refunded" ? (
-                <View style={styles.refundBox}>
-                  <Text style={styles.refundTitle}>{t("admin.bookings.refundTitle")}</Text>
-                  <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>{t("admin.bookings.refundAmount")}</Text>
-                    <Text style={styles.refundValue}>
-                      {formatVnd(item.refund?.refundAmount)}
-                      {item.refund?.refundPercent != null
-                        ? ` (${item.refund.refundPercent}%)`
-                        : ""}
-                    </Text>
-                  </Text>
-                  <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>{t("admin.bookings.refundBank")}</Text>
-                    <Text style={styles.refundValue}>
-                      {item.refund?.bankName?.trim() || "—"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>{t("admin.bookings.refundAccount")}</Text>
-                    <Text style={styles.refundValueMono}>
-                      {item.refund?.accountNumber?.trim() || "—"}
-                    </Text>
-                  </Text>
-                  <Text style={styles.refundRow}>
-                    <Text style={styles.refundLabel}>{t("admin.bookings.refundHolder")}</Text>
-                    <Text style={styles.refundValue}>
-                      {item.refund?.accountName?.trim() || "—"}
-                    </Text>
-                  </Text>
-                  {item.payment?.status === "refund_pending" &&
-                  item.refund?.accountNumber?.trim() ? (
-                    <TouchableOpacity
-                      style={styles.copyBtn}
-                      onPress={() => copyRefundInfo(item)}
-                    >
-                      <Ionicons
-                        name="copy-outline"
-                        size={14}
-                        color={adminTheme.colors.onSurface}
-                      />
-                      <Text style={styles.copyBtnText}>{t("admin.bookings.copyInfo")}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {item.payment?.status === "refund_pending" &&
-                  !item.refund?.bankName?.trim() &&
-                  !item.refund?.accountNumber?.trim() ? (
-                    <Text style={styles.refundWarning}>
-                      {t("admin.bookings.missingBankInfo")}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {false && item.payment?.status === "refund_pending" ? (
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.actionPrimary]}
-                    onPress={() =>
-                      Alert.alert(
-                        t("admin.bookings.refundTitle"),
-                        `Đã chuyển ${formatVnd(item.refund?.refundAmount)} cho ${item.refund?.accountName || t("common.noData")}?`,
-                        [
-                          { text: t("common.cancel"), style: "cancel" },
-                          {
-                            text: t("admin.bookings.markRefunded"),
-                            onPress: () => setStatusAction(item, "refunded"),
-                          },
-                        ],
-                      )
-                    }
-                  >
-                    <Text style={styles.actionTextPrimary}>{t("admin.bookings.markRefunded")}</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : false && MANAGEABLE_STATUSES.has(item.status) ? (
-                <View style={styles.actionsRow}>
-                  {item.status !== "confirmed" ? (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionGhost]}
-                      onPress={() => setStatusAction(item, "confirmed")}
-                    >
-                      <Text style={styles.actionText}>{t("admin.bookings.confirm")}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {item.status === "confirmed" ? (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionPrimary]}
-                      onPress={() => setStatusAction(item, "paid")}
-                    >
-                      <Text style={styles.actionTextPrimary}>{t("admin.bookings.markPaid")}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.actionDanger]}
-                    onPress={() => setStatusAction(item, "cancelled")}
-                  >
-                    <Text style={styles.actionTextDanger}>{t("admin.bookings.cancel")}</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-            </AdminCard>
-          )}
         />
       )}
 
@@ -366,289 +359,129 @@ export default function AdminBookingsScreen() {
   );
 }
 
-function StatusBadge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "warning" | "success" | "danger" | "info" | "default";
-}) {
-  return (
-    <View
-      style={[
-        styles.statusBadge,
-        tone === "warning" && styles.statusBadgeWarning,
-        tone === "success" && styles.statusBadgeSuccess,
-        tone === "danger" && styles.statusBadgeDanger,
-        tone === "info" && styles.statusBadgeInfo,
-      ]}
-    >
-      <Text style={styles.statusBadgeText}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: adminTheme.colors.background,
-  },
+  container: { flex: 1, backgroundColor: adminTheme.colors.background },
+
+  // Search
   searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12, borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
+    marginHorizontal: 16, marginTop: 8,
   },
-  filterPanel: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    gap: 8,
+  searchInput: { flex: 1, color: adminTheme.colors.onSurface, fontSize: 13 },
+
+  // Loading
+  loadingWrap: { marginTop: 30, alignItems: "center", gap: 8 },
+  loadingText: { color: adminTheme.colors.muted, fontSize: 12 },
+
+  // List
+  list: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+
+  // Empty
+  emptyWrap: { alignItems: "center", paddingVertical: 48, gap: 8 },
+  emptyTitle: { fontSize: 15, fontWeight: "700", color: adminTheme.colors.onSurface },
+  emptySub: { fontSize: 12, color: adminTheme.colors.muted },
+
+  // ── Restaurant Card ──────────────────────────────────
+  restCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: adminTheme.colors.surface,
+    borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: adminTheme.colors.surfaceVariant,
   },
-  filterPanelTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: adminTheme.colors.muted,
-  },
-  searchInput: {
-    flex: 1,
-    color: adminTheme.colors.onSurface,
-    fontSize: 13,
-  },
-  filterActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  resetBtn: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
+  restIcon: {
+    width: 44, height: 44, borderRadius: 12,
     backgroundColor: adminTheme.colors.surfaceVariant,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
-  resetBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: adminTheme.colors.onSurface,
-  },
-  applyBtn: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    backgroundColor: adminTheme.colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applyBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: adminTheme.colors.onPrimary,
-  },
-  filterGroup: {
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  filterLabel: {
-    fontSize: 12,
-    color: adminTheme.colors.muted,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  quickFilterRow: {
-    flexDirection: "row",
+  restName: { fontSize: 15, fontWeight: "700", color: adminTheme.colors.onSurface },
+  restSub: { fontSize: 12, color: adminTheme.colors.muted, marginTop: 2 },
+
+  // ── Filter Chips ─────────────────────────────────────
+  filterRow: {
+    flexDirection: "row", gap: 6,
+    paddingHorizontal: 16, paddingVertical: 10,
     flexWrap: "wrap",
-    gap: 6,
   },
-  quickFilterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
+  filterChip: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 999, borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
     backgroundColor: adminTheme.colors.surface,
   },
-  quickFilterChipActive: {
+  filterChipActive: {
     backgroundColor: adminTheme.colors.onSurface,
     borderColor: adminTheme.colors.onSurface,
   },
-  quickFilterText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: adminTheme.colors.onSurface,
+  filterText: { fontSize: 11, fontWeight: "600", color: adminTheme.colors.onSurface },
+  filterTextActive: { color: adminTheme.colors.onPrimary },
+
+  // ── Booking Card ─────────────────────────────────────
+  bookingHeader: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
+    backgroundColor: adminTheme.colors.background,
   },
-  quickFilterTextActive: {
-    color: adminTheme.colors.onPrimary,
+  backBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: adminTheme.colors.surface,
+    borderWidth: 1, borderColor: adminTheme.colors.surfaceVariant,
+    alignItems: "center", justifyContent: "center",
   },
-  loadingWrap: {
-    marginTop: 30,
-    alignItems: "center",
-    gap: 8,
+  bookingHeaderTitle: {
+    fontSize: 18, fontWeight: "800", color: adminTheme.colors.onSurface,
   },
-  loadingText: {
-    color: adminTheme.colors.muted,
-    fontSize: 12,
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
-  },
-  loadMoreBtn: {
-    marginTop: 4,
-    marginBottom: 16,
-    alignSelf: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: adminTheme.colors.surfaceVariant,
-  },
-  loadMoreText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: adminTheme.colors.onSurface,
+  bookingHeaderSub: {
+    fontSize: 12, color: adminTheme.colors.muted, marginTop: 1,
   },
   card: {
     backgroundColor: adminTheme.colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
+    borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: adminTheme.colors.surfaceVariant,
   },
   cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    flexDirection: "row", alignItems: "flex-start",
+    justifyContent: "space-between", marginBottom: 10,
   },
-  name: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: adminTheme.colors.onSurface,
+  bookingCode: {
+    fontSize: 13, fontWeight: "700", color: adminTheme.colors.onSurface,
+  },
+  customerName: {
+    fontSize: 12, color: adminTheme.colors.muted, marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: adminTheme.colors.surfaceVariant,
   },
-  statusBadgeWarning: {
-    backgroundColor: "#FEF3C7",
-  },
-  statusBadgeSuccess: {
-    backgroundColor: "#DCFCE7",
-  },
-  statusBadgeDanger: {
-    backgroundColor: "#FEE2E2",
-  },
-  statusBadgeInfo: {
-    backgroundColor: "#DBEAFE",
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: adminTheme.colors.onSurface,
-  },
-  meta: {
-    fontSize: 12,
-    color: adminTheme.colors.muted,
-    marginTop: 2,
-  },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  metaGrid: { gap: 3, marginBottom: 4 },
+  metaText: { fontSize: 12, color: adminTheme.colors.muted },
+
+  // ── Refund ───────────────────────────────────────────
   refundBox: {
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 12,
+    marginTop: 10, padding: 12, borderRadius: 12,
     backgroundColor: adminTheme.colors.surfaceVariant,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceLow,
+    borderWidth: 1, borderColor: adminTheme.colors.surfaceLow,
     gap: 4,
   },
   refundTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: adminTheme.colors.onSurface,
+    fontSize: 12, fontWeight: "700", color: adminTheme.colors.onSurface,
     marginBottom: 4,
   },
-  refundRow: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  refundLabel: {
-    color: adminTheme.colors.muted,
-    fontWeight: "600",
-  },
-  refundValue: {
-    color: adminTheme.colors.onSurface,
-    fontWeight: "600",
-  },
-  refundValueMono: {
-    color: adminTheme.colors.onSurface,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  refundWarning: {
-    marginTop: 6,
-    fontSize: 11,
-    color: adminTheme.colors.danger,
-    fontWeight: "600",
-  },
+  refundRow: { flexDirection: "row", justifyContent: "space-between" },
+  refundLabel: { fontSize: 12, color: adminTheme.colors.muted, fontWeight: "600" },
+  refundValue: { fontSize: 12, color: adminTheme.colors.onSurface, fontWeight: "600" },
+  refundValueMono: { fontSize: 12, color: adminTheme.colors.onSurface, fontWeight: "700", letterSpacing: 0.3 },
+  refundWarning: { marginTop: 6, fontSize: 11, color: adminTheme.colors.danger, fontWeight: "600" },
   copyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: 8, alignSelf: "flex-start",
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
     backgroundColor: adminTheme.colors.surface,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceLow,
+    borderWidth: 1, borderColor: adminTheme.colors.surfaceLow,
   },
-  copyBtnText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: adminTheme.colors.onSurface,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-    flexWrap: "wrap",
-  },
-  actionBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  actionPrimary: {
-    backgroundColor: adminTheme.colors.primary,
-  },
-  actionGhost: {
-    backgroundColor: adminTheme.colors.surfaceLow,
-  },
-  actionDanger: {
-    backgroundColor: adminTheme.colors.danger,
-  },
-  actionText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: adminTheme.colors.onSurface,
-  },
-  actionTextPrimary: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: adminTheme.colors.onPrimary,
-  },
-  actionTextDanger: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: adminTheme.colors.onDanger,
-  },
+  copyBtnText: { fontSize: 11, fontWeight: "600", color: adminTheme.colors.onSurface },
 });
-

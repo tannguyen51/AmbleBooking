@@ -70,6 +70,10 @@ exports.getOverview = async (req, res) => {
           $match: {
             ...rFilter,
             "payment.status": "paid",
+            createdAt: {
+              $gte: new Date(start),
+              $lte: new Date(end + "T23:59:59.999Z"),
+            },
           },
         },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },

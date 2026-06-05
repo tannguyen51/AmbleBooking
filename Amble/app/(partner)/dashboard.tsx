@@ -83,11 +83,12 @@ export default function PartnerDashboard() {
     overview.totalTables > 0
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)
       : 0;
-  const estimatedBaseRevenue = Math.max(
+  const hasActivity = overview.todayBookings > 0 || overview.bookedTables > 0 || overview.pendingOrders > 0;
+  const estimatedBaseRevenue = hasActivity ? Math.max(
     overview.todayBookings * 950000,
     overview.bookedTables * 750000,
     3200000,
-  );
+  ) : 0;
   const dailyRevenue = [0.48, 0.66, 0.41, 0.76, 0.55, 0.84, 0.69].map((r) =>
     Math.round(estimatedBaseRevenue * r),
   );
@@ -96,10 +97,10 @@ export default function PartnerDashboard() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const avgDailyRevenue = dailyRevenue.reduce((sum, v) => sum + v, 0) / dailyRevenue.length;
   const monthlyRevenue = Math.round(avgDailyRevenue * daysInMonth);
-  const growthRate = Math.max(
-    8,
+  const growthRate = hasActivity ? Math.max(
+    0,
     Math.min(35, Math.round((occupancyRate + overview.todayBookings * 2) / 5)),
-  );
+  ) : 0;
   const maxRevenueInWeek = Math.max(...dailyRevenue, 1);
 
   const dayLabels = [
@@ -114,7 +115,7 @@ export default function PartnerDashboard() {
   const revenueBars = dailyRevenue.map((value, index) => ({
     label: dayLabels[index],
     value,
-    heightPercent: Math.max(18, Math.round((value / maxRevenueInWeek) * 100)),
+    heightPercent: hasActivity ? Math.max(18, Math.round((value / maxRevenueInWeek) * 100)) : 0,
     highlight: index === 6,
   }));
 
@@ -434,14 +435,16 @@ export default function PartnerDashboard() {
                   <Text style={styles.revenueLabel}>{t("partner.dashboard.revenue")}</Text>
                 </View>
                 <Text style={styles.revenueAmount}>
-                  {monthlyRevenue.toLocaleString("vi-VN")}vnd
+                  {hasActivity ? monthlyRevenue.toLocaleString("vi-VN") : "---"} vnd
                 </Text>
-                <View style={styles.revenueGrowthRow}>
-                  <Text style={styles.revenueGrowthUp}>â†‘ {growthRate}%</Text>
-                  <Text style={styles.revenueGrowthLabel}>
-                    {t("partner.dashboard.revenueCompare")}
-                  </Text>
-                </View>
+                {hasActivity && (
+                  <View style={styles.revenueGrowthRow}>
+                    <Text style={styles.revenueGrowthUp}>↑ {growthRate}%</Text>
+                    <Text style={styles.revenueGrowthLabel}>
+                      {t("partner.dashboard.revenueCompare")}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -502,7 +505,7 @@ export default function PartnerDashboard() {
                       {booking.tableNumber}
                     </Text>
                     <Text style={styles.pendingTime}>
-                      {booking.date} â€¢ {booking.time}
+                      {booking.date} • {booking.time}
                     </Text>
                     <Text style={styles.pendingGuests}>
                       {booking.guests} {t("partner.dashboard.guests")}

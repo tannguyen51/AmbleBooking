@@ -10,6 +10,7 @@ const {
   createTable,
   updateTable,
   deleteTable,
+  setCleaningDone,
   getRestaurantProfile,
   updateRestaurantProfile,
 } = require("../controllers/partnerDashboardController");
@@ -36,6 +37,7 @@ router.get("/notifications", protectPartner, getNotifications);
 router.get("/tables", protectPartner, checkPermission('tables', 'read'), getTables);
 router.post("/tables", protectPartner, checkPermission('tables', 'create'), createTable);
 router.put("/tables/:tableId", protectPartner, checkPermission('tables', 'update'), updateTable);
+router.put("/tables/:tableId/cleaning-done", protectPartner, checkPermission('tables', 'update'), setCleaningDone);
 router.delete("/tables/:tableId", protectPartner, checkPermission('tables', 'delete'), deleteTable);
 
 // Booking action routes - release chỉ Owner/Manager, check-in/out cho staff

@@ -60,6 +60,7 @@ exports.register = async (req, res) => {
       address: restaurantAddress || "",
       city: restaurantCity || "",
       subscriptionPackage: partner.subscriptionPackage,
+      isActive: false, // Chờ admin duyệt mới active
     });
 
     partner.restaurantId = restaurant._id;

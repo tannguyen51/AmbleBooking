@@ -242,6 +242,7 @@ exports.getTables = async (req, res) => {
         features: table.features || [],
         description: table.description || "",
         status: table.status || "available",
+        isAvailable: table.isAvailable,
         currentBooking: currentBooking
           ? {
               id: currentBooking._id,
@@ -360,6 +361,7 @@ exports.createTable = async (req, res) => {
       description = "",
       features = [],
       images = [],
+      isAvailable,
     } = req.body;
 
     const minCap = Number(capacity?.min);
@@ -410,7 +412,7 @@ exports.createTable = async (req, res) => {
         : [],
       images: normalizeImageList(images),
       isActive: true,
-      isAvailable: true,
+      isAvailable: isAvailable !== undefined ? !!isAvailable : true,
     });
 
     return res.status(201).json({ success: true, table: newTable });
@@ -508,16 +510,8 @@ exports.updateTable = async (req, res) => {
       table.images = normalizeImageList(images);
     }
 
-    if (isAvailable !== undefined) {
-      table.isAvailable = !!isAvailable;
-      if (!table.isAvailable) {
-        table.currentBookingId = table.currentBookingId || null;
-      }
-      if (table.isAvailable) {
-        table.currentBookingId = null;
-        table.status = 'available';
-      }
-    }
+    // Không cho phép update isAvailable từ form — pre-save hook tự đồng bộ từ status.
+    // Việc thay đổi trạng thái phải qua các route chuyên biệt (check-in, complete, cleaning-done, release).
 
     await table.save();
     return res.json({ success: true, table });
@@ -568,6 +562,31 @@ exports.deleteTable = async (req, res) => {
     return res.json({ success: true, message: "Đã xóa bàn." });
   } catch (err) {
     console.error("[deleteTable]", err);
+    return res.status(500).json({ success: false, message: "Loi server" });
+  }
+};
+
+// PUT /api/partner/tables/:tableId/cleaning-done
+exports.setCleaningDone = async (req, res) => {
+  try {
+    const restaurantId = req.partner.restaurantId;
+    const { tableId } = req.params;
+
+    const table = await Table.findOne({ _id: tableId, restaurantId, isActive: true });
+    if (!table) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy bàn." });
+    }
+    if (table.status !== 'cleaning') {
+      return res.status(400).json({ success: false, message: "Bàn không ở trạng thái dọn dẹp." });
+    }
+
+    table.status = 'available';
+    table.currentBookingId = null;
+    await table.save();
+
+    return res.json({ success: true, message: "Bàn đã sẵn sàng.", table });
+  } catch (err) {
+    console.error("[setCleaningDone]", err);
     return res.status(500).json({ success: false, message: "Loi server" });
   }
 };

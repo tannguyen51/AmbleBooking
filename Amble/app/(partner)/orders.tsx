@@ -6,13 +6,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { partnerDashboardAPI } from "../../services/api";
+import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import ReleaseModal from "../../components/partner/ReleaseModal";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
@@ -61,12 +61,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, { color: string; backgroundColor: string }> = {
-  pending: { color: "#E69A00", backgroundColor: "#FFF7E2" },
-  confirmed: { color: "#16A34A", backgroundColor: "#E6F7E6" },
-  occupied: { color: "#DC2626", backgroundColor: "#FFE6E6" },
-  completed: { color: "#6B7280", backgroundColor: "#F3F4F6" },
-  cancelled: { color: "#DC2626", backgroundColor: "#FFE6E6" },
-  no_show: { color: "#6B7280", backgroundColor: "#F3F4F6" },
+  pending: { color: "#B54708", backgroundColor: "#FFFAEB" },
+  confirmed: { color: "#067647", backgroundColor: "#F0FDF4" },
+  occupied: { color: "#D92D20", backgroundColor: "#FEF2F2" },
+  completed: { color: "#475467", backgroundColor: "#F2F4F7" },
+  cancelled: { color: "#D92D20", backgroundColor: "#FEE4E2" },
+  no_show: { color: "#475467", backgroundColor: "#F2F4F7" },
 };
 
 const FILTER_CONFIG = [
@@ -82,6 +82,7 @@ export default function PartnerOrdersScreen() {
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [counts, setCounts] = useState<OrderCounts>(EMPTY_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
 
   // Release modal state
   const [releaseModalVisible, setReleaseModalVisible] = useState(false);
@@ -112,6 +113,7 @@ export default function PartnerOrdersScreen() {
     if (!["owner", "manager"].includes(partner?.role || "")) return false;
     return ["pending", "confirmed"].includes(status);
   };
+  const canConfirm = (status: string) => ["pending"].includes(status);
   const canCheckIn = (status: string) => ["confirmed"].includes(status);
   const canComplete = (status: string) => ["occupied"].includes(status);
   const canDecline = (status: string) => ["pending"].includes(status);
@@ -124,17 +126,23 @@ export default function PartnerOrdersScreen() {
   );
 
   const displayedOrders = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+    let filtered = orders;
     if (activeFilter === "booked") {
-      return orders.filter((o) => !["cancelled", "no_show"].includes(o.status));
+      filtered = orders.filter((o) => !["cancelled", "no_show"].includes(o.status));
+    } else if (activeFilter === "no_show") {
+      filtered = orders.filter((o) => o.status === "no_show");
+    } else if (activeFilter === "cancelled") {
+      filtered = orders.filter((o) => o.status === "cancelled");
     }
-    if (activeFilter === "no_show") {
-      return orders.filter((o) => o.status === "no_show");
-    }
-    if (activeFilter === "cancelled") {
-      return orders.filter((o) => o.status === "cancelled");
-    }
-    return orders;
-  }, [activeFilter, orders]);
+    if (!keyword) return filtered;
+    return filtered.filter((o) =>
+      o.bookingNumber.toLowerCase().includes(keyword) ||
+      o.userName.toLowerCase().includes(keyword) ||
+      o.userPhone.toLowerCase().includes(keyword) ||
+      o.tableNumber.toLowerCase().includes(keyword)
+    );
+  }, [activeFilter, orders, searchText]);
 
   const openReleaseModal = (order: PartnerOrder) => {
     setSelectedBooking({
@@ -155,6 +163,16 @@ export default function PartnerOrdersScreen() {
       loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể check-in.");
+    }
+  };
+
+  const handleConfirm = async (bookingId: string) => {
+    try {
+      await bookingAPI.confirm(bookingId);
+      Alert.alert("Thành công", "Đã xác nhận đơn đặt bàn.");
+      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+    } catch (error: any) {
+      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể xác nhận.");
     }
   };
 
@@ -190,6 +208,17 @@ export default function PartnerOrdersScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={15} color="#9CA3AF" />
+        <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Tìm theo mã đơn, tên, SĐT..."
+          placeholderTextColor="#9CA3AF"
+          style={styles.searchInput}
+        />
+      </View>
+
       <View style={styles.filterRow}>
         {FILTER_CONFIG.map((tab) => {
           const isActive = activeFilter === tab.key;
@@ -200,21 +229,13 @@ export default function PartnerOrdersScreen() {
               onPress={() => setActiveFilter(tab.key)}
               activeOpacity={0.8}
             >
-              {isActive && (
-                <LinearGradient
-                  colors={["#ff8b25", "#ffd109"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.filterGradient}
-                />
-              )}
               <Ionicons
                 name={tab.icon as any}
                 size={13}
-                color={isActive ? "#fff" : "#6B7280"}
+                color={isActive ? "#fff" : "#475467"}
                 style={{ marginRight: 4 }}
               />
-              <Text style={[styles.filterText, isActive && styles.filterTextAllActive]}>
+              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -239,6 +260,7 @@ export default function PartnerOrdersScreen() {
             const statusLabel = STATUS_LABELS[order.status] || order.status;
             const statusStyle = STATUS_STYLES[order.status];
             const canReleaseOrder = canRelease(order.status);
+            const canConfirmOrder = canConfirm(order.status);
             const canCheckInOrder = canCheckIn(order.status);
             const canCompleteOrder = canComplete(order.status);
             const canDeclineOrder = canDecline(order.status);
@@ -286,6 +308,16 @@ export default function PartnerOrdersScreen() {
                 </View>
 
                 <View style={styles.orderActions}>
+                  {canConfirmOrder && (
+                    <TouchableOpacity
+                      style={styles.confirmBtn}
+                      onPress={() => handleConfirm(order.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                      <Text style={styles.confirmBtnTxt}>Xác nhận</Text>
+                    </TouchableOpacity>
+                  )}
                   {canCheckInOrder && (
                     <TouchableOpacity
                       style={styles.checkInBtn}
@@ -326,9 +358,6 @@ export default function PartnerOrdersScreen() {
                       <Text style={styles.completeBtnTxt}>Hoàn tất</Text>
                     </TouchableOpacity>
                   )}
-                  {!canReleaseOrder && !canCheckInOrder && !canCompleteOrder && !canDeclineOrder && (
-                    <Text style={styles.noActionText}>{STATUS_LABELS[order.status] || order.status}</Text>
-                  )}
                 </View>
               </View>
             );
@@ -350,7 +379,7 @@ export default function PartnerOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
+  safeArea: { flex: 1, backgroundColor: "#F4F5F7" },
   headerWrap: {
     paddingHorizontal: 18,
     paddingTop: 14,
@@ -358,67 +387,82 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: "#F4F5F7",
   },
-  headerTitle: { fontSize: 24, fontWeight: "900", color: "#111827" },
-  headerSub: { marginTop: 2, fontSize: 12, color: "#6B7280", fontWeight: "500" },
+  headerTitle: { fontSize: 24, fontWeight: "900", color: "#101828" },
+  headerSub: { marginTop: 2, fontSize: 12, color: "#667085", fontWeight: "500" },
   backBtn: {
     width: 34, height: 34, backgroundColor: "#FFFFFF", borderRadius: 17,
-    borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: "#E4E7EC", alignItems: "center", justifyContent: "center",
+  },
+  searchWrap: {
+    flexDirection: "row", alignItems: "center", backgroundColor: "#fff",
+    marginHorizontal: 18, borderRadius: 10, borderWidth: 1, borderColor: "#E4E7EC",
+    paddingHorizontal: 12, marginBottom: 2, gap: 8, marginTop: 6,
+  },
+  searchInput: {
+    flex: 1, paddingVertical: 8, color: "#101828", fontSize: 13,
   },
   filterRow: {
     paddingHorizontal: 18, gap: 8, paddingVertical: 10, flexDirection: "row",
   },
   filterChip: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    overflow: "hidden", borderRadius: 999, paddingHorizontal: 12, height: 36,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E6EAF0", flex: 1,
+    borderRadius: 999, paddingHorizontal: 14, height: 34,
+    backgroundColor: "#F2F4F7",
   },
-  filterChipActive: { borderColor: "#FF6B35" },
-  filterGradient: { ...StyleSheet.absoluteFillObject },
+  filterChipActive: {
+    backgroundColor: "#1A1C29",
+  },
   filterText: {
-    fontSize: 12, fontWeight: "700", color: "#4B5563",
+    fontSize: 12, fontWeight: "700", color: "#475467",
   },
-  filterTextAllActive: { color: "#fff" },
+  filterTextActive: { color: "#FFFFFF" },
   listWrap: { flex: 1 },
-  listContent: { paddingHorizontal: 18, paddingTop: 8, gap: 10, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 18, paddingTop: 6, gap: 10, paddingBottom: 24 },
   centerBox: { alignItems: "center", justifyContent: "center", paddingVertical: 36, gap: 8 },
-  emptyTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
-  helperText: { fontSize: 12, color: "#9CA3AF" },
+  emptyTitle: { fontSize: 15, fontWeight: "800", color: "#101828" },
+  helperText: { fontSize: 12, color: "#667085" },
   orderCard: {
-    backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E8EDF3",
-    padding: 14, shadowColor: "#0F172A", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 6, elevation: 3,
+    backgroundColor: "#fff", borderRadius: 16, borderWidth: 0,
+    padding: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04, shadowRadius: 12, elevation: 3,
   },
   orderTopRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10,
   },
-  customerName: { fontSize: 15, fontWeight: "800", color: "#111827" },
+  customerName: { fontSize: 16, fontWeight: "800", color: "#101828" },
   statusBadge: {
-    fontSize: 10, fontWeight: "800", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, overflow: "hidden",
+    fontSize: 11, fontWeight: "700", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, overflow: "hidden",
   },
-  metaGrid: { gap: 4, marginBottom: 10 },
+  metaGrid: { gap: 5, marginBottom: 12 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  metaText: { fontSize: 12, color: "#6B7280", flex: 1 },
-  orderActions: { flexDirection: "row", gap: 8, borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: 10 },
+  metaText: { fontSize: 13, color: "#344054", flex: 1, fontWeight: "500" },
+  orderActions: { flexDirection: "row", gap: 8, borderTopWidth: 1, borderTopColor: "#F0F1F3", paddingTop: 10 },
+  confirmBtn: {
+    flex: 1, height: 36, borderRadius: 10,
+    backgroundColor: "#1A1C29",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
+  },
+  confirmBtnTxt: { fontSize: 12, fontWeight: "800", color: "#fff" },
   checkInBtn: {
     flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#86EFAC",
     backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
-  checkInBtnTxt: { fontSize: 12, fontWeight: "800", color: "#22C55E" },
+  checkInBtnTxt: { fontSize: 12, fontWeight: "800", color: "#16A34A" },
   releaseBtn: {
     flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#FECACA",
     backgroundColor: "#FEF2F2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
-  releaseBtnTxt: { fontSize: 12, fontWeight: "800", color: "#EF4444" },
+  releaseBtnTxt: { fontSize: 12, fontWeight: "800", color: "#D92D20" },
   declineBtn: {
     flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#FECACA",
     backgroundColor: "#FEF2F2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
-  declineBtnTxt: { fontSize: 12, fontWeight: "800", color: "#EF4444" },
+  declineBtnTxt: { fontSize: 12, fontWeight: "800", color: "#D92D20" },
   completeBtn: {
     flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#BBF7D0",
     backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
   completeBtnTxt: { fontSize: 12, fontWeight: "800", color: "#16A34A" },
-  noActionText: { flex: 1, textAlign: "center", fontSize: 12, color: "#9CA3AF", fontStyle: "italic" },
 });

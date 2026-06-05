@@ -164,7 +164,7 @@ export default function BookingSuccessScreen() {
             <View style={s.bottomBar}>
                 <TouchableOpacity
                     style={s.primaryBtn}
-                    onPress={() => router.push("/(tabs)/profile")}
+                    onPress={() => router.push("/(tabs)/history")}
                     activeOpacity={0.8}
                 >
                     <LinearGradient

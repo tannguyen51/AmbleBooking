@@ -14,7 +14,7 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000;   // 15 phút
 async function cleanupStaleBookings() {
   const cutoff = new Date(Date.now() - PENDING_TIMEOUT_MS);
 
-  // Cancel pending bookings > 60 min (không lock bàn nên không cần release)
+  // Cancel pending bookings > 60 min
   const staleBookings = await Booking.find({
     status: 'pending',
     createdAt: { $lt: cutoff },
@@ -34,7 +34,18 @@ async function cleanupStaleBookings() {
     }
   );
 
-  console.log(`[booking:cleanup] Cancelled ${ids.length} stale pending bookings`);
+  // Release bàn cho các booking bị hủy (non-PayOS đã lock bàn)
+  const tableIds = staleBookings.map(b => b.tableId).filter(Boolean);
+  if (tableIds.length > 0) {
+    await Table.updateMany(
+      { _id: { $in: tableIds }, currentBookingId: { $in: ids } },
+      {
+        $set: { status: 'available', isAvailable: true, currentBookingId: null },
+      }
+    );
+  }
+
+  console.log(`[booking:cleanup] Cancelled ${ids.length} stale pending bookings, released ${tableIds.length} tables`);
   return { cancelled: ids.length };
 }
 

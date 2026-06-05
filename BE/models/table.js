@@ -33,7 +33,7 @@ const tableSchema = new mongoose.Schema(
     // Trạng thái hiển thị của bàn (UI color mapping)
     status: {
       type: String,
-      enum: ['available', 'reserved', 'occupied', 'released'],
+      enum: ['available', 'reserved', 'occupied', 'cleaning', 'released'],
       default: 'available',
     },
 

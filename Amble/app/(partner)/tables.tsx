@@ -13,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
@@ -61,7 +59,7 @@ interface TableFormState {
 }
 
 const TABLE_TYPE_STYLES: Record<
-  "regular" | "view" | "vip",
+  "regular" | "standard" | "view" | "vip",
   {
     textColor: string;
     borderColor: string;
@@ -74,6 +72,12 @@ const TABLE_TYPE_STYLES: Record<
     borderColor: "#7DDF9E",
     backgroundColor: "#E7F8EE",
     activeBackgroundColor: "#D3F2E0",
+  },
+  standard: {
+    textColor: "#3B82F6",
+    borderColor: "#93C5FD",
+    backgroundColor: "#EFF6FF",
+    activeBackgroundColor: "#DBEAFE",
   },
   view: {
     textColor: "#2563EB",
@@ -102,29 +106,15 @@ const DEFAULT_FORM: TableFormState = {
   isAvailable: true,
 };
 
-const TABLE_FILTER_ACTIVE_STYLES: Record<
-  Exclude<TableFilter, "all">,
-  { backgroundColor: string; borderColor: string; textColor: string }
-> = {
-  available: {
-    backgroundColor: "#E7F8EE",
-    borderColor: "#7DDF9E",
-    textColor: "#22C55E",
-  },
-  booked: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#F04444",
-    textColor: "#F04444",
-  },
-};
+
 
 export default function PartnerTablesScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const [tables, setTables] = useState<PartnerTable[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState<TableFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | TableType>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -159,10 +149,10 @@ export default function PartnerTablesScreen() {
   };
 
   const tableTypeOptions: Array<{
-    key: "regular" | "view" | "vip";
+    key: "standard" | "view" | "vip";
     label: string;
   }> = [
-    { key: "regular", label: t("partner.tables.typeRegular") },
+    { key: "standard", label: "Standard" },
     { key: "view", label: t("partner.tables.typeView") },
     { key: "vip", label: t("partner.tables.typeVIP") },
   ];
@@ -174,13 +164,12 @@ export default function PartnerTablesScreen() {
 
   const loadData = async () => {
     try {
-      const [tablesRes, overviewRes] = await Promise.all([
-        partnerDashboardAPI.getTables(),
-        partnerDashboardAPI.getOverview(),
-      ]);
-
+      const tablesRes = await partnerDashboardAPI.getTables();
       setTables(tablesRes.data?.tables || []);
-      setPendingCount(overviewRes.data?.overview?.pendingOrders || 0);
+      // getOverview không block table list
+      partnerDashboardAPI.getOverview().then(res => {
+        setPendingCount(res.data?.overview?.pendingOrders || 0);
+      }).catch(() => {});
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không tải được danh sách bàn";
@@ -210,21 +199,26 @@ export default function PartnerTablesScreen() {
       const matchFilter = filter === "all" ? true :
         filter === "available" ? table.status === "available" :
         filter === "booked" ? !table.isAvailable || isBookedStatus : false;
+      const matchType = typeFilter === "all" ? true : table.type === typeFilter;
       const matchSearch =
         !keyword ||
         table.name.toLowerCase().includes(keyword) ||
         getTableTypeLabel(table.type).toLowerCase().includes(keyword);
-      return matchFilter && matchSearch;
+      return matchFilter && matchType && matchSearch;
     });
-  }, [tables, filter, searchText]);
+  }, [tables, filter, typeFilter, searchText]);
 
   const filterTabs = [
-    { key: "all" as TableFilter, label: `${t("partner.tables.all")} (${stats.total})` },
-    {
-      key: "available" as TableFilter,
-      label: `${t("partner.tables.available")} (${stats.available})`,
-    },
-    { key: "booked" as TableFilter, label: `${t("partner.tables.booked")} (${stats.booked})` },
+    { key: "all" as TableFilter, label: `Tất cả (${stats.total})` },
+    { key: "available" as TableFilter, label: `Trống (${stats.available})` },
+    { key: "booked" as TableFilter, label: `Đặt (${stats.booked})` },
+  ];
+
+  const typeTabs: Array<{ key: "all" | TableType; label: string }> = [
+    { key: "all", label: "Tất cả loại bàn" },
+    { key: "standard", label: "Standard" },
+    { key: "view", label: "Bàn view" },
+    { key: "vip", label: "Bàn VIP" },
   ];
 
   const updateForm = (key: keyof TableFormState, value: string | boolean) => {
@@ -245,49 +239,6 @@ export default function PartnerTablesScreen() {
     }));
   };
 
-  const appendPickedImage = (uri: string) => {
-    if (!uri) return;
-    setForm((prev) => {
-      if (prev.images.includes(uri)) return prev;
-      return { ...prev, images: [...prev.images, uri] };
-    });
-  };
-
-  const pickFromLibrary = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      appendPickedImage(result.assets[0]?.uri || "");
-    }
-  };
-
-  const takePhoto = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t("common.notification"), "Vui lòng cấp quyền camera.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      appendPickedImage(result.assets[0]?.uri || "");
-    }
-  };
-
   const removeImage = (url: string) => {
     setForm((prev) => ({
       ...prev,
@@ -304,7 +255,7 @@ export default function PartnerTablesScreen() {
     setEditingTableId(table.id);
     setForm({
       name: table.name || "",
-      type: table.type === "standard" ? "regular" : table.type || "regular",
+      type: table.type || "regular",
       minCapacity: String(table.capacity?.min || 2),
       maxCapacity: String(table.capacity?.max || 4),
       baseDeposit: String(table.pricing?.baseDeposit || 0),
@@ -351,7 +302,6 @@ export default function PartnerTablesScreen() {
         .map((item) => item.trim())
         .filter(Boolean),
       images: form.images,
-      isAvailable: form.isAvailable,
     };
   };
 
@@ -364,7 +314,7 @@ export default function PartnerTablesScreen() {
       if (editingTableId) {
         await partnerDashboardAPI.updateTable(editingTableId, payload);
       } else {
-        await partnerDashboardAPI.createTable(payload);
+        await partnerDashboardAPI.createTable({ ...payload, isAvailable: form.isAvailable } as any);
       }
       setModalVisible(false);
       resetForm();
@@ -401,112 +351,101 @@ export default function PartnerTablesScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerWrap}>
-        <Text style={styles.headerTitle}>{t("partner.tables.title")}</Text>
-        <View style={styles.headerActions}>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>{t("partner.tables.title")}</Text>
           {canManageTables && (
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={openCreateModal}
-              disabled={isSubmitting}
-            >
-              <LinearGradient
-                colors={["#ff8b25", "#ffd109"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.addBtnGradient}
-              >
-                <Ionicons name="add" size={16} color="#fff" />
-                <Text style={styles.addBtnText}>{t("partner.tables.add")}</Text>
-              </LinearGradient>
+            <TouchableOpacity style={styles.addBtn} onPress={openCreateModal} disabled={isSubmitting}>
+              <Ionicons name="add" size={16} color="#fff" />
+              <Text style={styles.addBtnText}>{t("partner.tables.add")}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/dashboard")}
-          ></TouchableOpacity>
         </View>
       </View>
 
+      {/* Status Cards */}
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, styles.availableCard]}>
-          <Text style={[styles.statLabel, styles.availableStatLabel]}>
-            {t("partner.tables.available")}
-          </Text>
-          <Text style={[styles.statValue, styles.availableStatValue]}>
-            {stats.available}
-          </Text>
+        <View style={[styles.statCard, styles.statCardAvailable]}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#DCFCE7' }]}>
+            <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+          </View>
+          <Text style={[styles.statValue, { color: '#22C55E' }]}>{stats.available}</Text>
+          <Text style={[styles.statLabel, { color: '#22C55E' }]}>{t("partner.tables.available")}</Text>
         </View>
-        <View style={[styles.statCard, styles.bookedCard]}>
-          <Text style={[styles.statLabel, styles.bookedStatLabel]}>{t("partner.tables.booked")}</Text>
-          <Text style={[styles.statValue, styles.bookedStatValue]}>
-            {stats.booked}
-          </Text>
+        <View style={[styles.statCard, styles.statCardBooked]}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="book" size={16} color="#EF4444" />
+          </View>
+          <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.booked}</Text>
+          <Text style={[styles.statLabel, { color: '#EF4444' }]}>{t("partner.tables.booked")}</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#F3F4F6' }]}>
+        <View style={[styles.statCard, styles.statCardCleaning]}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#E5E7EB' }]}>
+            <Ionicons name="water-outline" size={16} color="#9CA3AF" />
+          </View>
+          <Text style={[styles.statValue, { color: '#9CA3AF' }]}>{stats.cleaning || 0}</Text>
           <Text style={[styles.statLabel, { color: '#9CA3AF' }]}>Đang dọn</Text>
-          <Text style={[styles.statValue, { color: '#9CA3AF' }]}>
-            {stats.cleaning || 0}
-          </Text>
         </View>
       </View>
 
+      {/* Search */}
       <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={16} color="#9CA3AF" />
         <TextInput
           value={searchText}
           onChangeText={setSearchText}
-          placeholder={t("partner.tables.searchPlaceholder")}
+          placeholder="Search by name or type..."
           placeholderTextColor="#9CA3AF"
           style={styles.searchInput}
         />
       </View>
 
-      <ScrollView
-        horizontal
-        style={styles.filterScroll}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {filterTabs.map((tab) => {
-          const isActive = filter === tab.key;
-          const isAllActive = isActive && tab.key === "all";
-          const activeStyle =
-            tab.key !== "all" && isActive
-              ? TABLE_FILTER_ACTIVE_STYLES[tab.key]
-              : undefined;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.filterChip,
-                isActive && tab.key !== "all" && styles.filterChipActive,
-                activeStyle && {
-                  backgroundColor: activeStyle.backgroundColor,
-                  borderColor: activeStyle.borderColor,
-                },
-              ]}
-              onPress={() => setFilter(tab.key)}
-            >
-              {isAllActive && (
-                <LinearGradient
-                  colors={["#ff8b25", "#ffd109"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.filterChipGradient}
-                />
-              )}
-              <Text
+      <View style={styles.filterContainer}>
+        {/* Filter Row 1: Status */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRowFirst}>
+          {filterTabs.map((tab) => {
+            const isActive = filter === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
                 style={[
-                  styles.filterText,
-                  isActive && styles.filterTextActive,
-                  activeStyle && { color: activeStyle.textColor },
+                  styles.filterChip,
+                  isActive && styles.filterChipActive,
                 ]}
+                onPress={() => setFilter(tab.key)}
               >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Filter Row 2: Type */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {typeTabs.map((tab) => {
+            const isActive = typeFilter === tab.key;
+            const isVip = tab.key === "vip";
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.filterChip,
+                  isActive && !isVip && styles.filterChipActive,
+                  isActive && isVip && styles.filterChipVip,
+                ]}
+                onPress={() => setTypeFilter(tab.key)}
+              >
+                {isActive && isVip && <LinearGradient colors={['#D4AF37', '#B8942E']} style={styles.filterChipVipGradient} />}
+                {isVip && <Ionicons name="diamond" size={10} color={isActive ? "#FFFFFF" : "#D4AF37"} style={{ marginRight: 3 }} />}
+                <Text style={[styles.filterText, isActive && !isVip && styles.filterTextActive, isActive && isVip && { color: '#FFFFFF' }]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <ScrollView
         style={styles.listWrap}
@@ -519,82 +458,75 @@ export default function PartnerTablesScreen() {
           </View>
         ) : filteredTables.length === 0 ? (
           <View style={styles.centerBox}>
+            <Ionicons name="restaurant-outline" size={36} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>{t("partner.tables.emptyTitle")}</Text>
             <Text style={styles.helperText}>{t("partner.tables.emptySubtitle")}</Text>
           </View>
         ) : (
           filteredTables.map((table) => {
-            const typeLabel = getTableTypeLabel(table.type);
             const statusInfo = getStatusConfig(table.status);
             const coverImage = table.images?.[0];
+            const isVip = table.type === "vip";
             return (
-              <View key={table.id} style={styles.tableCard}>
-                <View style={styles.tableTopRow}>
-                  <View style={styles.tableTopLeft}>
-                    {!!coverImage && (
-                      <Image
-                        source={{ uri: coverImage }}
-                        style={styles.tableThumb}
-                      />
+              <View key={table.id} style={[styles.tableCard, isVip && styles.tableCardVip]}>
+                <View style={styles.tableRow}>
+                  <View style={styles.tableThumbWrap}>
+                    {coverImage ? (
+                      <Image source={{ uri: coverImage }} style={styles.tableThumb} />
+                    ) : (
+                      <View style={styles.tableThumbPlaceholder}>
+                        <Ionicons name="restaurant-outline" size={20} color="#D4A574" />
+                      </View>
                     )}
-                    <View>
-                      <Text style={styles.tableName}>{table.name}</Text>
-                      <Text style={styles.metaText}>{typeLabel}</Text>
-                    </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.statusBadge,
-                      { color: statusInfo.color, backgroundColor: statusInfo.bg, borderColor: statusInfo.border, borderWidth: statusInfo.border ? 1 : 0 },
-                    ]}
-                  >
-                    {statusInfo.label}
-                  </Text>
+                  <View style={styles.tableInfo}>
+                    <View style={styles.tableNameRow}>
+                      {isVip && <Ionicons name="diamond" size={14} color="#D4A574" style={{ marginRight: 4 }} />}
+                      <Text style={styles.tableName}>{table.name}</Text>
+                    </View>
+                    <View style={styles.tableMetaRow}>
+                      <Ionicons name="people-outline" size={12} color="#9CA3AF" />
+                      <Text style={styles.tableMetaText}>{table.capacity.min}–{table.capacity.max} người</Text>
+                    </View>
+                    <View style={styles.tableMetaRow}>
+                      <Ionicons name="cash-outline" size={12} color="#9CA3AF" />
+                      <Text style={styles.tableMetaText}>{(table.pricing?.baseDeposit || 0).toLocaleString("vi-VN")}đ</Text>
+                    </View>
+                    {table.images && table.images.length > 0 && (
+                      <View style={styles.tableMetaRow}>
+                        <Ionicons name="images-outline" size={12} color="#9CA3AF" />
+                        <Text style={styles.tableMetaText}>{table.images.length} ảnh</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.tableBadgeCol}>
+                    <Text style={[styles.statusBadge, { color: statusInfo.color, backgroundColor: statusInfo.bg, borderColor: statusInfo.border, borderWidth: 1 }]}>
+                      {statusInfo.label}
+                    </Text>
+                    {isVip && (
+                      <View style={styles.vipBadge}>
+                        <Ionicons name="diamond" size={10} color="#fff" />
+                        <Text style={styles.vipBadgeText}>VIP</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-
-                <Text style={styles.metaText}>
-                  {t("partner.tables.capacity", { min: table.capacity?.min || 0, max: table.capacity?.max || 0 })}
-                </Text>
-                <Text style={styles.metaText}>
-                  {t("partner.tables.deposit", { deposit: (table.pricing?.baseDeposit || 0).toLocaleString("vi-VN") })}
-                </Text>
-                {table.images && table.images.length > 1 && (
-                  <Text style={styles.metaText}>
-                    {t("partner.tables.photos", { count: table.images.length })}
-                  </Text>
-                )}
 
                 {table.currentBooking && (
                   <View style={styles.bookingInfoBox}>
-                    <Text style={styles.bookingInfoTitle}>
-                      {t("partner.tables.currentBooking")}
-                    </Text>
-                    <Text style={styles.bookingInfoText}>
-                      {table.currentBooking.customerName} •{" "}
-                      {table.currentBooking.customerPhone || "--"}
-                    </Text>
-                    <Text style={styles.bookingInfoText}>
-                      {table.currentBooking.date} • {table.currentBooking.time}{" "}
-                      • {table.currentBooking.guests} {t("partner.dashboard.guests")}
-                    </Text>
+                    <Text style={styles.bookingInfoTitle}>{t("partner.tables.currentBooking")}</Text>
+                    <Text style={styles.bookingInfoText}>{table.currentBooking.customerName} • {table.currentBooking.customerPhone || "--"}</Text>
+                    <Text style={styles.bookingInfoText}>{table.currentBooking.date} • {table.currentBooking.time} • {table.currentBooking.guests} {t("partner.dashboard.guests")}</Text>
                   </View>
                 )}
 
                 {canManageTables && (
                   <View style={styles.actionRow}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.editBtn]}
-                      onPress={() => openEditModal(table)}
-                      disabled={isSubmitting}
-                    >
+                    <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(table)} disabled={isSubmitting}>
                       <Ionicons name="create-outline" size={14} color="#1D4ED8" />
                       <Text style={styles.editBtnText}>{t("common.edit")}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.deleteBtn]}
-                      onPress={() => handleDelete(table.id)}
-                      disabled={isSubmitting}
-                    >
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(table.id)} disabled={isSubmitting}>
                       <Ionicons name="trash-outline" size={14} color="#EF4444" />
                       <Text style={styles.deleteBtnText}>{t("common.delete")}</Text>
                     </TouchableOpacity>
@@ -630,7 +562,13 @@ export default function PartnerTablesScreen() {
               <TextInput
                 style={styles.input}
                 value={form.name}
-                onChangeText={(v) => updateForm("name", v)}
+                onChangeText={(v) => {
+                  updateForm("name", v);
+                  // Tự động chọn loại VIP nếu tên bàn có chứa "vip"
+                  if (v.toLowerCase().includes("vip") && form.type === "regular") {
+                    updateForm("type", "vip");
+                  }
+                }}
                 placeholder={t("partner.tables.namePlaceholder")}
                 placeholderTextColor="#9CA3AF"
               />
@@ -770,23 +708,6 @@ export default function PartnerTablesScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.imagePickerRow}>
-                <TouchableOpacity
-                  style={styles.imagePickerBtn}
-                  onPress={takePhoto}
-                >
-                  <Ionicons name="camera-outline" size={16} color="#374151" />
-                  <Text style={styles.imagePickerBtnText}>{t("partner.tables.camera")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.imagePickerBtn}
-                  onPress={pickFromLibrary}
-                >
-                  <Ionicons name="images-outline" size={16} color="#374151" />
-                  <Text style={styles.imagePickerBtnText}>{t("partner.tables.library")}</Text>
-                </TouchableOpacity>
-              </View>
-
               {form.images.length > 0 && (
                 <ScrollView
                   horizontal
@@ -841,102 +762,126 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
   headerWrap: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#1A1A1A",
-    marginBottom: 8,
-  },
-  headerActions: {
+  headerTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1A1A1A",
   },
   addBtn: {
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  addBtnGradient: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 2,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  addBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
-  backBtn: {
-    backgroundColor: "#FFF3ED",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backBtnText: { fontSize: 12, fontWeight: "700", color: "#FF6B35" },
+  addBtnText: { fontSize: 10, fontWeight: "700", color: "#fff" },
+
+  // Stats Cards
   statsRow: {
     paddingHorizontal: 16,
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 10,
   },
   statCard: {
     flex: 1,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  availableCard: { backgroundColor: "#E7F8EE", borderColor: "#7DDF9E" },
-  bookedCard: { backgroundColor: "#FEE2E2", borderColor: "#F04444" },
-  statLabel: { fontSize: 12, color: "#6B7280", marginBottom: 4 },
-  statValue: { fontSize: 22, fontWeight: "900", color: "#1A1A1A" },
-  availableStatLabel: { color: "#22C55E" },
-  availableStatValue: { color: "#22C55E" },
-  bookedStatLabel: { color: "#F04444" },
-  bookedStatValue: { color: "#F04444" },
-  searchWrap: { paddingHorizontal: 16, marginBottom: 8 },
-  searchInput: {
-    backgroundColor: "#fff",
     borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  statCardAvailable: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
+  statCardBooked: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+  statCardCleaning: { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" },
+  statIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statValue: { fontSize: 18, fontWeight: "900" },
+  statLabel: { fontSize: 11, fontWeight: "600" },
+
+  // Search
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: "#1A1A1A",
-    fontSize: 13,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+    gap: 4,
   },
-  filterScroll: { maxHeight: 52 },
-  filterRow: {
-    paddingHorizontal: 16,
-    paddingRight: 20,
-    gap: 8,
-    paddingBottom: 8,
+  searchInput: {
+    flex: 1,
+    paddingVertical: 5,
+    color: "#1A1A1A",
+    fontSize: 11,
+  },
+
+  // Filter Chips
+  filterContainer: {
+    marginBottom: 16,
+  },
+  filterRowFirst: {
+    flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 16,
+    gap: 6,
+    marginBottom: 10,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    gap: 6,
   },
   filterChip: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 999,
+    height: 36,
+    borderRadius: 18,
     paddingHorizontal: 14,
-    minHeight: 36,
     justifyContent: "center",
-    backgroundColor: "#fff",
+    alignItems: "center",
+    backgroundColor: "#F2F4F7",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E4E7EC",
+    flexDirection: "row",
   },
   filterChipActive: {
-    backgroundColor: "#FF6B35",
-    borderColor: "#FF6B35",
+    backgroundColor: "#1A1C29",
+    borderColor: "#1A1C29",
   },
-  filterChipGradient: {
+  filterChipVip: {
+    overflow: "hidden",
+    borderColor: "#D4AF37",
+    backgroundColor: "#FFFDF0",
+  },
+  filterChipVipGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  filterText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
-  filterTextActive: { color: "#fff" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#667085", textAlign: "center" },
+  filterTextActive: { color: "#FFFFFF" },
+
+  // Table List
   listWrap: { flex: 1 },
-  listContent: { padding: 16, gap: 12, paddingBottom: 24 },
+  listContent: { padding: 12, gap: 8, paddingBottom: 24 },
   centerBox: {
     alignItems: "center",
     justifyContent: "center",
@@ -945,58 +890,91 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
   helperText: { fontSize: 12, color: "#9CA3AF" },
+
+  // Table Card
   tableCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#EEF0F3",
     padding: 14,
-    shadowColor: "#0F172A",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
-  tableTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 6,
+  tableCardVip: {
+    borderColor: "#D4AF37",
+    backgroundColor: "#FFFCF8",
   },
-  tableTopLeft: {
+  tableRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    flex: 1,
-    marginRight: 8,
+    gap: 12,
+  },
+  tableThumbWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   tableThumb: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+    width: "100%",
+    height: "100%",
+  },
+  tableThumbPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: "#FFF5EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tableInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  tableNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   tableName: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
+  tableMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  tableMetaText: { fontSize: 12, color: "#6B7280", fontWeight: "500" },
+  tableBadgeCol: {
+    alignItems: "flex-end",
+    gap: 6,
+  },
   statusBadge: {
     fontSize: 11,
     fontWeight: "700",
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    overflow: "hidden",
   },
-  availableBadge: {
-    color: "#22C55E",
-    backgroundColor: "#E7F8EE",
-    borderWidth: 1,
-    borderColor: "#7DDF9E",
+  vipBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#D4A574",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  bookedBadge: {
-    color: "#F04444",
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#F04444",
+  vipBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0.5,
   },
-  metaText: { fontSize: 12, color: "#6B7280", marginBottom: 2 },
+
+  // Booking Info
   bookingInfoBox: {
     marginTop: 10,
     borderRadius: 12,
@@ -1008,8 +986,10 @@ const styles = StyleSheet.create({
   },
   bookingInfoTitle: { fontSize: 12, fontWeight: "700", color: "#92400E" },
   bookingInfoText: { fontSize: 12, color: "#92400E" },
-  actionRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  actionBtn: {
+
+  // Action buttons
+  actionRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  editBtn: {
     flex: 1,
     borderRadius: 10,
     paddingVertical: 9,
@@ -1018,12 +998,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
     borderWidth: 1,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
   },
-  editBtn: { borderColor: "#BFDBFE", backgroundColor: "#EFF6FF" },
-  deleteBtn: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
-  editBtnText: { fontSize: 12, fontWeight: "700", color: "#1D4ED8" },
-  deleteBtnText: { fontSize: 12, fontWeight: "700", color: "#EF4444" },
+  deleteBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+  },
+  editBtnText: { fontSize: 13, fontWeight: "700", color: "#1D4ED8" },
+  deleteBtnText: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
 
+  // Modal (keep original)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",

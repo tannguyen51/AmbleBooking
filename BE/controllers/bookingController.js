@@ -684,7 +684,12 @@ exports.declineBooking = async (req, res) => {
     booking.cancellationReason = reason || "Nhà hàng từ chối";
     await booking.save();
 
-    // Bàn pending không lock nên không cần release
+    // Release bàn nếu đã lock (non-PayOS bookings lock table khi tạo)
+    await Table.findByIdAndUpdate(booking.tableId, {
+      status: "available",
+      isAvailable: true,
+      currentBookingId: null,
+    });
 
     return res.json({ success: true, message: "Đã từ chối booking", booking });
   } catch (err) {

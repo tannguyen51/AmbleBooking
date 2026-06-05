@@ -24,6 +24,7 @@ import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
 const { width: SCREEN_W } = Dimensions.get("window");
+const ITEM_W = (SCREEN_W - 32 - 12) / 2;
 
 const ALL_TIMES = [
   '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00',
@@ -182,8 +183,6 @@ export default function SelectTableScreen() {
   // Multi-step flow state
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedGroup, setSelectedGroup] = useState<TableGroup | null>(null);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
   // ── Ngày ──────────────────────────────────────────────
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -238,15 +237,7 @@ export default function SelectTableScreen() {
       },
     });
   };
-
-  const handleScroll = (event: any) => {
-    const scrollOffset = event.nativeEvent.contentOffset.x;
-    const viewSize = event.nativeEvent.layoutMeasurement.width;
-    const index = Math.round(scrollOffset / viewSize);
-    setActiveImageIndex(index);
-  };
-
-  const next7Days = getNext7Days();
+const next7Days = getNext7Days();
   const tableGroups = groupTables(tables);
 
   if (loading)
@@ -542,7 +533,6 @@ export default function SelectTableScreen() {
                       if (group.tables.length > 0) {
                         setSelectedTableId(group.tables[0]._id);
                       }
-                      setActiveImageIndex(0);
                       setStep(3);
                     }}
                     activeOpacity={0.8}
@@ -568,91 +558,80 @@ export default function SelectTableScreen() {
   // ── Step 3: Chi tiết bàn & Chọn bàn cụ thể ──────────────────
   const renderStep3 = () => {
     if (!selectedGroup) return null;
+    const availableCount = selectedGroup.tables.length;
 
     return (
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: "#fff" }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          {/* Slider ảnh */}
-          <View style={s.sliderWrap}>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              style={{ width: SCREEN_W, height: 240 }}
-            >
-              {selectedGroup.images.map((img, idx) => (
-                <Image key={idx} source={{ uri: img }} style={s.sliderImg} resizeMode="cover" />
-              ))}
-            </ScrollView>
-            {/* Dots */}
-            {selectedGroup.images.length > 1 && (
-              <View style={s.dotsRow}>
-                {selectedGroup.images.map((_, idx) => (
-                  <View
-                    key={idx}
-                    style={[s.dot, activeImageIndex === idx && s.dotActive]}
-                  />
-                ))}
-              </View>
-            )}
+          {/* Hero Image */}
+          <View style={prem.heroWrap}>
+            <Image source={{ uri: selectedGroup.images[0] }} style={prem.heroImg} resizeMode="cover" />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.75)"]}
+              style={prem.heroGradient}
+            />
+            <TouchableOpacity onPress={() => setStep(2)} style={prem.heroBack}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={prem.heroTextWrap}>
+              <Text style={prem.heroTitle}>{selectedGroup.name}</Text>
+              <Text style={prem.heroSub}>
+                {selectedGroup.capacity.min}–{selectedGroup.capacity.max} người
+              </Text>
+            </View>
           </View>
 
-          {/* Chi tiết thông tin bàn */}
-          <View style={s.detailBody}>
-            <Text style={s.detailTextItem}>• Bàn {selectedGroup.capacity.min} - {selectedGroup.capacity.max} người</Text>
-            {selectedGroup.features.length > 0 &&
-              selectedGroup.features.map((feat, i) => (
-                <Text key={i} style={s.detailTextItem}>• {feat}</Text>
-              ))}
-            {selectedGroup.description && (
-              <Text style={s.detailDesc}>{selectedGroup.description}</Text>
-            )}
-          </View>
-
-          {/* Chọn bàn cụ thể */}
-          <View style={s.specificSection}>
-            <Text style={s.specificTitle}>Chọn bàn cụ thể</Text>
-            <View style={s.specificGrid}>
+          {/* Specific table grid */}
+          <View style={prem.section}>
+            <Text style={prem.sectionTitle}>CHỌN BÀN</Text>
+            <View style={prem.grid}>
               {selectedGroup.tables.map((table) => {
                 const isSelected = selectedTableId === table._id;
                 return (
                   <TouchableOpacity
                     key={table._id}
-                    style={[s.specificBox, isSelected && s.specificBoxActive]}
+                    style={[prem.tableBox, isSelected && prem.tableBoxActive]}
                     onPress={() => setSelectedTableId(table._id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.specificBoxTxt, isSelected && s.specificBoxTxtActive]}>
-                      {table.name}
-                    </Text>
+                  <View style={prem.tableBoxInner}>
+                      <Ionicons
+                        name="restaurant-outline"
+                        size={36}
+                        color={isSelected ? "#FF8A4D" : "#D4A574"}
+                      />
+                      <Text style={[prem.tableBoxTxt, isSelected && prem.tableBoxTxtActive]}>
+                        {table.name.replace(selectedGroup.name, "").replace(/^[\s-]+/, "").trim() || table.name.match(/\d+/)?.[0] || ""}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            <Text style={s.specificCount}>{t("booking.select.legendAvailable")}: {selectedGroup.tables.length}</Text>
+
+            <View style={prem.availRow}>
+              <Text style={prem.availText}>Còn {availableCount} bàn trống!!</Text>
+              <Ionicons name="sparkles" size={18} color="#FF8A4D" />
+            </View>
           </View>
-
-
         </ScrollView>
 
-        {/* Nút đặt bàn cuối cùng */}
-        <View style={s.bottomBar}>
+        {/* Bottom button */}
+        <View style={prem.bottomBar}>
           <TouchableOpacity
-            style={s.gradientBtn}
+            style={prem.bookBtnOuter}
             onPress={handleContinue}
             disabled={!selectedTableId}
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={GRAD}
-              style={[s.gradientBtnInner, !selectedTableId && { opacity: 0.6 }]}
+              colors={["#FF8A4D", "#FF6B35"]}
+              style={[prem.bookBtnInner, !selectedTableId && { opacity: 0.5 }]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={s.gradientBtnTxt}>{t("restaurant.bookTable")}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#fff" />
+              <Text style={prem.bookBtnTxt}>Đặt bàn</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -847,12 +826,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  timeHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
   timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -998,156 +971,142 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
   emptyText: { fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 18 },
 
-  // Step 3: Slider
-  sliderWrap: {
+});
+
+// ── Premium Step 3 styles ─────────────────────────────
+const prem = StyleSheet.create({
+  heroWrap: {
+    width: SCREEN_W,
+    height: 300,
     position: "relative",
-    width: SCREEN_W,
-    height: 240,
   },
-  sliderImg: {
-    width: SCREEN_W,
-    height: 240,
+  heroImg: {
+    width: "100%",
+    height: "100%",
   },
-  dotsRow: {
+  heroGradient: {
     position: "absolute",
-    bottom: 12,
+    bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
+    height: 180,
+  },
+  heroBack: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 40,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
     justifyContent: "center",
-    gap: 6,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.4)",
+  heroTextWrap: {
+    position: "absolute",
+    bottom: 24,
+    left: 20,
+    right: 20,
   },
-  dotActive: {
-    backgroundColor: "#fff",
-    width: 14,
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0.5,
   },
-
-  // Detail Info
-  detailBody: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 4,
-  },
-  detailTextItem: {
-    fontSize: 13,
-    color: "#4B5563",
+  heroSub: {
+    fontSize: 14,
     fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 4,
   },
-  detailDesc: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 8,
-    lineHeight: 18,
-  },
-
-  // Specific table section
-  specificSection: {
-    paddingHorizontal: 16,
+  section: {
+    paddingHorizontal: 20,
     paddingTop: 24,
   },
-  specificTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    marginBottom: 12,
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 1,
+    marginBottom: 16,
   },
-  specificGrid: {
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
-  specificBox: {
-    width: "22%",
+  tableBox: {
+    width: ITEM_W,
     aspectRatio: 1,
-    borderRadius: 12,
+    backgroundColor: "#FFF5EB",
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: "#FFD8C9",
-    backgroundColor: "#FFF9F7",
+    borderColor: "#FFE0CC",
     alignItems: "center",
     justifyContent: "center",
   },
-  specificBoxActive: {
-    borderColor: PRIMARY,
-    backgroundColor: "#FFF3ED",
+  tableBoxActive: {
+    borderColor: "#FF8A4D",
+    backgroundColor: "#FFF0E6",
   },
-  specificBoxTxt: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FF8C5F",
-    textAlign: "center",
-  },
-  specificBoxTxtActive: {
-    color: PRIMARY,
-  },
-  specificCount: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginTop: 12,
-  },
-
-  // Duration
-  durationBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF3ED",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-    flexWrap: "wrap",
-  },
-  durationLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: PRIMARY,
-  },
-  durationValue: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: PRIMARY,
-  },
-
-  // Adjustment buttons
-  adjustRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 14,
-  },
-  adjustBtn: {
+  tableBoxInner: {
     flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 10,
     alignItems: "center",
-    gap: 2,
+    justifyContent: "center",
+    width: "100%",
+    gap: 4,
   },
-  adjustBtnActive: {
-    borderColor: PRIMARY,
-    backgroundColor: "#FFF3ED",
+  tableBoxTxt: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#C4956A",
   },
-  adjustBtnTxt: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#374151",
+  tableBoxTxtActive: {
+    color: "#FF8A4D",
   },
-  adjustBtnTxtActive: {
-    color: PRIMARY,
+  availRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 20,
   },
-  adjustBtnSub: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    fontWeight: "600",
+  availText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1A1A1A",
   },
-  adjustBtnSubActive: {
-    color: PRIMARY,
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  bookBtnOuter: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bookBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 18,
+  },
+  bookBtnTxt: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
   },
 });
