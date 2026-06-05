@@ -673,7 +673,10 @@ exports.getRestaurantRevenue = async (req, res) => {
     const matchCompleted = {
       restaurantId: objId,
       status: "completed",
-      createdAt: { $gte: start, $lte: end },
+      $or: [
+        { completedAt: { $gte: start, $lte: end } },
+        { completedAt: null, updatedAt: { $gte: start, $lte: end } },
+      ],
     };
 
     const [totalRevenue, periodBreakdown, totalBookings, avgPartySizeData] = await Promise.all([
@@ -686,7 +689,13 @@ exports.getRestaurantRevenue = async (req, res) => {
         { $match: matchCompleted },
         {
           $group: {
-            _id: { $dateToString: { format: period === "quarter" ? "%m/%Y" : period === "week" ? "%d/%m" : "%d/%m", date: "$createdAt" } },
+            _id: {
+              $cond: {
+                if: { $ne: ["$completedAt", null] },
+                then: { $dateToString: { format: period === "quarter" ? "%m/%Y" : "%d/%m", date: "$completedAt" } },
+                else: { $dateToString: { format: period === "quarter" ? "%m/%Y" : "%d/%m", date: "$updatedAt" } },
+              },
+            },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },

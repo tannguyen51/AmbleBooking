@@ -942,10 +942,13 @@ exports.getRevenue = async (req, res) => {
     const match = {
       restaurantId: objId,
       status: "completed",
-      createdAt: { $gte: start, $lte: now },
+      $or: [
+        { completedAt: { $gte: start, $lte: now } },
+        { completedAt: null, updatedAt: { $gte: start, $lte: now } },
+      ],
     };
 
-    const [revenueAgg, dailyAgg] = await Promise.all([
+    const [revenueAgg, breakdownAgg] = await Promise.all([
       Booking.aggregate([
         { $match: match },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
@@ -954,7 +957,13 @@ exports.getRevenue = async (req, res) => {
         { $match: match },
         {
           $group: {
-            _id: { $dateToString: { format: "%d/%m", date: "$createdAt" } },
+            _id: {
+              $cond: {
+                if: { $ne: ["$completedAt", null] },
+                then: { $dateToString: { format: "%d/%m", date: "$completedAt" } },
+                else: { $dateToString: { format: "%d/%m", date: "$updatedAt" } },
+              },
+            },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },
@@ -963,6 +972,36 @@ exports.getRevenue = async (req, res) => {
       ]),
     ]);
 
+    // Gộp theo tuần nếu period=month
+    const rawData = breakdownAgg.map((d) => ({ label: d._id, total: d.total, count: d.count }));
+    let breakdown;
+
+    if (period === "month") {
+      // Nhóm theo tuần trong tháng
+      const weekMap = {};
+      rawData.forEach((d) => {
+        const parts = d.label.split("/");
+        const day = parseInt(parts[0], 10);
+        const weekNum = Math.ceil(day / 7);
+        const weekKey = `Tuần ${weekNum}`;
+        if (!weekMap[weekKey]) weekMap[weekKey] = { total: 0, count: 0 };
+        weekMap[weekKey].total += d.total;
+        weekMap[weekKey].count += d.count;
+      });
+      breakdown = Object.entries(weekMap).map(([label, data]) => ({ label, total: data.total, count: data.count }));
+    } else {
+      // Nhãn ngày trong tuần
+      const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+      breakdown = rawData.map((d) => {
+        const parts = d.label.split("/");
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const dateObj = new Date(now.getFullYear(), month - 1, day);
+        const dayName = dayNames[dateObj.getDay()] || d.label;
+        return { label: dayName, total: d.total, count: d.count };
+      });
+    }
+
     const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
 
     return res.json({
@@ -970,7 +1009,7 @@ exports.getRevenue = async (req, res) => {
       data: {
         totalRevenue,
         period,
-        dailyBreakdown: dailyAgg.map((d) => ({ label: d._id, total: d.total, count: d.count })),
+        breakdown,
       },
     });
   } catch (err) {

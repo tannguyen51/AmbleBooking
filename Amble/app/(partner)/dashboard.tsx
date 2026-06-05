@@ -77,7 +77,7 @@ export default function PartnerDashboard() {
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [revenueData, setRevenueData] = useState<{ totalRevenue: number; dailyBreakdown: Array<{ label: string; total: number; count: number }> } | null>(null);
+  const [revenueData, setRevenueData] = useState<{ totalRevenue: number; breakdown: Array<{ label: string; total: number; count: number }> } | null>(null);
   const [revenuePeriod, setRevenuePeriod] = useState<"week" | "month">("month");
 
   const pkg = PACKAGE_CONFIG[partner?.subscriptionPackage || "basic"];
@@ -86,12 +86,7 @@ export default function PartnerDashboard() {
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)
       : 0;
   const hasRevenue = revenueData !== null && revenueData.totalRevenue > 0;
-  const maxRevenueInWeek = Math.max(...(revenueData?.dailyBreakdown?.map(d => d.total) || [0]), 1);
-  const revenueBars = (revenueData?.dailyBreakdown || []).map((d, i) => ({
-    label: d.label,
-    value: d.total,
-    heightPercent: Math.max(8, Math.round((d.total / maxRevenueInWeek) * 100)),
-    highlight: i === (revenueData?.dailyBreakdown?.length || 1) - 1,
+breakdown"
   }));
 
   // ── Animations ────────────────────────────────────────────────────────────────────────────
@@ -425,7 +420,7 @@ export default function PartnerDashboard() {
               </Text>
               {revenueData && revenueData.totalRevenue > 0 && (
                 <View style={styles.revenueGrowthRow}>
-                  <Text style={styles.revenueGrowthUp}>✓ {revenueData.dailyBreakdown?.length || 0} ngày</Text>
+                  <Text style={styles.revenueGrowthUp}>✓ {revenueData.breakdown?.length || 0} {revenuePeriod === "week" ? "ngày" : "tuần"}</Text>
                   <Text style={styles.revenueGrowthLabel}>trong kỳ</Text>
                 </View>
               )}
