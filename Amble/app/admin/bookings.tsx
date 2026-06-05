@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -121,31 +121,30 @@ export default function AdminBookingsScreen() {
   }, []);
 
   // Load bookings + revenue when restaurant or search changes
+  const fetchRef = useRef(0);
   useEffect(() => {
     if (!selectedRestId) return;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await adminAPI.getBookings({
-          restaurantId: selectedRestId,
-          search: searchText || undefined,
-          limit: 100,
-        } as any);
-        const all = res.data?.bookings || [];
+    const id = ++fetchRef.current;
+    setLoading(true);
+
+    // Bookings
+    adminAPI.getBookings({ restaurantId: selectedRestId, search: searchText || undefined, limit: 100 } as any)
+      .then((bookRes) => {
+        if (id !== fetchRef.current) return;
+        const all = bookRes.data?.bookings || [];
         setBookings(all.filter((b: BookingItem) => !["cancelled", "declined", "no_show"].includes(b.status)));
-        // Doanh thu không block danh sách đơn
-        adminAPI.getRestaurantRevenue(selectedRestId, { period }).then(revRes => {
-          setRevenue(revRes.data?.data || null);
-        }).catch((err) => {
-          if (__DEV__) console.warn("[revenue] fetch error:", err?.message);
-        });
-      } catch {
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+      })
+      .catch(() => { if (id === fetchRef.current) setBookings([]); })
+      .finally(() => { if (id === fetchRef.current) setLoading(false); });
+
+    // Revenue riêng — không block bookings
+    adminAPI.getRestaurantRevenue(selectedRestId, { period })
+      .then((revRes) => {
+        if (id !== fetchRef.current) return;
+        const d = revRes.data?.data;
+        if (d && typeof d.totalRevenue === "number") setRevenue(d);
+      })
+      .catch(() => {});
   }, [selectedRestId, searchText, period]);
 
   const selectRestaurant = (id: string, name: string) => {
