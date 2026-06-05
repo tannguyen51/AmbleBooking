@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Image,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,6 +25,7 @@ interface Restaurant {
   city?: string;
   cuisine?: string;
   isActive?: boolean;
+  images?: string[];
 }
 
 interface BookingItem {
@@ -68,15 +70,6 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   no_show: { bg: "#F2F4F7", text: "#475467" },
 };
 
-const BOOKING_FILTERS = [
-  { key: "all", label: "Tất cả" },
-  { key: "pending", label: "Chờ XN" },
-  { key: "confirmed", label: "Đã XN" },
-  { key: "occupied", label: "Đang dùng" },
-  { key: "completed", label: "Hoàn tất" },
-  { key: "cancelled", label: "Đã hủy" },
-];
-
 export default function AdminBookingsScreen() {
   const { t } = useTranslation();
 
@@ -94,7 +87,6 @@ export default function AdminBookingsScreen() {
 
   // Booking list
   const [bookings, setBookings] = useState<BookingItem[]>([]);
-  const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -114,7 +106,7 @@ export default function AdminBookingsScreen() {
     load();
   }, []);
 
-  // Load bookings when restaurant or filter changes
+  // Load bookings when restaurant or search changes
   useEffect(() => {
     if (!selectedRestId) return;
     const load = async () => {
@@ -122,7 +114,6 @@ export default function AdminBookingsScreen() {
       try {
         const res = await adminAPI.getBookings({
           restaurantId: selectedRestId,
-          status: statusFilter === "all" ? undefined : statusFilter,
           search: searchText || undefined,
           limit: 100,
         } as any);
@@ -134,12 +125,11 @@ export default function AdminBookingsScreen() {
       }
     };
     load();
-  }, [selectedRestId, statusFilter, searchText]);
+  }, [selectedRestId, searchText]);
 
   const selectRestaurant = (id: string, name: string) => {
     setSelectedRestId(id);
     setSelectedRestName(name);
-    setStatusFilter("all");
     setSearchText("");
     setView("bookings");
   };
@@ -147,6 +137,8 @@ export default function AdminBookingsScreen() {
   const goBack = () => {
     setSelectedRestId("");
     setSelectedRestName("");
+    setSearchText("");
+    setBookings([]);
     setView("restaurants");
   };
 
@@ -202,8 +194,12 @@ export default function AdminBookingsScreen() {
                 onPress={() => selectRestaurant(item._id, item.name)}
                 activeOpacity={0.7}
               >
-                <View style={styles.restIcon}>
-                  <Ionicons name="restaurant-outline" size={22} color={adminTheme.colors.primary} />
+                <View style={styles.restImgWrap}>
+                  {item.images?.[0] ? (
+                    <Image source={{ uri: item.images[0] }} style={styles.restImg} />
+                  ) : (
+                    <Ionicons name="restaurant-outline" size={22} color={adminTheme.colors.primary} />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.restName}>{item.name}</Text>
@@ -249,23 +245,6 @@ export default function AdminBookingsScreen() {
           value={searchText}
           onChangeText={setSearchText}
         />
-      </View>
-
-      <View style={styles.filterRow}>
-        {BOOKING_FILTERS.map((f) => {
-          const active = statusFilter === f.key;
-          return (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setStatusFilter(f.key)}
-            >
-              <Text style={[styles.filterText, active && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
       </View>
 
       {loading ? (
@@ -392,32 +371,20 @@ const styles = StyleSheet.create({
     borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: adminTheme.colors.surfaceVariant,
   },
-  restIcon: {
-    width: 44, height: 44, borderRadius: 12,
+  restImgWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
     backgroundColor: adminTheme.colors.surfaceVariant,
     alignItems: "center", justifyContent: "center",
+    overflow: "hidden",
+  },
+  restImg: {
+    width: "100%",
+    height: "100%",
   },
   restName: { fontSize: 15, fontWeight: "700", color: adminTheme.colors.onSurface },
   restSub: { fontSize: 12, color: adminTheme.colors.muted, marginTop: 2 },
-
-  // ── Filter Chips ─────────────────────────────────────
-  filterRow: {
-    flexDirection: "row", gap: 6,
-    paddingHorizontal: 16, paddingVertical: 10,
-    flexWrap: "wrap",
-  },
-  filterChip: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 999, borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
-    backgroundColor: adminTheme.colors.surface,
-  },
-  filterChipActive: {
-    backgroundColor: adminTheme.colors.onSurface,
-    borderColor: adminTheme.colors.onSurface,
-  },
-  filterText: { fontSize: 11, fontWeight: "600", color: adminTheme.colors.onSurface },
-  filterTextActive: { color: adminTheme.colors.onPrimary },
 
   // ── Booking Card ─────────────────────────────────────
   bookingHeader: {

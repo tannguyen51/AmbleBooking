@@ -275,9 +275,25 @@ exports.getPartners = async (req, res) => {
       ];
     }
 
-    const partners = await Partner.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const partners = await Partner.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "restaurantId",
+          foreignField: "_id",
+          as: "restaurant",
+        },
+      },
+      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          restaurantImage: { $arrayElemAt: ["$restaurant.images", 0] },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $project: { restaurant: 0 } },
+    ]);
 
     return res.json({ success: true, partners });
   } catch (err) {

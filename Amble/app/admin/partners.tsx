@@ -9,12 +9,14 @@ import {
   Alert,
   TextInput,
   Modal,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
+import { AdminSegmented } from "../../components/admin/AdminSegmented";
 import { adminTheme } from "../../constants/adminTheme";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -29,6 +31,7 @@ interface PartnerItem {
   isActive: boolean;
   rejectionReason?: string;
   approvalNote?: string;
+  restaurantImage?: string;
 }
 
 const toLabelCase = (value: string) =>
@@ -159,42 +162,22 @@ export default function AdminPartnersScreen() {
 
       <View style={styles.filterGroup}>
         <Text style={styles.filterLabel}>{t("admin.partners.statusTitle")}</Text>
-        <View style={styles.chipRow}>
-          {ACTIVE_OPTIONS.map((item) => {
-            const active = activeFilter === item.value;
-            return (
-              <TouchableOpacity
-                key={item.value}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setActiveFilter(item.value)}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <AdminSegmented
+          options={ACTIVE_OPTIONS}
+          value={activeFilter}
+          onChange={setActiveFilter}
+          compact
+        />
       </View>
 
       <View style={styles.filterGroup}>
         <Text style={styles.filterLabel}>{t("admin.partners.verificationTitle")}</Text>
-        <View style={styles.chipRow}>
-          {STATUS_OPTIONS.map((item) => {
-            const active = status === item.value;
-            return (
-              <TouchableOpacity
-                key={item.value}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setStatus(item.value)}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <AdminSegmented
+          options={STATUS_OPTIONS}
+          value={status}
+          onChange={(v) => setStatus(v as any)}
+          compact
+        />
       </View>
 
       {loading ? (
@@ -213,9 +196,20 @@ export default function AdminPartnersScreen() {
               onPress={() => router.push(`/admin/partners/${item._id}` as any)}
             >
               <AdminCard style={styles.card}>
-                <Text style={styles.name}>{item.ownerName}</Text>
-                <Text style={styles.meta}>{item.restaurantName}</Text>
-                <Text style={styles.meta}>{item.email}</Text>
+                <View style={styles.cardHeaderRow}>
+                  {item.restaurantImage ? (
+                    <Image source={{ uri: item.restaurantImage }} style={styles.restImg} />
+                  ) : (
+                    <View style={styles.restImgPlaceholder}>
+                      <Text style={styles.restImgLetter}>{(item.restaurantName || "N")[0]}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{item.ownerName}</Text>
+                    <Text style={styles.meta}>{item.restaurantName}</Text>
+                    <Text style={styles.meta}>{item.email}</Text>
+                  </View>
+                </View>
                 {item.subscriptionStatus === "cancelled" && item.rejectionReason ? (
                   <Text style={styles.metaDanger}>{item.rejectionReason}</Text>
                 ) : null}
@@ -414,31 +408,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 8,
   },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: adminTheme.colors.surfaceVariant,
-    backgroundColor: adminTheme.colors.surface,
-  },
-  chipActive: {
-    backgroundColor: adminTheme.colors.onSurface,
-    borderColor: adminTheme.colors.onSurface,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: adminTheme.colors.onSurface,
-  },
-  chipTextActive: {
-    color: adminTheme.colors.onPrimary,
-  },
   loadingWrap: {
     marginTop: 30,
     alignItems: "center",
@@ -459,6 +428,19 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: adminTheme.colors.surfaceVariant,
+  },
+  cardHeaderRow: {
+    flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10,
+  },
+  restImg: {
+    width: 48, height: 48, borderRadius: 10, backgroundColor: adminTheme.colors.surfaceVariant,
+  },
+  restImgPlaceholder: {
+    width: 48, height: 48, borderRadius: 10, backgroundColor: adminTheme.colors.surfaceVariant,
+    alignItems: "center", justifyContent: "center",
+  },
+  restImgLetter: {
+    fontSize: 18, fontWeight: "800", color: adminTheme.colors.muted,
   },
   name: {
     fontSize: 15,
