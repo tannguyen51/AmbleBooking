@@ -98,6 +98,7 @@ exports.getOverview = async (req, res) => {
       guests: booking.bookingDetails?.partySize || 0,
       depositAmount: booking.pricing?.depositAmount || 0,
       status: booking.status,
+      createdAt: booking.createdAt,
     }));
 
     const upcomingBookingItems = upcomingBookings.map((booking) => ({

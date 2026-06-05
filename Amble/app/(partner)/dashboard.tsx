@@ -22,6 +22,7 @@ import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { useTranslation } from "../../i18n/useTranslation";
+import { timeAgo } from "../../utils/timeAgo";
 
 const { width } = Dimensions.get("window");
 
@@ -47,6 +48,7 @@ interface PendingBookingItem {
   guests: number;
   depositAmount: number;
   status: string;
+  createdAt?: string;
 }
 
 const DEFAULT_OVERVIEW: DashboardOverview = {
@@ -86,7 +88,12 @@ export default function PartnerDashboard() {
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)
       : 0;
   const hasRevenue = revenueData !== null && revenueData.totalRevenue > 0;
-breakdown"
+  const maxRevenueInWeek = Math.max(...(revenueData?.breakdown?.map(d => d.total) || [0]), 1);
+  const revenueBars = (revenueData?.breakdown || []).map((d, i) => ({
+    label: d.label,
+    value: d.total,
+    heightPercent: Math.max(8, Math.round((d.total / maxRevenueInWeek) * 100)),
+    highlight: i === (revenueData?.breakdown?.length || 1) - 1,
   }));
 
   // ── Animations ────────────────────────────────────────────────────────────────────────────
@@ -473,6 +480,9 @@ breakdown"
                     <Text style={styles.pendingTime}>
                       {booking.date} • {booking.time}
                     </Text>
+                    {booking.createdAt && (
+                      <Text style={styles.pendingTimeAgo}>{timeAgo(booking.createdAt)}</Text>
+                    )}
                     <Text style={styles.pendingGuests}>
                       {booking.guests} {t("partner.dashboard.guests")}
                     </Text>
@@ -782,6 +792,7 @@ const styles = StyleSheet.create({
   pendingRight: { alignItems: "flex-end" },
   pendingTable: { fontSize: 13, fontWeight: "700", color: "#FF6B35" },
   pendingTime: { fontSize: 11, color: "#9CA3AF", marginTop: 1 },
+  pendingTimeAgo: { fontSize: 10, color: "#FF6B35", fontWeight: "700", marginTop: 2 },
   pendingGuests: { fontSize: 11, color: "#6B7280", marginTop: 1 },
   pendingDeposit: {
     backgroundColor: "rgba(255,215,0,0.15)",

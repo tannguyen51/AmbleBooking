@@ -16,6 +16,7 @@ import { bookingAPI, partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import ReleaseModal from "../../components/partner/ReleaseModal";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
+import { timeAgo } from "../../utils/timeAgo";
 
 type OrderStatus = "all" | "booked" | "cancelled" | "no_show";
 
@@ -32,7 +33,7 @@ interface PartnerOrder {
   guests: number;
   depositAmount: number;
   totalAmount: number;
-  bookedAt: string;
+  bookedAt?: string;
 }
 
 interface OrderCounts {
@@ -305,6 +306,12 @@ export default function PartnerOrdersScreen() {
                       {order.guests} khách • Cọc {order.depositAmount.toLocaleString("vi-VN")}đ
                     </Text>
                   </View>
+                  {order.bookedAt && (
+                    <View style={styles.metaRow}>
+                      <Ionicons name="time-outline" size={13} color="#9CA3AF" />
+                      <Text style={styles.metaText}>{timeAgo(order.bookedAt)}</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.orderActions}>

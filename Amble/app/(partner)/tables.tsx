@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { partnerDashboardAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
@@ -188,8 +189,7 @@ export default function PartnerTablesScreen() {
     const total = tables.length;
     const available = tables.filter((t) => t.status === "available").length;
     const reserved = tables.filter((t) => t.status === "reserved" || t.status === "occupied").length;
-    const cleaning = tables.filter((t) => t.status === "cleaning").length;
-    return { total, available, booked: reserved, reserved, cleaning };
+    return { total, available, booked: reserved, reserved };
   }, [tables]);
 
   const filteredTables = useMemo(() => {
@@ -237,6 +237,45 @@ export default function PartnerTablesScreen() {
       images: [...prev.images, next],
       imageInput: "",
     }));
+  };
+
+  const appendPickedImage = (uri: string) => {
+    if (!uri) return;
+    setForm((prev) => {
+      if (prev.images.includes(uri)) return prev;
+      return { ...prev, images: [...prev.images, uri] };
+    });
+  };
+
+  const pickFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      appendPickedImage(result.assets[0]?.uri || "");
+    }
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t("common.notification"), "Vui lòng cấp quyền camera.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      appendPickedImage(result.assets[0]?.uri || "");
+    }
   };
 
   const removeImage = (url: string) => {
@@ -378,12 +417,12 @@ export default function PartnerTablesScreen() {
           <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.booked}</Text>
           <Text style={[styles.statLabel, { color: '#EF4444' }]}>{t("partner.tables.booked")}</Text>
         </View>
-        <View style={[styles.statCard, styles.statCardCleaning]}>
-          <View style={[styles.statIconWrap, { backgroundColor: '#E5E7EB' }]}>
-            <Ionicons name="water-outline" size={16} color="#9CA3AF" />
+        <View style={[styles.statCard, styles.statCardTotal]}>
+          <View style={[styles.statIconWrap, { backgroundColor: '#EEF2FF' }]}>
+            <Ionicons name="grid-outline" size={16} color="#4F46E5" />
           </View>
-          <Text style={[styles.statValue, { color: '#9CA3AF' }]}>{stats.cleaning || 0}</Text>
-          <Text style={[styles.statLabel, { color: '#9CA3AF' }]}>Đang dọn</Text>
+          <Text style={[styles.statValue, { color: '#4F46E5' }]}>{stats.total}</Text>
+          <Text style={[styles.statLabel, { color: '#4F46E5' }]}>Tổng bàn</Text>
         </View>
       </View>
 
@@ -695,16 +734,14 @@ export default function PartnerTablesScreen() {
                   : t("partner.tables.createHint")}
               </Text>
 
-              <View style={styles.imageInputRow}>
-                <TextInput
-                  style={[styles.input, styles.imageInput]}
-                  value={form.imageInput}
-                  onChangeText={(v) => updateForm("imageInput", v)}
-                  placeholder={t("partner.tables.imageUrl")}
-                  placeholderTextColor="#9CA3AF"
-                />
-                <TouchableOpacity style={styles.addImageBtn} onPress={addImage}>
-                  <Ionicons name="add" size={18} color="#fff" />
+              <View style={styles.imagePickerRow}>
+                <TouchableOpacity style={styles.imagePickerBtn} onPress={takePhoto}>
+                  <Ionicons name="camera-outline" size={16} color="#374151" />
+                  <Text style={styles.imagePickerBtnText}>Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.imagePickerBtn} onPress={pickFromLibrary}>
+                  <Ionicons name="images-outline" size={16} color="#374151" />
+                  <Text style={styles.imagePickerBtnText}>Thư viện</Text>
                 </TouchableOpacity>
               </View>
 
@@ -805,7 +842,7 @@ const styles = StyleSheet.create({
   },
   statCardAvailable: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
   statCardBooked: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-  statCardCleaning: { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" },
+  statCardTotal: { backgroundColor: "#EEF2FF", borderColor: "#C7D2FE" },
   statIconWrap: {
     width: 24,
     height: 24,
@@ -1130,8 +1167,6 @@ const styles = StyleSheet.create({
   },
   typeText: { fontSize: 12, fontWeight: "700" },
   typeTextActive: { fontWeight: "800" },
-  imageInputRow: { flexDirection: "row", gap: 8 },
-  imageInput: { flex: 1 },
   imageSectionTitle: {
     fontSize: 13,
     fontWeight: "800",
@@ -1141,13 +1176,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#9CA3AF",
     marginTop: -4,
-  },
-  addImageBtn: {
-    width: 42,
-    borderRadius: 10,
-    backgroundColor: "#FF6B35",
-    alignItems: "center",
-    justifyContent: "center",
   },
   imagePickerRow: {
     flexDirection: "row",
