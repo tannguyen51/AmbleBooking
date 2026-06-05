@@ -128,7 +128,9 @@ export default function AdminBookingsScreen() {
         // Doanh thu không block danh sách đơn
         adminAPI.getRestaurantRevenue(selectedRestId).then(revRes => {
           setRevenue(revRes.data?.data || null);
-        }).catch(() => {});
+        }).catch((err) => {
+          if (__DEV__) console.warn("[revenue] fetch error:", err?.message);
+        });
       } catch {
         setBookings([]);
       } finally {

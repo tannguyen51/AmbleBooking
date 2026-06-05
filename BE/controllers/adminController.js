@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const mongoose = require("mongoose");
 const Partner = require("../models/partner");
 const Restaurant = require("../models/restaurant");
 const Booking = require("../models/booking");
@@ -646,7 +647,7 @@ exports.getRestaurantRevenue = async (req, res) => {
     const { id } = req.params;
     const { from, to } = req.query;
 
-    const match = { restaurantId: id, status: { $in: ['confirmed', 'occupied', 'completed'] } };
+    const match = { restaurantId: new mongoose.Types.ObjectId(id), status: { $in: ['confirmed', 'occupied', 'completed'] } };
     if (from || to) {
       match.createdAt = {};
       if (from) match.createdAt.$gte = new Date(from);
@@ -656,11 +657,11 @@ exports.getRestaurantRevenue = async (req, res) => {
     const [activeBookings, revenueAgg, monthlyAgg] = await Promise.all([
       Booking.countDocuments(match),
       Booking.aggregate([
-        { $match: { ...match, status: "completed" } },
+        { $match: { restaurantId: new mongoose.Types.ObjectId(id), status: "completed" } },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
       Booking.aggregate([
-        { $match: { restaurantId: id, status: "completed" } },
+        { $match: { restaurantId: new mongoose.Types.ObjectId(id), status: "completed" } },
         {
           $group: {
             _id: { $month: "$completedAt" },
