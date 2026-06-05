@@ -1,5 +1,8 @@
 const Booking = require("../models/booking");
 const Table = require("../models/table");
+const Partner = require("../models/partner");
+const Restaurant = require("../models/restaurant");
+const PartnerPayment = require("../models/partnerPayment");
 const payos = require("../config/payos");
 
 // ── POST /api/payment/payos-register-webhook ──────────
@@ -315,5 +318,105 @@ exports.cancelPayosPayment = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Lỗi huỷ thanh toán" });
+  }
+};
+
+// ── POST /api/payment/partner/create-payos ────────────
+exports.createPartnerPayosPayment = async (req, res) => {
+  try {
+    const { partnerId, subscriptionPackage, returnUrl, cancelUrl } = req.body;
+    if (!partnerId || !subscriptionPackage || !returnUrl || !cancelUrl) {
+      return res.status(400).json({ success: false, message: "Thiếu thông tin" });
+    }
+
+    const partner = await Partner.findById(partnerId);
+    if (!partner) {
+      return res.status(404).json({ success: false, message: "Partner không tồn tại" });
+    }
+
+    const plans = { pro: 799000, premium: 1299000 };
+    const amount = plans[subscriptionPackage];
+    if (!amount) {
+      return res.status(400).json({ success: false, message: "Gói không hợp lệ" });
+    }
+
+    const orderCode = Number(String(partner._id).replace(/\D/g, "").slice(-8) + String(Date.now()).slice(-4));
+    const description = `MunchMap ${subscriptionPackage}`;
+
+    const paymentData = {
+      orderCode,
+      amount,
+      description: description.slice(0, 25),
+      items: [{ name: `Gói ${subscriptionPackage}`, quantity: 1, price: amount }],
+      returnUrl,
+      cancelUrl,
+      signature: "",
+    };
+
+    const paymentLink = await payos.paymentRequests.create(paymentData);
+
+    await PartnerPayment.create({
+      partnerId,
+      subscriptionPackage,
+      amount,
+      status: "pending",
+      payosOrderCode: orderCode,
+      payosPaymentLinkId: paymentLink.id,
+      payosStatus: paymentLink.status,
+    });
+
+    return res.json({ success: true, checkoutUrl: paymentLink.checkoutUrl, paymentLinkId: paymentLink.id });
+  } catch (err) {
+    console.error("[createPartnerPayosPayment]", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi tạo thanh toán" });
+  }
+};
+
+// ── POST /api/payment/partner/webhook ─────────────────
+exports.partnerPayosWebhook = async (req, res) => {
+  try {
+    const webhookData = req.body;
+    const orderCode = webhookData?.data?.orderCode;
+
+    if (!orderCode) {
+      return res.status(400).json({ success: false, message: "Thiếu orderCode" });
+    }
+
+    const payment = await PartnerPayment.findOne({ payosOrderCode: orderCode });
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment không tồn tại" });
+    }
+
+    if (webhookData.data?.status === "PAID" || webhookData.data?.status === "COMPLETED") {
+      payment.status = "paid";
+      payment.payosStatus = webhookData.data.status;
+      payment.paidAt = new Date();
+
+      const now = new Date();
+      const expiryDate = new Date(now);
+      expiryDate.setMonth(expiryDate.getMonth() + 1);
+      payment.expiryDate = expiryDate;
+
+      await payment.save();
+
+      // Kích hoạt subscription cho partner
+      await Partner.findByIdAndUpdate(payment.partnerId, {
+        subscriptionPackage: payment.subscriptionPackage,
+        subscriptionStatus: "active",
+        subscriptionExpiry: expiryDate,
+      });
+
+      const partner = await Partner.findById(payment.partnerId);
+      if (partner?.restaurantId) {
+        await Restaurant.findByIdAndUpdate(partner.restaurantId, {
+          subscriptionPackage: payment.subscriptionPackage,
+        });
+      }
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[partnerPayosWebhook]", err);
+    return res.status(500).json({ success: false, message: "Lỗi xử lý webhook" });
   }
 };

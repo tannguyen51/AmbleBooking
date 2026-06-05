@@ -111,36 +111,11 @@ const PLAN_BENEFITS = [
     core: "—",
     premium: "Có",
   },
-  {
-    feature: "Tăng khả năng tiếp cận khách hàng mới trên app",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Phân tích lưu lượng khách",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Phân tích hiệu suất bàn và khu vực",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Phân tích hành vi khách hàng",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Theo dõi tỷ lệ khách hàng quay lại",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Xuất báo cáo và thống kê nâng cao",
-    core: "—",
-    premium: "Có",
-  },
+ 
+  
+  
+
+  
 ];
 
 export default function PartnerProfileScreen() {

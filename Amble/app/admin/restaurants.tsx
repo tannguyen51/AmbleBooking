@@ -27,6 +27,7 @@ interface RestaurantItem {
   images?: string[];
   isActive: boolean;
   isFeatured: boolean;
+  subscriptionPackage?: string;
 }
 
 export default function AdminRestaurantsScreen() {
@@ -212,6 +213,12 @@ export default function AdminRestaurantsScreen() {
                   tone={item.isActive ? "success" : "danger"}
                 />
                 {item.isFeatured ? <Badge label={t("admin.restaurants.featured")} tone="info" /> : null}
+                {item.subscriptionPackage && item.subscriptionPackage !== "basic" ? (
+                  <Badge
+                    label={item.subscriptionPackage === "premium" ? "Premium" : "Pro"}
+                    tone={item.subscriptionPackage === "premium" ? "info" : "default"}
+                  />
+                ) : null}
               </View>
 
               <View style={styles.actionsRow}>

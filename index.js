@@ -1,0 +1,1 @@
+require('./BE/bin/www');

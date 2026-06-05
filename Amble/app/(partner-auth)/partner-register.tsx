@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +22,7 @@ import {
   Typography,
 } from "../../constants/theme";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
+import { paymentAPI } from "../../services/api";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -104,7 +106,7 @@ const PLAN_BENEFITS = [
 export default function PartnerRegisterScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { register, isLoading } = usePartnerAuthStore();
+  const { register, isLoading, partner } = usePartnerAuthStore();
   const [step, setStep] = useState<Step>("account");
 
   const [form, setForm] = useState({
@@ -189,6 +191,25 @@ export default function PartnerRegisterScreen() {
         cuisine: form.cuisine,
         subscriptionPackage: form.subscriptionPackage,
       });
+
+      // Nếu chọn gói premium → tạo PayOS payment
+      if (form.subscriptionPackage === "premium") {
+        const p = usePartnerAuthStore.getState().partner;
+        if (p?._id) {
+          const returnUrl = "https://amblebooking-production.up.railway.app/api/payment/partner/webhook";
+          const cancelUrl = "https://amblebooking-production.up.railway.app/api/payment/partner/webhook";
+          const res = await paymentAPI.createPartnerPayosPayment({
+            partnerId: p._id,
+            subscriptionPackage: "premium",
+            returnUrl,
+            cancelUrl,
+          });
+          if (res.data?.checkoutUrl) {
+            await Linking.openURL(res.data.checkoutUrl);
+          }
+        }
+      }
+
       router.replace("/dashboard");
     } catch (err: any) {
       Alert.alert(t("common.error"), err.message);

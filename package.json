@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "start": "cd BE && npm start",
-    "build": "cd BE && npm install"
+    "start": "cd BE && node ./bin/www",
+    "postinstall": "cd BE && npm install"
   },
   "dependencies": {
     "@sentry/node": "^10.55.0"

@@ -11,4 +11,8 @@ router.get("/payos-webhook", paymentController.handlePayosWebhook);
 router.get("/payos-status/:bookingId", paymentController.getPaymentStatus);
 router.post("/payos-cancel/:bookingId", paymentController.cancelPayosPayment);
 
+// Partner subscription payment
+router.post("/partner/create-payos", paymentController.createPartnerPayosPayment);
+router.post("/partner/webhook", paymentController.partnerPayosWebhook);
+
 module.exports = router;
