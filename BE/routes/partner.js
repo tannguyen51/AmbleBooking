@@ -14,6 +14,7 @@ const {
   getRestaurantProfile,
   updateRestaurantProfile,
   upgradeSubscription,
+  getRevenue,
 } = require("../controllers/partnerDashboardController");
 const {
   getStaffMembers,
@@ -31,6 +32,7 @@ const {
 
 // Dashboard routes
 router.get("/dashboard/overview", protectPartner, checkPermission('dashboard', 'read'), getOverview);
+router.get("/dashboard/revenue", protectPartner, checkPermission('dashboard', 'read'), getRevenue);
 router.get("/orders", protectPartner, checkPermission('orders', 'read'), getOrders);
 router.get("/notifications", protectPartner, getNotifications);
 

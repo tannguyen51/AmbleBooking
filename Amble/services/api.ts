@@ -193,6 +193,7 @@ export const paymentAPI = {
 // ── Partner Dashboard ───────────────────────────────────
 export const partnerDashboardAPI = {
   getOverview: () => api.get("/partner/dashboard/overview"),
+  getRevenue: (period?: string) => api.get("/partner/dashboard/revenue", { params: { period } }),
   getOrders: (status = "all") =>
     api.get("/partner/orders", { params: { status } }),
   getTables: () => api.get("/partner/tables"),
@@ -441,7 +442,7 @@ export const adminAPI = {
     id: string,
     data: { status: string; reason?: string; paymentMethod?: string; transactionId?: string },
   ) => api.put(`/admin/bookings/${id}/status`, data),
-  getRestaurantRevenue: (id: string, params?: { from?: string; to?: string }) =>
+  getRestaurantRevenue: (id: string, params?: { from?: string; to?: string; period?: string }) =>
     api.get(`/admin/restaurants/${id}/revenue`, { params }),
 
   getRoutes: () => api.get("/admin/routes"),

@@ -34,6 +34,7 @@ interface DashboardOverview {
   cleaningTables?: number;
   pendingOrders: number;
   todayBookings: number;
+  totalBookings?: number;
 }
 
 interface PendingBookingItem {
@@ -54,6 +55,7 @@ const DEFAULT_OVERVIEW: DashboardOverview = {
   bookedTables: 0,
   pendingOrders: 0,
   todayBookings: 0,
+  totalBookings: 0,
 };
 
 const PACKAGE_CONFIG = {
@@ -70,53 +72,26 @@ export default function PartnerDashboard() {
   const { partner, restaurant } = usePartnerAuthStore();
 
   const [overview, setOverview] = useState<DashboardOverview>(DEFAULT_OVERVIEW);
-  const [pendingBookings, setPendingBookings] = useState<PendingBookingItem[]>(
-    [],
-  );
+  const [pendingBookings, setPendingBookings] = useState<PendingBookingItem[]>([]);
   const [floorTables, setFloorTables] = useState<any[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [revenueData, setRevenueData] = useState<{ totalRevenue: number; dailyBreakdown: Array<{ label: string; total: number; count: number }> } | null>(null);
+  const [revenuePeriod, setRevenuePeriod] = useState<"week" | "month">("month");
 
   const pkg = PACKAGE_CONFIG[partner?.subscriptionPackage || "basic"];
   const occupancyRate =
     overview.totalTables > 0
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)
       : 0;
-  const hasActivity = overview.todayBookings > 0 || overview.bookedTables > 0 || overview.pendingOrders > 0;
-  const estimatedBaseRevenue = hasActivity ? Math.max(
-    overview.todayBookings * 950000,
-    overview.bookedTables * 750000,
-    3200000,
-  ) : 0;
-  const dailyRevenue = [0.48, 0.66, 0.41, 0.76, 0.55, 0.84, 0.69].map((r) =>
-    Math.round(estimatedBaseRevenue * r),
-  );
-  // Calculate monthly revenue based on actual days in current month
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const avgDailyRevenue = dailyRevenue.reduce((sum, v) => sum + v, 0) / dailyRevenue.length;
-  const monthlyRevenue = Math.round(avgDailyRevenue * daysInMonth);
-  const growthRate = hasActivity ? Math.max(
-    0,
-    Math.min(35, Math.round((occupancyRate + overview.todayBookings * 2) / 5)),
-  ) : 0;
-  const maxRevenueInWeek = Math.max(...dailyRevenue, 1);
-
-  const dayLabels = [
-    t("partner.dashboard.mon"),
-    t("partner.dashboard.tue"),
-    t("partner.dashboard.wed"),
-    t("partner.dashboard.thu"),
-    t("partner.dashboard.fri"),
-    t("partner.dashboard.sat"),
-    t("partner.dashboard.sun"),
-  ];
-  const revenueBars = dailyRevenue.map((value, index) => ({
-    label: dayLabels[index],
-    value,
-    heightPercent: hasActivity ? Math.max(18, Math.round((value / maxRevenueInWeek) * 100)) : 0,
-    highlight: index === 6,
+  const hasRevenue = revenueData !== null && revenueData.totalRevenue > 0;
+  const maxRevenueInWeek = Math.max(...(revenueData?.dailyBreakdown?.map(d => d.total) || [0]), 1);
+  const revenueBars = (revenueData?.dailyBreakdown || []).map((d, i) => ({
+    label: d.label,
+    value: d.total,
+    heightPercent: Math.max(8, Math.round((d.total / maxRevenueInWeek) * 100)),
+    highlight: i === (revenueData?.dailyBreakdown?.length || 1) - 1,
   }));
 
   // ── Animations ────────────────────────────────────────────────────────────────────────────
@@ -128,11 +103,15 @@ export default function PartnerDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const res = await partnerDashboardAPI.getOverview();
-      setOverview(res.data?.overview || DEFAULT_OVERVIEW);
-      setPendingBookings(res.data?.pendingBookings || []);
-      setFloorTables(res.data?.floorTables || []);
-      setUpcomingBookings(res.data?.upcomingBookings || []);
+      const [overviewRes, revenueRes] = await Promise.all([
+        partnerDashboardAPI.getOverview(),
+        partnerDashboardAPI.getRevenue(revenuePeriod),
+      ]);
+      setOverview(overviewRes.data?.overview || DEFAULT_OVERVIEW);
+      setPendingBookings(overviewRes.data?.pendingBookings || []);
+      setFloorTables(overviewRes.data?.floorTables || []);
+      setUpcomingBookings(overviewRes.data?.upcomingBookings || []);
+      setRevenueData(revenueRes.data?.data || null);
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không thể tải dashboard partner";
@@ -178,7 +157,7 @@ export default function PartnerDashboard() {
     ]).start();
 
     loadDashboard();
-  }, []);
+  }, [revenuePeriod]);
 
   const slideUp = (anim: Animated.Value) => ({
     opacity: anim,
@@ -416,7 +395,7 @@ export default function PartnerDashboard() {
           </Animated.View>
         )}
 
-        {/* ── Live operation metrics card ──────────────────────────────────────────────── */}
+        {/* ── Revenue card ──────────────────────────────────────────────────── */}
         <Animated.View style={slideUp(chartAnim)}>
           <LinearGradient
             colors={["#1A1A1A", "#2D2D2D"]}
@@ -425,56 +404,48 @@ export default function PartnerDashboard() {
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.revenueHeader}>
-              <View>
-                <View style={styles.revenueTitleRow}>
-                  <Ionicons
-                    name="bar-chart-outline"
-                    size={14}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                  <Text style={styles.revenueLabel}>{t("partner.dashboard.revenue")}</Text>
+              <View style={styles.revenueTitleRow}>
+                <Ionicons name="bar-chart-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.revenueLabel}>{t("partner.dashboard.revenue")}</Text>
+                {/* Period tabs */}
+                <View style={styles.periodRowRev}>
+                  {[{ key: "week", label: "Tuần" }, { key: "month", label: "Tháng" }].map((p) => (
+                    <TouchableOpacity
+                      key={p.key}
+                      onPress={() => setRevenuePeriod(p.key as any)}
+                      style={[styles.periodBtnRev, revenuePeriod === p.key && styles.periodBtnRevActive]}
+                    >
+                      <Text style={[styles.periodTextRev, revenuePeriod === p.key && styles.periodTextRevActive]}>{p.label}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <Text style={styles.revenueAmount}>
-                  {hasActivity ? monthlyRevenue.toLocaleString("vi-VN") : "---"} vnd
-                </Text>
-                {hasActivity && (
-                  <View style={styles.revenueGrowthRow}>
-                    <Text style={styles.revenueGrowthUp}>↑ {growthRate}%</Text>
-                    <Text style={styles.revenueGrowthLabel}>
-                      {t("partner.dashboard.revenueCompare")}
-                    </Text>
-                  </View>
-                )}
               </View>
+              <Text style={styles.revenueAmount}>
+                {revenueData ? (revenueData.totalRevenue / 1000).toFixed(0) : "---"} <Text style={{ fontSize: 12, fontWeight: "600" }}>k vnd</Text>
+              </Text>
+              {revenueData && revenueData.totalRevenue > 0 && (
+                <View style={styles.revenueGrowthRow}>
+                  <Text style={styles.revenueGrowthUp}>✓ {revenueData.dailyBreakdown?.length || 0} ngày</Text>
+                  <Text style={styles.revenueGrowthLabel}>trong kỳ</Text>
+                </View>
+              )}
             </View>
 
-            <View style={styles.chartRow}>
-              {revenueBars.map((bar) => (
-                <View key={bar.label} style={styles.chartBarWrap}>
-                  <View style={styles.chartTrack}>
-                    {bar.highlight ? (
-                      <LinearGradient
-                        colors={["#FF7A2F", "#FFD000"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0, y: 1 }}
-                        style={[
-                          styles.chartBar,
-                          { height: `${bar.heightPercent}%` },
-                        ]}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.chartBar,
-                          { height: `${bar.heightPercent}%` },
-                        ]}
-                      />
-                    )}
+            {/* Chart bars */}
+            {revenueBars.length > 0 ? (
+              <View style={styles.chartRow}>
+                {revenueBars.map((bar, i) => (
+                  <View key={i} style={styles.chartBarWrap}>
+                    <View style={styles.chartTrack}>
+                      <View style={[styles.chartBar, { height: `${bar.heightPercent}%`, backgroundColor: bar.highlight ? "#FF6B35" : "#4B5563" }]} />
+                    </View>
+                    <Text style={styles.chartLabel}>{bar.label}</Text>
                   </View>
-                  <Text style={styles.chartLabel}>{bar.label}</Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.chartEmpty}>Chưa có dữ liệu doanh thu</Text>
+            )}
           </LinearGradient>
         </Animated.View>
 
@@ -713,6 +684,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.7)",
   },
+  periodRowRev: {
+    flexDirection: "row", gap: 4, marginLeft: 8,
+  },
+  periodBtnRev: {
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  periodBtnRevActive: {
+    backgroundColor: "#FF6B35",
+  },
+  periodTextRev: { fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.5)" },
+  periodTextRevActive: { color: "#fff" },
+  chartEmpty: { fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", paddingVertical: 20 },
   revenueAmount: { fontSize: 31, fontWeight: "900", color: "#fff" },
   revenueGrowthRow: {
     flexDirection: "row",

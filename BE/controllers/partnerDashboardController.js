@@ -1,4 +1,5 @@
 const Booking = require("../models/booking");
+const mongoose = require("mongoose");
 const Table = require("../models/table");
 const Partner = require("../models/partner");
 const Restaurant = require("../models/restaurant");
@@ -48,6 +49,7 @@ exports.getOverview = async (req, res) => {
       pendingBookings,
       upcomingBookings,
       allTables,
+      totalBookings,
     ] = await Promise.all([
       Table.countDocuments({ restaurantId, isActive: true }),
       Table.countDocuments({ restaurantId, isActive: true, status: 'available' }),
@@ -83,6 +85,7 @@ exports.getOverview = async (req, res) => {
         })
         .sort({ name: 1 })
         .lean(),
+      Booking.countDocuments({ restaurantId }),
     ]);
 
     const pendingBookingItems = pendingBookings.map((booking) => ({
@@ -146,6 +149,7 @@ exports.getOverview = async (req, res) => {
         bookedTables: reservedTables + occupiedTables,
         pendingOrders,
         todayBookings,
+        totalBookings,
       },
       pendingBookings: pendingBookingItems,
       upcomingBookings: upcomingBookingItems,
@@ -910,6 +914,68 @@ exports.upgradeSubscription = async (req, res) => {
   } catch (err) {
     console.error("[upgradeSubscription]", err);
     return res.status(500).json({ success: false, message: "Loi server" });
+  }
+};
+
+// GET /api/partner/dashboard/revenue?period=week|month
+exports.getRevenue = async (req, res) => {
+  try {
+    const restaurantId = req.partner.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: "Missing restaurant" });
+    }
+
+    const period = req.query.period || "month";
+    const now = new Date();
+    const objId = new mongoose.Types.ObjectId(restaurantId);
+
+    let start;
+    if (period === "week") {
+      const day = now.getDay();
+      start = new Date(now);
+      start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+      start.setHours(0, 0, 0, 0);
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    const match = {
+      restaurantId: objId,
+      status: "completed",
+      createdAt: { $gte: start, $lte: now },
+    };
+
+    const [revenueAgg, dailyAgg] = await Promise.all([
+      Booking.aggregate([
+        { $match: match },
+        { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
+      ]),
+      Booking.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%d/%m", date: "$createdAt" } },
+            total: { $sum: "$pricing.totalAmount" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
+
+    return res.json({
+      success: true,
+      data: {
+        totalRevenue,
+        period,
+        dailyBreakdown: dailyAgg.map((d) => ({ label: d._id, total: d.total, count: d.count })),
+      },
+    });
+  } catch (err) {
+    console.error("[getRevenue]", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
