@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const Partner = require("../models/partner");
 const Restaurant = require("../models/restaurant");
+const { sendMail } = require("../utils/mailer");
 
 const signToken = (id, type = "partner") => {
   return jwt.sign({ id, type }, process.env.JWT_SECRET, {
@@ -185,6 +187,69 @@ exports.changePassword = async (req, res) => {
       success: false,
       message: "Không thể đổi mật khẩu. Vui lòng thử lại.",
     });
+  }
+};
+// ── Forgot password ───────────────────────────────────
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const partner = await Partner.findOne({ email: email.toLowerCase().trim() });
+    if (!partner) {
+      return res.status(404).json({ success: false, message: "No account with that email" });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    partner.resetPasswordToken = hashedToken;
+    partner.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000);
+    await partner.save();
+
+    const resetLink = `${req.protocol}://${req.get("host")}/api/partner/reset-password/${rawToken}`;
+    await sendMail({
+      to: email,
+      subject: "Đặt lại mật khẩu Munchmap Partner",
+      text: `Mở liên kết để đặt lại mật khẩu: ${resetLink}\nMã: ${rawToken}`,
+      html: `<p>Mở liên kết để đặt lại mật khẩu:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Mã: <strong>${rawToken}</strong></p>`,
+    });
+
+    return res.status(200).json({ success: true, message: "Reset instructions sent to email." });
+  } catch (error) {
+    console.error("[partner/forgotPassword]", error?.message || error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ── Reset password ────────────────────────────────────
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: "Token and new password required" });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const partner = await Partner.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() },
+    }).select("+resetPasswordToken +resetPasswordExpires");
+
+    if (!partner) {
+      return res.status(400).json({ success: false, message: "Token invalid or expired" });
+    }
+
+    partner.password = newPassword;
+    partner.resetPasswordToken = undefined;
+    partner.resetPasswordExpires = undefined;
+    await partner.save();
+
+    return res.status(200).json({ success: true, message: "Password reset successful" });
+  } catch (error) {
+    console.error("[partner/resetPassword]", error?.message || error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 exports.logout = async (req, res) => {

@@ -61,6 +61,10 @@ export const partnerAuthAPI = {
   logout: () => api.post("/partner/auth/logout"),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put("/partner/auth/change-password", data),
+  forgotPassword: (data: { email: string }) =>
+    api.post("/partner/auth/forgot-password", data, { timeout: 30000 }),
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    api.post("/partner/auth/reset-password", data),
 };
 
 // ── User ────────────────────────────────────────────────

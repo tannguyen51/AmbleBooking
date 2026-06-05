@@ -16,14 +16,36 @@ interface HeatmapProps {
 const DAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const HOURS = [10, 11, 12, 13, 14, 17, 18, 19, 20, 21]; // Restaurant hours
 
-const getColor = (value: number, max: number): string => {
+const DAY_COLORS = [
+  "#EF4444", // CN - đỏ
+  "#3B82F6", // T2 - xanh dương
+  "#8B5CF6", // T3 - tím
+  "#E69A00", // T4 - vàng
+  "#16A34A", // T5 - xanh lá
+  "#FF6B35", // T6 - cam
+  "#EC4899", // T7 - hồng
+];
+
+const getColor = (value: number, max: number, dayIdx: number): string => {
   if (value === 0) return "#F3F4F6";
+  const base = DAY_COLORS[dayIdx] || "#6B7280";
+  if (max <= 0) return base;
   const ratio = value / max;
-  if (ratio > 0.75) return "#FF6B35";    // do cam (cao)
-  if (ratio > 0.5) return "#E69A00";      // cam (trung binh cao)
-  if (ratio > 0.25) return "#2563EB";     // xanh duong (trung binh)
-  return "#1E3A5F";                        // xanh dam (thap)
+  // Pha trắng để giảm độ đậm khi thấp
+  if (ratio > 0.75) return base;
+  if (ratio > 0.5) return lighten(base, 0.25);
+  if (ratio > 0.25) return lighten(base, 0.5);
+  return lighten(base, 0.75);
 };
+
+// Làm nhạt màu hex bằng cách pha trắng
+function lighten(hex: string, amount: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, Math.round((num >> 16) + (255 - (num >> 16)) * amount));
+  const g = Math.min(255, Math.round(((num >> 8) & 0xff) + (255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, Math.round((num & 0xff) + (255 - (num & 0xff)) * amount));
+  return `rgb(${r},${g},${b})`;
+}
 
 export default function Heatmap({ data, maxValue }: HeatmapProps) {
   const max = maxValue || Math.max(...data.map((d) => d.bookings), 1);
@@ -59,7 +81,7 @@ export default function Heatmap({ data, maxValue }: HeatmapProps) {
                   <View
                     style={[
                       styles.cellBox,
-                      { backgroundColor: getColor(val, max) },
+                      { backgroundColor: getColor(val, max, dayIdx) },
                     ]}
                   >
                     {val > 0 && <Text style={styles.cellText}>{val}</Text>}
@@ -73,11 +95,25 @@ export default function Heatmap({ data, maxValue }: HeatmapProps) {
 
       {/* Legend */}
       <View style={styles.legend}>
-        <Text style={styles.legendText}>Thap</Text>
-        {["#1A1A1A", "#1E3A5F", "#2563EB", "#E69A00", "#FF6B35"].map((c) => (
-          <View key={c} style={[styles.legendDot, { backgroundColor: c }]} />
-        ))}
-        <Text style={styles.legendText}>Cao</Text>
+        <View style={styles.legendRow}>
+          {DAY_LABELS.map((d, i) => (
+            <View key={d} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: DAY_COLORS[i] }]} />
+              <Text style={styles.legendText}>{d}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.legendRow}>
+          <Text style={styles.legendText}>Ít</Text>
+          {[0.75, 0.5, 0.25, 0].map((r, _i) => (
+            <View key={_i} style={[styles.legendDot, {
+              backgroundColor: _i === 3 ? "#F3F4F6" : lighten("#3B82F6", r),
+              borderWidth: _i === 3 ? 1 : 0,
+              borderColor: _i === 3 ? "#D1D5DB" : undefined,
+            }]} />
+          ))}
+          <Text style={styles.legendText}>Nhiều</Text>
+        </View>
       </View>
     </View>
   );
@@ -95,7 +131,9 @@ const styles = StyleSheet.create({
   dataCell: { width: 36, height: 30, alignItems: "center", justifyContent: "center", marginHorizontal: 1 },
   cellBox: { width: 32, height: 26, borderRadius: 4, justifyContent: "center", alignItems: "center" },
   cellText: { fontSize: 8, color: "#fff", fontWeight: "700" },
-  legend: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 10, gap: 4 },
-  legendDot: { width: 12, height: 12, borderRadius: 3 },
-  legendText: { fontSize: 9, color: "#6B7280", marginHorizontal: 4 },
+  legend: { marginTop: 10, gap: 6 },
+  legendRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 3 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { fontSize: 9, color: "#6B7280" },
 });

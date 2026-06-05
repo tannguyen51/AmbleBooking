@@ -289,6 +289,14 @@ exports.getBookingFunnel = async (req, res) => {
 
     // Funnel conversion rates
     const funnelConversion = {
+      viewToTable:
+        funnel.restaurantViews > 0
+          ? Math.round((funnel.tableViews / funnel.restaurantViews) * 100)
+          : 0,
+      tableToStart:
+        funnel.tableViews > 0
+          ? Math.round((funnel.bookingStarted / funnel.tableViews) * 100)
+          : 0,
       viewToStart:
         funnel.restaurantViews > 0
           ? Math.round((funnel.bookingStarted / funnel.restaurantViews) * 100)
@@ -352,6 +360,7 @@ exports.getTableSelection = async (req, res) => {
       success: true,
       data: {
         vipTableBookings: typeCount.vip,
+        viewTableBookings: typeCount.view,
         standardTableBookings: typeCount.standard,
         totalBookings: bookings.length,
         tableTypeRatio,

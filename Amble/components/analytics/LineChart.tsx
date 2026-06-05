@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Polyline, Circle, Line as SvgLine, Rect, LinearGradient, Defs, Stop } from "react-native-svg";
+import Svg, { Polyline, Circle, Line as SvgLine, Text as SvgText, Rect, LinearGradient, Defs, Stop } from "react-native-svg";
 
 interface LinePoint {
   label: string;
@@ -17,9 +17,17 @@ interface LineChartProps {
 
 export default function LineChart({ data, height = 160, lineColor = "#FF6B35", showGrid = true, showDots = true }: LineChartProps) {
   if (!data.length) return null;
+  const allZero = data.every((d) => d.value === 0);
+  if (allZero) {
+    return (
+      <View style={[styles.wrapper, { height }]}>
+        <Text style={styles.emptyText}>No data yet</Text>
+      </View>
+    );
+  }
   const max = Math.max(...data.map((d) => d.value), 1);
   const w = Math.max(280, data.length * 35);
-  const padding = { top: 16, bottom: 20, left: 30, right: 10 };
+  const padding = { top: 20, bottom: 30, left: 40, right: 10 };
   const chartW = w;
   const chartH = height;
 
@@ -36,6 +44,10 @@ export default function LineChart({ data, height = 160, lineColor = "#FF6B35", s
   return (
     <View style={styles.wrapper}>
       <Svg width={chartW} height={chartH}>
+        {/* Y-axis labels */}
+        <SvgText x={padding.left - 8} y={padding.top + 4} fill="#1A1A1A" fontSize={12} fontWeight="bold" textAnchor="end">{max}</SvgText>
+        <SvgText x={padding.left - 8} y={chartH - padding.bottom + 4} fill="#1A1A1A" fontSize={12} fontWeight="bold" textAnchor="end">0</SvgText>
+
         {/* Grid lines */}
         {showGrid && [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
           const y = padding.top + ratio * (chartH - padding.top - padding.bottom);
@@ -62,6 +74,11 @@ export default function LineChart({ data, height = 160, lineColor = "#FF6B35", s
         {showDots && points.filter((_, i) => i % Math.max(1, Math.floor(data.length / 7)) === 0 || i === points.length - 1).map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={3} fill={lineColor} />
         ))}
+
+        {/* X-axis labels */}
+        {points.filter((_, i) => i % Math.max(1, Math.floor(data.length / 7)) === 0 || i === points.length - 1).map((p, i) => (
+          <SvgText key={i} x={p.x} y={chartH - 6} fill="#1A1A1A" fontSize={11} fontWeight="bold" textAnchor="middle">{p.label}</SvgText>
+        ))}
       </Svg>
     </View>
   );
@@ -69,4 +86,5 @@ export default function LineChart({ data, height = 160, lineColor = "#FF6B35", s
 
 const styles = StyleSheet.create({
   wrapper: { alignItems: "center" },
+  emptyText: { fontSize: 12, color: "#6B7280", textAlign: "center", paddingVertical: 60 },
 });

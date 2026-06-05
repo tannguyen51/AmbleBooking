@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const {
-	register,
-	login,
-	getMe,
-	logout,
-	changePassword,
+  register,
+  login,
+  getMe,
+  logout,
+  changePassword,
+  forgotPassword,
+  resetPassword,
 } = require('../controllers/partnerAuthController');
 const { protectPartner } = require('../middleware/partnerAuth');
 
@@ -14,5 +16,7 @@ router.post('/login', login);
 router.get('/me', protectPartner, getMe);
 router.post('/logout', protectPartner, logout);
 router.put('/change-password', protectPartner, changePassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 module.exports = router;

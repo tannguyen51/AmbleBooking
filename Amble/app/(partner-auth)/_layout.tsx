@@ -5,6 +5,7 @@ export default function PartnerAuthLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="partner-login" />
       <Stack.Screen name="partner-register" />
+      <Stack.Screen name="partner-forgot-password" />
     </Stack>
   );
 }

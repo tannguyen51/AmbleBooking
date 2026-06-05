@@ -111,6 +111,15 @@ const partnerSchema = new mongoose.Schema(
       ref: 'Restaurant',
       default: null,
     },
+    // Reset password
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true }
 );

@@ -14,6 +14,14 @@ interface FunnelChartProps {
 
 export default function FunnelChart({ steps, color = "#FF6B35" }: FunnelChartProps) {
   if (!steps.length) return null;
+  const hasData = steps.some((s) => s.value > 0);
+  if (!hasData) {
+    return (
+      <View style={styles.wrapper}>
+        <Text style={styles.emptyText}>No funnel data yet</Text>
+      </View>
+    );
+  }
   const maxVal = Math.max(...steps.map((s) => s.value), 1);
 
   return (
@@ -33,9 +41,9 @@ export default function FunnelChart({ steps, color = "#FF6B35" }: FunnelChartPro
                 style={[
                   styles.barFill,
                   {
-                    width: `${Math.max(ratio * 100, 5)}%`,
-                    backgroundColor: i === steps.length - 1 ? "#16A34A" : i === 0 ? "#3B82F6" : color,
-                    opacity: 1 - i * 0.12,
+                    width: `${Math.max(ratio * 100, 2)}%`,
+                    backgroundColor: step.value === 0 ? "#333" : i === steps.length - 1 ? "#16A34A" : i === 0 ? "#3B82F6" : color,
+                    opacity: step.value === 0 ? 0.15 : 1 - i * 0.12,
                   },
                 ]}
               />
@@ -55,4 +63,5 @@ const styles = StyleSheet.create({
   conversionText: { fontSize: 11, color: "#16A34A", fontWeight: "600", minWidth: 40, textAlign: "right" },
   barTrack: { height: 28, backgroundColor: "#2D2D2D", borderRadius: 6, marginBottom: 8, overflow: "hidden" },
   barFill: { height: "100%", borderRadius: 6 },
+  emptyText: { fontSize: 12, color: "#6B7280", textAlign: "center", paddingVertical: 20 },
 });

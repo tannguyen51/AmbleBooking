@@ -61,14 +61,19 @@ export default function PartnerLoginScreen() {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            onPress={() => router.push("/welcome")}
+          >
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+
           <MunchMapLogo
-            size="md"
-            showText={false}
+            size="lg"
+            textColor="#FFFFFF"
             containerStyle={styles.partnerLogo}
           />
-
-          <Text style={styles.appName}>{t("partnerAuth.login.title")}</Text>
-          <Text style={styles.tagline}>{t("partnerAuth.login.tagline")}</Text>
         </LinearGradient>
 
         {/* Form */}
@@ -138,6 +143,14 @@ export default function PartnerLoginScreen() {
             </View>
           </View>
 
+          {/* Forgot Password */}
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => router.push("/(partner-auth)/partner-forgot-password")}
+          >
+            <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+          </TouchableOpacity>
+
           {/* Login Button */}
           <TouchableOpacity
             style={[styles.loginBtn, isLoading && styles.btnDisabled]}
@@ -200,17 +213,6 @@ export default function PartnerLoginScreen() {
               </TouchableOpacity>
             </Link>
           </View>
-
-          {/* Back to customer login */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/(auth)/login")}
-          >
-            <View style={styles.backRow}>
-              <Ionicons name="arrow-back" size={16} color={Colors.textMuted} />
-              <Text style={styles.backText}>{t("partnerAuth.login.backToCustomer")}</Text>
-            </View>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -222,28 +224,29 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1 },
 
   header: {
-    paddingTop: 80,
-    paddingBottom: 50,
+    paddingTop: 60,
+    paddingBottom: 60,
     alignItems: "center",
+    justifyContent: "center",
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
 
+  headerBackBtn: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+
   partnerLogo: {
-    marginBottom: Spacing.sm,
-  },
-
-  appName: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 1,
-  },
-
-  tagline: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
-    marginTop: 4,
+    marginBottom: 0,
   },
 
   formContainer: {
@@ -362,6 +365,17 @@ const styles = StyleSheet.create({
 
   pkgPrice: { fontSize: 10, marginTop: 2 },
 
+  forgotRow: {
+    alignItems: "flex-end",
+    marginBottom: Spacing.md,
+    marginTop: -Spacing.sm,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: PARTNER_PRIMARY,
+  },
+
   registerRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -378,21 +392,5 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontWeight: "700",
     color: PARTNER_PRIMARY,
-  },
-
-  backBtn: {
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-  },
-
-  backRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  backText: {
-    ...Typography.bodySmall,
-    color: Colors.textMuted,
   },
 });

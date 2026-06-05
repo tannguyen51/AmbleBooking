@@ -11,7 +11,6 @@ import KpiCard from "../../components/analytics/KpiCard";
 import BarChart from "../../components/analytics/BarChart";
 import LineChart from "../../components/analytics/LineChart";
 import PieChart from "../../components/analytics/PieChart";
-import FunnelChart from "../../components/analytics/FunnelChart";
 import Heatmap from "../../components/analytics/Heatmap";
 
 const BG = "#F8F9FA";
@@ -176,9 +175,32 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
           <KpiCard icon="checkmark" label="Completed" value={`${d.completionRate || 0}%`} color="#16A34A" />
         </View>
         <View style={s.card}>
-          <SectionTitle title="Monthly Trend" icon="trending-up" />
-          <LineChart data={[{ label: "W1", value: 0 }, { label: "W2", value: 0 }]} lineColor={PRIMARY} />
-          <Text style={s.emptyHint}>Data accumulates as bookings are made</Text>
+          <SectionTitle title="Period Summary" icon="trending-up" />
+          {d.totalBookings > 0 ? (
+            <View>
+              <BarChart data={[
+                { label: "Total", value: d.totalBookings || 0, color: PRIMARY },
+                { label: "Completed", value: d.completedBookings || 0, color: "#16A34A" },
+                { label: "Cancelled", value: d.cancelledBookings || 0, color: "#EF4444" },
+              ]} showPercent />
+              <View style={s.trendLegend}>
+                <View style={s.legendRow}>
+                  <View style={[s.legendDotS, { backgroundColor: PRIMARY }]} />
+                  <Text style={s.legendTextS}>Total bookings in period</Text>
+                </View>
+                <View style={s.legendRow}>
+                  <View style={[s.legendDotS, { backgroundColor: "#16A34A" }]} />
+                  <Text style={s.legendTextS}>Completed</Text>
+                </View>
+                <View style={s.legendRow}>
+                  <View style={[s.legendDotS, { backgroundColor: "#EF4444" }]} />
+                  <Text style={s.legendTextS}>Cancelled</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <Text style={s.emptyHint}>Data accumulates as bookings are made</Text>
+          )}
         </View>
       </View>
     );
@@ -197,12 +219,6 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
           <KpiCard icon="refresh" label="Returning" value={d.returningUsers || 0} color={PRIMARY} trend={calcTrend(d.returningUsers, p.returningUsers)} />
           <KpiCard icon="people" label="Active/Day" value={d.dailyActive?.[0]?.count || 0} color="#8B5CF6" />
         </View>
-        {d.dailyActive?.length > 0 && (
-          <View style={s.card}>
-            <SectionTitle title="Daily Active Users" icon="trending-up" />
-            <LineChart data={d.dailyActive.map((da: any) => ({ label: da.date.slice(5), value: da.count }))} lineColor="#2563EB" />
-          </View>
-        )}
         {d.totalUsers > 0 && (
           <View style={s.card}>
             <SectionTitle title="User Ratio" icon="pie-chart" />
@@ -225,22 +241,36 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
   const renderBooking = () => {
     const d = data.funnel?.funnel || {};
     const conv = data.funnel?.funnelConversion || {};
-    const steps = [
-      { label: "🏪 Restaurant Views", value: d.restaurantViews || 0 },
-      { label: "📋 Booking Started", value: d.bookingStarted || 0 },
-      { label: "✅ Booking Completed", value: d.bookingCompleted || 0 },
-      { label: "✔ Confirmed", value: d.bookingConfirmed || 0 },
-    ];
     return (
       <View style={s.tabContent}>
         <View style={s.card}>
           <SectionTitle title="Booking Funnel" icon="funnel" />
           <View style={s.conversionRow}>
-            <View style={s.convItem}><Text style={s.convVal}>{conv.viewToStart || 0}%</Text><Text style={s.convLabel}>View→Start</Text></View>
+            <View style={s.convItem}><Text style={s.convVal}>{conv.viewToTable || 0}%</Text><Text style={s.convLabel}>Views→Tables</Text></View>
+            <View style={s.convItem}><Text style={s.convVal}>{conv.tableToStart || 0}%</Text><Text style={s.convLabel}>Tables→Start</Text></View>
             <View style={s.convItem}><Text style={s.convVal}>{conv.startToBook || 0}%</Text><Text style={s.convLabel}>Start→Book</Text></View>
             <View style={s.convItem}><Text style={s.convVal}>{conv.bookToConfirm || 0}%</Text><Text style={s.convLabel}>Book→Confirm</Text></View>
           </View>
-          <FunnelChart steps={steps} />
+          <BarChart data={[
+            { label: "Views", value: d.restaurantViews || 0, color: "#3B82F6" },
+            { label: "Tables", value: d.tableViews || 0, color: "#8B5CF6" },
+            { label: "Started", value: d.bookingStarted || 0, color: PRIMARY },
+            { label: "Completed", value: d.bookingCompleted || 0, color: "#16A34A" },
+            { label: "Confirmed", value: d.bookingConfirmed || 0, color: "#E69A00" },
+          ]} showPercent />
+          <View style={s.funnelNote}>
+            <Text style={s.funnelNoteText}>
+              Conversion rates show % drop-off between steps.
+              If Views is 0 but Started has data, conversion shows 0% because the first step has no data.
+            </Text>
+            <View style={s.funnelLegend}>
+              <View style={s.legendRow}><View style={[s.legendDotS, { backgroundColor: "#3B82F6" }]} /><Text style={s.legendTextS}>Restaurant Views</Text></View>
+              <View style={s.legendRow}><View style={[s.legendDotS, { backgroundColor: "#8B5CF6" }]} /><Text style={s.legendTextS}>Table Views</Text></View>
+              <View style={s.legendRow}><View style={[s.legendDotS, { backgroundColor: PRIMARY }]} /><Text style={s.legendTextS}>Booking Started</Text></View>
+              <View style={s.legendRow}><View style={[s.legendDotS, { backgroundColor: "#16A34A" }]} /><Text style={s.legendTextS}>Booking Completed</Text></View>
+              <View style={s.legendRow}><View style={[s.legendDotS, { backgroundColor: "#E69A00" }]} /><Text style={s.legendTextS}>Confirmed by restaurant</Text></View>
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -250,41 +280,57 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
     const d = data.tables || {};
     const ratio = d.tableTypeRatio || {};
     const hasData = d.totalBookings > 0;
+    const tableTypes = [
+      { key: "vip", label: "VIP", color: "#E69A00" },
+      { key: "view", label: "View", color: "#2563EB" },
+      { key: "standard", label: "Standard", color: "#6B7280" },
+    ];
     return (
       <View style={s.tabContent}>
         <View style={s.kpiRow}>
           <KpiCard icon="star" label="VIP Bookings" value={d.vipTableBookings || 0} color="#E69A00" />
+          <KpiCard icon="eye" label="View Bookings" value={d.viewTableBookings || 0} color="#2563EB" />
           <KpiCard icon="grid" label="Standard" value={d.standardTableBookings || 0} color="#6B7280" />
         </View>
         {hasData ? (
           <View style={s.card}>
             <SectionTitle title="Table Type Ratio" icon="pie-chart" />
             <View style={s.pieRow}>
-              <PieChart data={[
-                { label: "VIP", value: ratio.vip || 0, color: "#E69A00" },
-                { label: "View", value: ratio.view || 0, color: "#2563EB" },
-                { label: "Regular", value: ratio.regular || 0, color: "#16A34A" },
-                { label: "Standard", value: ratio.standard || 0, color: "#6B7280" },
-              ]} />
-              <View style={s.legendCol}>
-                {[{ l: "VIP", c: "#E69A00" }, { l: "View", c: "#2563EB" }, { l: "Regular", c: "#16A34A" }, { l: "Standard", c: "#6B7280" }].map((x, i) => (
-                  <View key={i} style={s.legendItem}><View style={[s.legendDot, { backgroundColor: x.c }]} /><Text style={s.legendText}>{x.l} {ratio[x.l.toLowerCase()] || 0}%</Text></View>
-                ))}
-              </View>
+              {(() => {
+                // Dùng actual count nếu có, ước lượng từ ratio nếu backend chưa trả về
+                const getCount = (key: string) => {
+                  if (key === "vip") return d.vipTableBookings;
+                  if (key === "view") return d.viewTableBookings;
+                  if (key === "standard") return d.standardTableBookings;
+                  return 0;
+                };
+                const totalBookings = d.totalBookings || 1;
+                const countSum = tableTypes.reduce((sum, t) => sum + (getCount(t.key) ?? Math.round(totalBookings * (ratio[t.key] || 0) / 100)), 0) || 1;
+                return (
+                  <>
+                    <PieChart data={tableTypes.map((t) => ({
+                      label: t.label,
+                      value: getCount(t.key) ?? Math.round(totalBookings * (ratio[t.key] || 0) / 100),
+                      color: t.color,
+                    }))} size={180} />
+                    <View style={s.legendCol}>
+                      {tableTypes.map((t) => {
+                        const count = getCount(t.key) ?? Math.round(totalBookings * (ratio[t.key] || 0) / 100);
+                        const pct = Math.round((count / countSum) * 100);
+                        return (
+                          <View key={t.key} style={s.legendItem}>
+                            <View style={[s.legendDot, { backgroundColor: t.color }]} />
+                            <Text style={s.legendText}>{t.label} {count} ({pct}%)</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </>
+                );
+              })()}
             </View>
           </View>
         ) : <View style={s.card}><Text style={s.emptyHint}>No booking data yet</Text></View>}
-        {hasData && (
-          <View style={s.card}>
-            <SectionTitle title="Popularity by Type" icon="bar-chart" />
-            <BarChart data={[
-              { label: "VIP", value: ratio.vip || 0, color: "#E69A00" },
-              { label: "View", value: ratio.view || 0, color: "#2563EB" },
-              { label: "Reg", value: ratio.regular || 0, color: "#16A34A" },
-              { label: "Std", value: ratio.standard || 0, color: "#6B7280" },
-            ]} />
-          </View>
-        )}
       </View>
     );
   };
@@ -349,12 +395,18 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
         {peakHours.length > 0 && (
           <View style={s.card}>
             <SectionTitle title="Top Peak Slots" icon="bar-chart" />
-            <BarChart data={peakHours.slice(0, 5).map((p: any) => ({
-              label: `${p.hour}:00`,
-              value: p.bookings,
-              color: p.bookings > 30 ? "#FF6B35" : p.bookings > 15 ? "#E69A00" : "#2563EB",
-            }))} />
-            <Text style={s.insight}>⚡ Peak: Day {peakHours[0]?.dayOfWeek} at {peakHours[0]?.hour}:00 ({peakHours[0]?.bookings || 0})</Text>
+            <Text style={s.heatmapSub}>Top 5 khung giờ có nhiều booking nhất</Text>
+            <BarChart data={peakHours.slice(0, 5).map((p: any, i: number) => {
+              const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+              return {
+                label: `${dayNames[p.dayOfWeek] || p.dayOfWeek} ${p.hour}:00`,
+                value: p.bookings,
+                color: i === 0 ? "#FF6B35" : i === 1 ? "#E69A00" : i === 2 ? "#3B82F6" : "#6B7280",
+              };
+            })} showPercent />
+            <View style={s.funnelNote}>
+              <Text style={s.funnelNoteText}>Cột cao nhất = khung giờ đông khách nhất. Màu: cam = rất đông, vàng = đông, xanh = bình thường.</Text>
+            </View>
           </View>
         )}
       </View>
@@ -433,10 +485,32 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 3 },
   legendText: { fontSize: 11, color: TEXT_SEC },
-  conversionRow: { flexDirection: "row", justifyContent: "space-around", marginBottom: 16 },
-  convItem: { alignItems: "center" },
-  convVal: { fontSize: 18, fontWeight: "700", color: PRIMARY },
-  convLabel: { fontSize: 10, color: TEXT_SEC, marginTop: 2 },
+  trendLegend: { flexDirection: "row", justifyContent: "center", gap: 20, marginTop: 12 },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDotS: { width: 10, height: 10, borderRadius: 5 },
+  legendTextS: { fontSize: 13, color: TEXT_SEC },
+  userHeaderCard: {
+    backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  userHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  userTitle: { fontSize: 18, fontWeight: "800", color: TEXT },
+  userSubtitle: { fontSize: 12, color: TEXT_SEC, marginTop: 2 },
+  trendBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  trendBadgeText: { fontSize: 13, fontWeight: "800" },
+  userStatRow: { flexDirection: "row", marginTop: 16, alignItems: "center" },
+  userStatItem: { flex: 1, alignItems: "center" },
+  userStatValue: { fontSize: 20, fontWeight: "900", color: TEXT },
+  userStatLabel: { fontSize: 11, color: TEXT_SEC, marginTop: 2 },
+  userStatDivider: { width: 1, height: 32, backgroundColor: "#E5E7EB" },
+  chartTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8, marginBottom: 12 },
+  chartTitle: { fontSize: 15, fontWeight: "700", color: TEXT },
+  chartSubtitle: { fontSize: 11, color: TEXT_SEC },
+  conversionRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16, gap: 4 },
+  convItem: { alignItems: "center", flex: 1 },
+  convVal: { fontSize: 16, fontWeight: "800", color: PRIMARY },
+  convLabel: { fontSize: 9, color: TEXT_SEC, marginTop: 2, textAlign: "center" },
   reasonRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   reasonLabel: { fontSize: 11, color: TEXT_SEC, width: 120 },
   reasonBar: { flex: 1, height: 16, backgroundColor: CARD2, borderRadius: 8, marginHorizontal: 6, overflow: "hidden" },
@@ -444,5 +518,8 @@ const s = StyleSheet.create({
   reasonCount: { fontSize: 12, fontWeight: "700", color: TEXT, width: 30, textAlign: "right" },
   heatmapSub: { fontSize: 11, color: TEXT_SEC, marginBottom: 12, marginTop: -8 },
   insight: { fontSize: 12, color: PRIMARY, fontWeight: "600", marginTop: 12, textAlign: "center" },
+  funnelNote: { marginTop: 12, gap: 8 },
+  funnelNoteText: { fontSize: 11, color: TEXT_SEC, fontStyle: "italic", lineHeight: 16 },
+  funnelLegend: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   emptyHint: { fontSize: 12, color: TEXT_SEC, textAlign: "center", padding: 20 },
 });
