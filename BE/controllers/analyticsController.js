@@ -27,7 +27,8 @@ const getDateRange = (from, to) => {
 };
 
 const buildEventFilter = (restaurantId, events, from, to) => {
-  const filter = { restaurantId };
+  const filter = {};
+  if (restaurantId) filter.restaurantId = restaurantId;
   if (events && events.length) {
     filter.event = { $in: Array.isArray(events) ? events : [events] };
   }
@@ -540,6 +541,57 @@ exports.recordEvent = async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("[analytics:record]", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ── GET /api/partner/analytics/engagement?from=&to= ──────
+exports.getEngagement = async (req, res) => {
+  try {
+    const restaurantId = getRestaurantId(req);
+    const rFilter = getRestaurantFilter(req);
+    if (!restaurantId && req.partner) {
+      return res.status(400).json({ success: false, message: "Missing restaurant" });
+    }
+
+    const { start, end } = getDateRange(req.query.from, req.query.to);
+
+    const events = await AnalyticsEvent.find({
+      ...rFilter,
+      event: { $in: ['add_favorite', 'remove_favorite', 'submit_review', 'add_photo_review', 'use_reward', 'earn_reward', 'deposit_warning_view', 'ai_recommend_click', 'filter_use'] },
+      timestamp: { $gte: new Date(start), $lte: new Date(end + "T23:59:59.999Z") },
+    }).lean();
+
+    const totalFavorites = events.filter(e => e.event === 'add_favorite').length;
+    const totalReviews = events.filter(e => e.event === 'submit_review').length;
+    const photoReviews = events.filter(e => e.event === 'add_photo_review').length;
+    const rewardUsed = events.filter(e => e.event === 'use_reward').length;
+    const rewardEarned = events.filter(e => e.event === 'earn_reward').length;
+    const depositWarningViews = events.filter(e => e.event === 'deposit_warning_view').length;
+    const aiRecommendClicks = events.filter(e => e.event === 'ai_recommend_click').length;
+
+    const filterEvents = events.filter(e => e.event === 'filter_use');
+    const filterCounts = {};
+    filterEvents.forEach(e => {
+      const name = e.metadata?.filterName || 'unknown';
+      filterCounts[name] = (filterCounts[name] || 0) + 1;
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        totalFavorites,
+        totalReviews,
+        photoReviews,
+        rewardPointsUsed: rewardUsed,
+        rewardPointsEarned: rewardEarned,
+        depositWarningViews,
+        aiRecommendClicks,
+        filterUsage: Object.entries(filterCounts).map(([filterName, count]) => ({ filterName, count })),
+      },
+    });
+  } catch (err) {
+    console.error("[analytics:engagement]", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

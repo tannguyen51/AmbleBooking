@@ -32,7 +32,8 @@ async function aggregateDaily(restaurantId, dateStr) {
   const returningUsers = allUserIds.length - newUsers;
 
   // Booking Funnel
-  const views = events.filter(e => ['restaurant_view', 'page_view'].includes(e.event)).length;
+  const views = events.filter(e => e.event === 'restaurant_view').length;
+  const tableViews = events.filter(e => e.event === 'table_view').length;
   const bookingStarts = events.filter(e => e.event === 'booking_start').length;
   const bookingCompletes = events.filter(e => e.event === 'booking_complete').length;
 
@@ -61,6 +62,35 @@ async function aggregateDaily(restaurantId, dateStr) {
   // Search
   const searches = events.filter(e => e.event === 'search').length;
   const searchUsers = [...new Set(events.filter(e => e.event === 'search').map(e => e.userId?.toString()).filter(Boolean))];
+
+  // Filter usage
+  const filterEvents = events.filter(e => e.event === 'filter_use');
+  const filterCounts = {};
+  filterEvents.forEach(e => {
+    const name = e.metadata?.filterName || 'unknown';
+    filterCounts[name] = (filterCounts[name] || 0) + 1;
+  });
+
+  // Engagement
+  const totalFavorites = events.filter(e => e.event === 'add_favorite').length;
+  const totalReviews = events.filter(e => e.event === 'submit_review').length;
+  const photoReviewsEvts = events.filter(e => e.event === 'add_photo_review').length;
+  const rewardUsed = events.filter(e => e.event === 'use_reward').length;
+  const rewardEarned = events.filter(e => e.event === 'earn_reward').length;
+
+  // Deposit warning
+  const depositWarningViews = events.filter(e => e.event === 'deposit_warning_view').length;
+
+  // AI recommendation clicks
+  const aiRecommendClicks = events.filter(e => e.event === 'ai_recommend_click').length;
+
+  // AI common requests
+  const aiRequests = events.filter(e => e.event === 'ai_chat_complete' && e.metadata?.request);
+  const requestCounts = {};
+  aiRequests.forEach(e => {
+    const req = e.metadata.request;
+    requestCounts[req] = (requestCounts[req] || 0) + 1;
+  });
 
   // Peak hours
   const peakHours = [];
@@ -108,6 +138,7 @@ async function aggregateDaily(restaurantId, dateStr) {
         uniqueSearchUsers: searchUsers.length,
         funnel: {
           restaurantViews: views,
+          tableViews,
           bookingStarted: bookingStarts,
           bookingCompleted: bookingCompletes,
           bookingConfirmed: confirmed,
@@ -118,6 +149,8 @@ async function aggregateDaily(restaurantId, dateStr) {
           viewToStart: views > 0 ? Math.round((bookingStarts / views) * 100) : 0,
           startToBook: bookingStarts > 0 ? Math.round((bookingCompletes / bookingStarts) * 100) : 0,
           bookToConfirm: bookingCompletes > 0 ? Math.round((confirmed / bookingCompletes) * 100) : 0,
+          confirmToCheckin: confirmed > 0 ? Math.round((checkedIn / confirmed) * 100) : 0,
+          checkinToComplete: checkedIn > 0 ? Math.round((completed / checkedIn) * 100) : 0,
         },
         tableTypeRatio: {
           vip: Math.round((tableTypeCounts.vip / tableTotal) * 100),
@@ -135,6 +168,15 @@ async function aggregateDaily(restaurantId, dateStr) {
         aiUniqueUsers: aiUsers.length,
         aiCompletedBookings: aiCompletes,
         aiConversionRate: aiChats > 0 ? Math.round((aiCompletes / aiChats) * 100) : 0,
+        aiRecommendClicks,
+        aiCommonRequests: Object.entries(requestCounts).map(([request, count]) => ({ request, count })),
+        totalFavorites,
+        totalReviews,
+        photoReviews: photoReviewsEvts,
+        rewardPointsUsed: rewardUsed,
+        rewardPointsEarned: rewardEarned,
+        depositWarningViews,
+        filterUsage: Object.entries(filterCounts).map(([filterName, count]) => ({ filterName, count })),
         peakHours,
         estimatedRevenue: paidDeposits,
         totalDeposits,

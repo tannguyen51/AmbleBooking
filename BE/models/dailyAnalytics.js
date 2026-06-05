@@ -61,6 +61,21 @@ const dailyAnalyticsSchema = new mongoose.Schema({
   aiUniqueUsers:       { type: Number, default: 0 },
   aiCompletedBookings: { type: Number, default: 0 },
   aiConversionRate:    { type: Number, default: 0 },
+  aiRecommendClicks:   { type: Number, default: 0 },
+  aiCommonRequests:    [{ request: String, count: Number }],
+
+  // Engagement
+  totalFavorites:      { type: Number, default: 0 },
+  totalReviews:        { type: Number, default: 0 },
+  photoReviews:        { type: Number, default: 0 },
+  rewardPointsUsed:    { type: Number, default: 0 },
+  rewardPointsEarned:  { type: Number, default: 0 },
+
+  // Deposit warning
+  depositWarningViews: { type: Number, default: 0 },
+
+  // Filter usage
+  filterUsage: [{ filterName: String, count: Number }],
 
   // Peak Hours (heatmap data)
   peakHours: [{

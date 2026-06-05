@@ -90,6 +90,9 @@ export default function AdminBookingsScreen() {
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Revenue
+  const [revenue, setRevenue] = useState<{ activeBookings: number; totalRevenue: number; monthlyData: Array<{ month: number; total: number; count: number }> } | null>(null);
+
   // Load restaurants
   useEffect(() => {
     const load = async () => {
@@ -106,18 +109,24 @@ export default function AdminBookingsScreen() {
     load();
   }, []);
 
-  // Load bookings when restaurant or search changes
+  // Load bookings + revenue when restaurant or search changes
   useEffect(() => {
     if (!selectedRestId) return;
     const load = async () => {
       setLoading(true);
       try {
-        const res = await adminAPI.getBookings({
-          restaurantId: selectedRestId,
-          search: searchText || undefined,
-          limit: 100,
-        } as any);
-        setBookings(res.data?.bookings || []);
+        const [res, revRes] = await Promise.all([
+          adminAPI.getBookings({
+            restaurantId: selectedRestId,
+            search: searchText || undefined,
+            limit: 100,
+          } as any),
+          adminAPI.getRestaurantRevenue(selectedRestId),
+        ]);
+        // Lọc chỉ lấy đơn active, bỏ cancelled/declined/no_show
+        const all = res.data?.bookings || [];
+        setBookings(all.filter((b: BookingItem) => !["cancelled", "declined", "no_show"].includes(b.status)));
+        setRevenue(revRes.data?.data || null);
       } catch {
         setBookings([]);
       } finally {
@@ -247,6 +256,28 @@ export default function AdminBookingsScreen() {
         />
       </View>
 
+      {/* Revenue Summary */}
+      {revenue && (
+        <View style={styles.revenueRow}>
+          <View style={[styles.revenueCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+            <Text style={[styles.revenueValue, { color: '#067647' }]}>{revenue.activeBookings}</Text>
+            <Text style={[styles.revenueLabel, { color: '#067647' }]}>Đơn active</Text>
+          </View>
+          <View style={[styles.revenueCard, { backgroundColor: '#FFFAEB', borderColor: '#FDE68A' }]}>
+            <Text style={[styles.revenueValue, { color: '#B54708' }]}>
+              {(revenue.totalRevenue / 1000000).toFixed(1)}M
+            </Text>
+            <Text style={[styles.revenueLabel, { color: '#B54708' }]}>Doanh thu</Text>
+          </View>
+          <View style={[styles.revenueCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+            <Text style={[styles.revenueValue, { color: '#1D4ED8' }]}>
+              {revenue.monthlyData.length > 0 ? `${revenue.monthlyData[0].count}` : 0}
+            </Text>
+            <Text style={[styles.revenueLabel, { color: '#1D4ED8' }]}>Đã HT</Text>
+          </View>
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
@@ -351,6 +382,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginTop: 8,
   },
   searchInput: { flex: 1, color: adminTheme.colors.onSurface, fontSize: 13 },
+
+  // Revenue Summary
+  revenueRow: {
+    flexDirection: "row", gap: 8, paddingHorizontal: 16, marginTop: 10, marginBottom: 4,
+  },
+  revenueCard: {
+    flex: 1, borderRadius: 12, padding: 10, borderWidth: 1, gap: 2, alignItems: "center",
+  },
+  revenueValue: { fontSize: 18, fontWeight: "900" },
+  revenueLabel: { fontSize: 10, fontWeight: "600" },
 
   // Loading
   loadingWrap: { marginTop: 30, alignItems: "center", gap: 8 },

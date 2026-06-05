@@ -292,6 +292,8 @@ export const analyticsAPI = {
     api.get("/partner/analytics/peak-hours", { params: { from, to } }),
   getAIMetrics: (from?: string, to?: string) =>
     api.get("/partner/analytics/ai", { params: { from, to } }),
+  getEngagement: (from?: string, to?: string) =>
+    api.get("/partner/analytics/engagement", { params: { from, to } }),
 };
 
 // ── Admin Analytics ──────────────────────────────────
@@ -351,6 +353,13 @@ export const adminAnalyticsAPI = {
     if (to) params.to = to;
     if (restaurantId) params.restaurantId = restaurantId;
     return api.get("/admin/analytics/ai", { params });
+  },
+  getEngagement: (restaurantId?: string, from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    if (restaurantId) params.restaurantId = restaurantId;
+    return api.get("/admin/analytics/engagement", { params });
   },
 };
 
@@ -421,6 +430,8 @@ export const adminAPI = {
     id: string,
     data: { status: string; reason?: string; paymentMethod?: string; transactionId?: string },
   ) => api.put(`/admin/bookings/${id}/status`, data),
+  getRestaurantRevenue: (id: string, params?: { from?: string; to?: string }) =>
+    api.get(`/admin/restaurants/${id}/revenue`, { params }),
 
   getRoutes: () => api.get("/admin/routes"),
   createRoute: (data: {

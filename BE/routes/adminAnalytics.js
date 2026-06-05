@@ -12,5 +12,6 @@ router.get('/tables', protectAdmin, analyticsController.getTableSelection);
 router.get('/cancellation', protectAdmin, analyticsController.getCancellationMetrics);
 router.get('/peak-hours', protectAdmin, analyticsController.getPeakHours);
 router.get('/ai', protectAdmin, analyticsController.getAIMetrics);
+router.get('/engagement', protectAdmin, analyticsController.getEngagement);
 
 module.exports = router;

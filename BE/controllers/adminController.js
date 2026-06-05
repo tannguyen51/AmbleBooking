@@ -638,6 +638,53 @@ exports.getBookings = async (req, res) => {
   }
 };
 
+// GET /api/admin/restaurants/:id/revenue
+exports.getRestaurantRevenue = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { from, to } = req.query;
+
+    const match = { restaurantId: id as any, status: { $in: ['confirmed', 'occupied', 'completed'] } };
+    if (from || to) {
+      match.createdAt = {};
+      if (from) match.createdAt.$gte = new Date(from);
+      if (to) match.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+    }
+
+    const [activeBookings, revenueAgg, monthlyAgg] = await Promise.all([
+      Booking.countDocuments(match),
+      Booking.aggregate([
+        { $match: { ...match, "payment.status": "paid" } },
+        { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
+      ]),
+      Booking.aggregate([
+        { $match: { restaurantId: id as any, status: "completed", "payment.status": "paid" } },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            total: { $sum: "$pricing.totalAmount" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: -1 } },
+        { $limit: 6 },
+      ]),
+    ]);
+
+    const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
+    const monthlyData = monthlyAgg.map(m => ({
+      month: m._id,
+      total: m.total,
+      count: m.count,
+    }));
+
+    return res.json({ success: true, data: { activeBookings, totalRevenue, monthlyData } });
+  } catch (err) {
+    console.error("[admin/getRestaurantRevenue]", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { status, reason, paymentMethod, transactionId } = req.body;

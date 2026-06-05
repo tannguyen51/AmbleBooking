@@ -31,6 +31,7 @@ router.put("/restaurants/:id/active", adminController.setRestaurantActive);
 // Bookings
 router.get("/bookings", adminController.getBookings);
 router.put("/bookings/:id/status", adminController.updateBookingStatus);
+router.get("/restaurants/:id/revenue", adminController.getRestaurantRevenue);
 
 // Routes
 router.get("/routes", adminController.getRoutes);

@@ -25,7 +25,7 @@ Markdown### 3. Thời lượng mặc định (Default Duration)
 
 **Grace Period (Ân hạn):** **20 phút** sau giờ đặt bàn.
 
-
+    
 4. Quy trình Đặt bàn cho Khách
 
 Khách chọn nhà hàng → Chọn ngày → Chọn ca (Trưa/Tối).

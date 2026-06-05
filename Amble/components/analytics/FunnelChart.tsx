@@ -20,8 +20,7 @@ export default function FunnelChart({ steps, color = "#FF6B35" }: FunnelChartPro
     <View style={styles.wrapper}>
       {steps.map((step, i) => {
         const ratio = step.value / maxVal;
-        const prevRatio = i > 0 ? steps[i - 1].value / maxVal : 1;
-        const conversion = i > 0 ? Math.round((step.value / steps[i - 1].value) * 100) : 100;
+        const conversion = i > 0 && steps[i - 1].value > 0 ? Math.round((step.value / steps[i - 1].value) * 100) : i > 0 ? 0 : 100;
         return (
           <View key={i}>
             <View style={styles.stepRow}>

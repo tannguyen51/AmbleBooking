@@ -12,6 +12,7 @@ router.get('/tables', protectPartner, checkPermission('dashboard', 'read'), anal
 router.get('/cancellation', protectPartner, checkPermission('dashboard', 'read'), analyticsController.getCancellationMetrics);
 router.get('/peak-hours', protectPartner, checkPermission('dashboard', 'read'), analyticsController.getPeakHours);
 router.get('/ai', protectPartner, checkPermission('dashboard', 'read'), analyticsController.getAIMetrics);
+router.get('/engagement', protectPartner, checkPermission('dashboard', 'read'), analyticsController.getEngagement);
 router.post('/event', analyticsController.recordEvent);
 
 module.exports = router;
