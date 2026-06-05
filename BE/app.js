@@ -44,8 +44,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 phút
-  max: 100, // tối đa 100 request/IP
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   message: { success: false, message: "Quá nhiều yêu cầu, vui lòng thử lại sau" },
   standardHeaders: true,
   legacyHeaders: false,

@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Image,
+  ScrollView,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
 import AdminCard from "../../components/admin/AdminCard";
 import { useTranslation } from "../../i18n/useTranslation";
+import Svg, { Rect, Line, Circle, Polyline, Text as SvgText } from "react-native-svg";
 
 interface Restaurant {
   _id: string;
@@ -26,6 +28,7 @@ interface Restaurant {
   cuisine?: string;
   isActive?: boolean;
   images?: string[];
+  subscriptionPackage?: string;
 }
 
 interface BookingItem {
@@ -115,18 +118,17 @@ export default function AdminBookingsScreen() {
     const load = async () => {
       setLoading(true);
       try {
-        const [res, revRes] = await Promise.all([
-          adminAPI.getBookings({
-            restaurantId: selectedRestId,
-            search: searchText || undefined,
-            limit: 100,
-          } as any),
-          adminAPI.getRestaurantRevenue(selectedRestId),
-        ]);
-        // Lọc chỉ lấy đơn active, bỏ cancelled/declined/no_show
+        const res = await adminAPI.getBookings({
+          restaurantId: selectedRestId,
+          search: searchText || undefined,
+          limit: 100,
+        } as any);
         const all = res.data?.bookings || [];
         setBookings(all.filter((b: BookingItem) => !["cancelled", "declined", "no_show"].includes(b.status)));
-        setRevenue(revRes.data?.data || null);
+        // Doanh thu không block danh sách đơn
+        adminAPI.getRestaurantRevenue(selectedRestId).then(revRes => {
+          setRevenue(revRes.data?.data || null);
+        }).catch(() => {});
       } catch {
         setBookings([]);
       } finally {
@@ -209,6 +211,11 @@ export default function AdminBookingsScreen() {
                   ) : (
                     <Ionicons name="restaurant-outline" size={22} color={adminTheme.colors.primary} />
                   )}
+                  {item.isActive && item.subscriptionPackage === "premium" && (
+                    <View style={styles.crownBadgeSmall}>
+                      <Ionicons name="diamond" size={10} color="#fff" />
+                    </View>
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.restName}>{item.name}</Text>
@@ -256,28 +263,98 @@ export default function AdminBookingsScreen() {
         />
       </View>
 
-      {/* Revenue Summary */}
-      {revenue && (
-        <View style={styles.revenueRow}>
-          <View style={[styles.revenueCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-            <Text style={[styles.revenueValue, { color: '#067647' }]}>{revenue.activeBookings}</Text>
-            <Text style={[styles.revenueLabel, { color: '#067647' }]}>Đơn active</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        {/* Revenue Summary Cards */}
+        {revenue && (
+          <View style={styles.revenueCards}>
+            <View style={[styles.revCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+              <Text style={[styles.revValue, { color: '#067647' }]}>{revenue.activeBookings}</Text>
+              <Text style={[styles.revLabel, { color: '#067647' }]}>Đơn active</Text>
+            </View>
+            <View style={[styles.revCard, { backgroundColor: '#FFFAEB', borderColor: '#FDE68A' }]}>
+              <Text style={[styles.revValue, { color: '#B54708' }]}>{(revenue.totalRevenue / 1000000).toFixed(1)}M</Text>
+              <Text style={[styles.revLabel, { color: '#B54708' }]}>Doanh thu</Text>
+            </View>
+            <View style={[styles.revCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <Text style={[styles.revValue, { color: '#1D4ED8' }]}>{revenue.monthlyData.length > 0 ? revenue.monthlyData.reduce((s: number, m: any) => s + m.count, 0) : 0}</Text>
+              <Text style={[styles.revLabel, { color: '#1D4ED8' }]}>Đã HT</Text>
+            </View>
           </View>
-          <View style={[styles.revenueCard, { backgroundColor: '#FFFAEB', borderColor: '#FDE68A' }]}>
-            <Text style={[styles.revenueValue, { color: '#B54708' }]}>
-              {(revenue.totalRevenue / 1000000).toFixed(1)}M
-            </Text>
-            <Text style={[styles.revenueLabel, { color: '#B54708' }]}>Doanh thu</Text>
-          </View>
-          <View style={[styles.revenueCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-            <Text style={[styles.revenueValue, { color: '#1D4ED8' }]}>
-              {revenue.monthlyData.length > 0 ? `${revenue.monthlyData[0].count}` : 0}
-            </Text>
-            <Text style={[styles.revenueLabel, { color: '#1D4ED8' }]}>Đã HT</Text>
-          </View>
-        </View>
-      )}
+        )}
 
+        {/* Financial Summary */}
+        {revenue && (
+          <View style={styles.finCard}>
+            <View style={styles.finRow}>
+              <View style={styles.finLeft}><View style={[styles.finDot, { backgroundColor: "#FB923C" }]} /><Text style={styles.finLabel}>Doanh thu</Text></View>
+              <Text style={styles.finValue}>{(revenue.totalRevenue / 1000000).toFixed(1)} tr</Text>
+            </View>
+            <View style={styles.finDivider} />
+            <View style={styles.finRow}>
+              <View style={styles.finLeft}><View style={[styles.finDot, { backgroundColor: "#F87171" }]} /><Text style={styles.finLabel}>Chi phí (ước)</Text></View>
+              <Text style={styles.finValue}>{Math.round(revenue.totalRevenue * 0.4 / 1000000).toFixed(1)} tr</Text>
+            </View>
+            <View style={styles.finDivider} />
+            <View style={styles.finRow}>
+              <View style={styles.finLeft}><View style={[styles.finDot, { backgroundColor: "#22C55E" }]} /><Text style={styles.finLabel}>Lợi nhuận</Text></View>
+              <Text style={[styles.finValue, { color: "#22C55E" }]}>{(revenue.totalRevenue * 0.6 / 1000000).toFixed(1)} tr</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Trend Chart */}
+        {revenue?.monthlyData?.length > 0 && (
+          <View style={styles.chartCard}>
+            <View style={styles.chartHeaderRow}>
+              <Text style={styles.chartTitle}>XU HƯỚNG</Text>
+              <Text style={styles.chartSubtitle}>(triệu đồng)</Text>
+            </View>
+            <Svg width={Math.max(280, revenue.monthlyData.length * 70)} height={180}>
+              {(() => {
+                const data = revenue.monthlyData;
+                const max = Math.max(...data.map((d: any) => d.total), 1);
+                const pad = { top: 20, bottom: 24, left: 20, right: 10 };
+                const plotW = (Math.max(280, data.length * 70) - pad.left - pad.right);
+                const plotH = 180 - pad.top - pad.bottom;
+                const gap = plotW / data.length;
+                const bw = Math.min(20, gap * 0.4);
+                const getY = (v: number) => pad.top + ((max - v) / max) * plotH;
+                const pts = data.map((d: any, i: number) => `${pad.left + i * gap + gap / 2},${getY(d.total)}`).join(" ");
+                const months = ["", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"];
+                return (
+                  <>
+                    {[0, 0.5, 1].map((r: number) => (
+                      <Line key={r} x1={pad.left} y1={pad.top + r * plotH} x2={pad.left + plotW} y2={pad.top + r * plotH} stroke="#E4E7EC" strokeWidth={0.5} />
+                    ))}
+                    {data.map((d: any, i: number) => {
+                      const cx = pad.left + i * gap + gap / 2;
+                      const bh = (d.total / max) * plotH;
+                      return (
+                        <React.Fragment key={i}>
+                          <Rect x={cx - bw / 2} y={getY(d.total)} width={bw} height={Math.max(bh, 1)} rx={3} fill="#FB923C" opacity={0.85} />
+                          <SvgText x={cx} y={getY(d.total) - 6} fill="#101828" fontSize={9} fontWeight="700" textAnchor="middle">{(d.total / 1000000).toFixed(1)}</SvgText>
+                          <SvgText x={cx} y={180 - 4} fill="#6B7280" fontSize={9} fontWeight="600" textAnchor="middle">{months[d.month] || d.month}</SvgText>
+                        </React.Fragment>
+                      );
+                    })}
+                    <Polyline points={pts} fill="none" stroke="#22C55E" strokeWidth={2} />
+                    {data.map((d: any, i: number) => (
+                      <Circle key={i} cx={pad.left + i * gap + gap / 2} cy={getY(d.total)} r={3} fill="#22C55E" />
+                    ))}
+                  </>
+                );
+              })()}
+            </Svg>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: "#FB923C" }]} /><Text style={styles.legendText}>Doanh thu</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: "#22C55E" }]} /><Text style={styles.legendText}>Xu hướng</Text></View>
+            </View>
+          </View>
+        )}
+
+      </ScrollView>
+
+      {/* Booking List */}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="small" color={adminTheme.colors.onSurface} />
@@ -287,6 +364,7 @@ export default function AdminBookingsScreen() {
         <FlatList
           data={bookings}
           keyExtractor={(item) => item._id}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const sc = STATUS_COLORS[item.status] || STATUS_COLORS.pending;
@@ -383,22 +461,50 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: adminTheme.colors.onSurface, fontSize: 13 },
 
-  // Revenue Summary
-  revenueRow: {
+  // Revenue Cards
+  revenueCards: {
     flexDirection: "row", gap: 8, paddingHorizontal: 16, marginTop: 10, marginBottom: 4,
   },
-  revenueCard: {
+  revCard: {
     flex: 1, borderRadius: 12, padding: 10, borderWidth: 1, gap: 2, alignItems: "center",
   },
-  revenueValue: { fontSize: 18, fontWeight: "900" },
-  revenueLabel: { fontSize: 10, fontWeight: "600" },
+  revValue: { fontSize: 18, fontWeight: "900" },
+  revLabel: { fontSize: 10, fontWeight: "600" },
+
+  // Financial Summary
+  finCard: {
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 8, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 2,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  finRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12,
+  },
+  finLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  finDot: { width: 10, height: 10, borderRadius: 3 },
+  finLabel: { fontSize: 15, fontWeight: "700", color: "#344054" },
+  finValue: { fontSize: 17, fontWeight: "700", color: "#101828" },
+  finDivider: { height: 1, backgroundColor: "#E4E7EC" },
+
+  // Trend Chart
+  chartCard: {
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 8, borderRadius: 14,
+    padding: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  chartHeaderRow: { flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 10 },
+  chartTitle: { fontSize: 12, fontWeight: "800", color: "#101828", letterSpacing: 0.5 },
+  chartSubtitle: { fontSize: 10, color: "#9CA3AF", fontWeight: "600" },
+  legendRow: { flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 8 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendDot: { width: 9, height: 9, borderRadius: 3 },
+  legendText: { fontSize: 11, fontWeight: "600", color: "#6B7280" },
 
   // Loading
   loadingWrap: { marginTop: 30, alignItems: "center", gap: 8 },
   loadingText: { color: adminTheme.colors.muted, fontSize: 12 },
 
   // List
-  list: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  list: { paddingHorizontal: 16, gap: 10, paddingBottom: 24 },
 
   // Empty
   emptyWrap: { alignItems: "center", paddingVertical: 48, gap: 8 },
@@ -426,6 +532,17 @@ const styles = StyleSheet.create({
   },
   restName: { fontSize: 15, fontWeight: "700", color: adminTheme.colors.onSurface },
   restSub: { fontSize: 12, color: adminTheme.colors.muted, marginTop: 2 },
+  crownBadgeSmall: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#D4AF37",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // ── Booking Card ─────────────────────────────────────
   bookingHeader: {

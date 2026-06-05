@@ -12,6 +12,7 @@ import {
   Image,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
 import { AdminHeader } from "../../components/admin/AdminHeader";
@@ -197,13 +198,20 @@ export default function AdminPartnersScreen() {
             >
               <AdminCard style={styles.card}>
                 <View style={styles.cardHeaderRow}>
-                  {item.restaurantImage ? (
-                    <Image source={{ uri: item.restaurantImage }} style={styles.restImg} />
-                  ) : (
-                    <View style={styles.restImgPlaceholder}>
-                      <Text style={styles.restImgLetter}>{(item.restaurantName || "N")[0]}</Text>
-                    </View>
-                  )}
+                  <View style={styles.restImgWrap}>
+                    {item.restaurantImage ? (
+                      <Image source={{ uri: item.restaurantImage }} style={styles.restImg} />
+                    ) : (
+                      <View style={styles.restImgPlaceholder}>
+                        <Text style={styles.restImgLetter}>{(item.restaurantName || "N")[0]}</Text>
+                      </View>
+                    )}
+                    {item.subscriptionPackage === "premium" && (
+                      <View style={styles.crownBadgeSmall}>
+                        <Ionicons name="diamond" size={10} color="#fff" />
+                      </View>
+                    )}
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{item.ownerName}</Text>
                     <Text style={styles.meta}>{item.restaurantName}</Text>
@@ -432,6 +440,11 @@ const styles = StyleSheet.create({
   cardHeaderRow: {
     flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10,
   },
+  restImgWrap: {
+    position: "relative",
+    width: 48,
+    height: 48,
+  },
   restImg: {
     width: 48, height: 48, borderRadius: 10, backgroundColor: adminTheme.colors.surfaceVariant,
   },
@@ -441,6 +454,17 @@ const styles = StyleSheet.create({
   },
   restImgLetter: {
     fontSize: 18, fontWeight: "800", color: adminTheme.colors.muted,
+  },
+  crownBadgeSmall: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#D4AF37",
+    alignItems: "center",
+    justifyContent: "center",
   },
   name: {
     fontSize: 15,

@@ -356,7 +356,9 @@ exports.approvePartner = async (req, res) => {
 
     // Kích hoạt nhà hàng của partner
     if (partner.restaurantId) {
-      await Restaurant.findByIdAndUpdate(partner.restaurantId, { isActive: true });
+      const restUpdate = { isActive: true };
+      if (subscriptionPackage) restUpdate.subscriptionPackage = subscriptionPackage;
+      await Restaurant.findByIdAndUpdate(partner.restaurantId, restUpdate);
     }
 
     await logAudit({
@@ -654,14 +656,14 @@ exports.getRestaurantRevenue = async (req, res) => {
     const [activeBookings, revenueAgg, monthlyAgg] = await Promise.all([
       Booking.countDocuments(match),
       Booking.aggregate([
-        { $match: { ...match, "payment.status": "paid" } },
+        { $match: { ...match, status: "completed" } },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
       Booking.aggregate([
-        { $match: { restaurantId: id, status: "completed", "payment.status": "paid" } },
+        { $match: { restaurantId: id, status: "completed" } },
         {
           $group: {
-            _id: { $month: "$createdAt" },
+            _id: { $month: "$completedAt" },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },

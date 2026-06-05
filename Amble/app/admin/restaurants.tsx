@@ -200,7 +200,15 @@ export default function AdminRestaurantsScreen() {
           renderItem={({ item }) => (
             <AdminCard style={styles.card}>
               {item.images?.[0] ? (
-                <Image source={{ uri: item.images[0] }} style={styles.coverImage} />
+                <View style={styles.coverWrap}>
+                  <Image source={{ uri: item.images[0] }} style={styles.coverImage} />
+                  {item.isActive && item.subscriptionPackage === "premium" && (
+                    <View style={styles.crownBadge}>
+                      <Ionicons name="diamond" size={14} color="#fff" />
+                      <Text style={styles.crownBadgeText}>Premium</Text>
+                    </View>
+                  )}
+                </View>
               ) : null}
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.meta}>
@@ -213,7 +221,7 @@ export default function AdminRestaurantsScreen() {
                   tone={item.isActive ? "success" : "danger"}
                 />
                 {item.isFeatured ? <Badge label={t("admin.restaurants.featured")} tone="info" /> : null}
-                {item.subscriptionPackage && item.subscriptionPackage !== "basic" ? (
+                {item.isActive && item.subscriptionPackage && item.subscriptionPackage !== "basic" ? (
                   <Badge
                     label={item.subscriptionPackage === "premium" ? "Premium" : "Pro"}
                     tone={item.subscriptionPackage === "premium" ? "info" : "default"}
@@ -369,6 +377,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: adminTheme.colors.surfaceVariant,
   },
+  coverWrap: { position: "relative" },
+  crownBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#D4AF37",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  crownBadgeText: { fontSize: 9, fontWeight: "900", color: "#fff", letterSpacing: 0.3 },
   name: {
     fontSize: 15,
     fontWeight: "700",
