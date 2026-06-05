@@ -13,6 +13,7 @@ const {
   setCleaningDone,
   getRestaurantProfile,
   updateRestaurantProfile,
+  upgradeSubscription,
 } = require("../controllers/partnerDashboardController");
 const {
   getStaffMembers,
@@ -59,6 +60,7 @@ router.post("/bookings/:bookingId/complete", protectPartner, checkPermission('or
 // Restaurant profile routes
 router.get("/restaurant-profile", protectPartner, checkPermission('restaurant', 'read'), getRestaurantProfile);
 router.put("/restaurant-profile", protectPartner, checkPermission('restaurant', 'update'), updateRestaurantProfile);
+router.post("/subscription/upgrade", protectPartner, upgradeSubscription);
 
 // Staff management routes - only owner and manager
 router.get("/staff", protectPartner, checkStaffManagementPermission, getStaffMembers);

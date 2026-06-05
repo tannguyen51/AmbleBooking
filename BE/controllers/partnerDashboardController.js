@@ -1,9 +1,20 @@
 const Booking = require("../models/booking");
 const Table = require("../models/table");
+const Partner = require("../models/partner");
 const Restaurant = require("../models/restaurant");
 
 const VALID_TABLE_TYPES = ["vip", "view", "regular", "standard"];
 const VALID_OPEN_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const SUBSCRIPTION_PLANS = {
+  pro: {
+    label: "Gói cơ bản",
+    monthlyFee: 0,
+  },
+  premium: {
+    label: "Gói thông dụng",
+    monthlyFee: 699000,
+  },
+};
 
 const normalizeImageList = (images) => {
   if (!Array.isArray(images)) return [];
@@ -834,6 +845,70 @@ exports.updateRestaurantProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("[updateRestaurantProfile]", err);
+    return res.status(500).json({ success: false, message: "Loi server" });
+  }
+};
+
+// POST /api/partner/subscription/upgrade
+exports.upgradeSubscription = async (req, res) => {
+  try {
+    const partnerId = req.partner._id;
+    const { package: requestedPackage, paymentMethod = "in_app" } = req.body || {};
+
+    if (!SUBSCRIPTION_PLANS[requestedPackage]) {
+      return res.status(400).json({
+        success: false,
+        message: "Gói đăng ký không hợp lệ.",
+      });
+    }
+
+    const partner = await Partner.findById(partnerId);
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Tài khoản đối tác không tồn tại.",
+      });
+    }
+
+    const restaurant = partner.restaurantId
+      ? await Restaurant.findById(partner.restaurantId)
+      : await Restaurant.findOne({ partnerId });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy hồ sơ nhà hàng.",
+      });
+    }
+
+    const plan = SUBSCRIPTION_PLANS[requestedPackage];
+    const now = new Date();
+    const nextExpiry = new Date(now);
+    nextExpiry.setMonth(nextExpiry.getMonth() + 1);
+
+    partner.subscriptionPackage = requestedPackage;
+    partner.subscriptionStatus = "active";
+    partner.subscriptionExpiry = plan.monthlyFee > 0 ? nextExpiry : null;
+    restaurant.subscriptionPackage = requestedPackage;
+
+    await Promise.all([partner.save(), restaurant.save()]);
+
+    return res.json({
+      success: true,
+      message:
+        requestedPackage === "premium"
+          ? "Thanh toán thành công. Nhà hàng đã được nâng cấp lên gói thông dụng."
+          : "Đã cập nhật gói cơ bản.",
+      payment: {
+        method: paymentMethod,
+        amount: plan.monthlyFee,
+        currency: "VND",
+      },
+      partner,
+      restaurant,
+    });
+  } catch (err) {
+    console.error("[upgradeSubscription]", err);
     return res.status(500).json({ success: false, message: "Loi server" });
   }
 };

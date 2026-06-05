@@ -29,13 +29,33 @@ function fuzzyRegex(str) {
   return new RegExp(pattern, 'i');
 }
 
+function prioritizePremium(restaurants) {
+  return restaurants.sort((a, b) => {
+    const premiumRank =
+      Number(b.subscriptionPackage === 'premium') -
+      Number(a.subscriptionPackage === 'premium');
+    if (premiumRank) return premiumRank;
+
+    const featuredRank = Number(b.isFeatured) - Number(a.isFeatured);
+    if (featuredRank) return featuredRank;
+
+    const ratingRank = Number(b.rating || 0) - Number(a.rating || 0);
+    if (ratingRank) return ratingRank;
+
+    return Number(b.reviewCount || 0) - Number(a.reviewCount || 0);
+  });
+}
+
 // GET /api/restaurants/featured
 exports.getFeatured = async (req, res) => {
   try {
-    const restaurants = await Restaurant.find({ isActive: true, isFeatured: true })
-      .sort({ rating: -1 })
+    const restaurants = await Restaurant.find({
+      isActive: true,
+      $or: [{ isFeatured: true }, { subscriptionPackage: 'premium' }],
+    })
+      .sort({ isFeatured: -1, rating: -1 })
       .lean();
-    return res.json({ success: true, restaurants });
+    return res.json({ success: true, restaurants: prioritizePremium(restaurants) });
   } catch (err) {
     console.error('[getFeatured]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -86,7 +106,7 @@ exports.getAll = async (req, res) => {
       .sort({ isFeatured: -1, rating: -1 })
       .lean();
 
-    return res.json({ success: true, restaurants });
+    return res.json({ success: true, restaurants: prioritizePremium(restaurants) });
   } catch (err) {
     console.error('[getAll]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });
