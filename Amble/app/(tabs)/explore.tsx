@@ -45,7 +45,7 @@ const SORT_OPTIONS = [
   { key: "rating", labelKey: "home.sortRating" },
   { key: "reviews", labelKey: "home.sortReviews" },
   { key: "name", labelKey: "home.sortName" },
-];
+] as const;
 const QUICK_TAGS = ["Món Việt", "Đồ Âu", "Rooftop", "Nhật Bản", "Lẩu nướng"];
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {

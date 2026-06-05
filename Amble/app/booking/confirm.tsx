@@ -10,18 +10,19 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { bookingAPI } from "@/services/api";
-import { useTranslation } from "../../i18n/useTranslation";
+import { bookingAPI, paymentAPI } from "@/services/api";
+import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
 import { useAuthStore } from "@/store/authStore";
 
 const PRIMARY = "#FF6B35";
 
 //type PaymentId = "momo" | "zalopay" | "bank" | "credit";
-type PaymentId = "bank";
+type PaymentId = "bank" | "payos";
 const PAYMENT_METHODS: {
   id: PaymentId;
   name: string;
@@ -29,6 +30,7 @@ const PAYMENT_METHODS: {
 }[] = [
   //{ id: "momo", name: "MoMo", icon: "wallet-outline" },
   //{ id: "zalopay", name: "ZaloPay", icon: "phone-portrait-outline" },
+  { id: "payos", name: "PayOS", icon: "card-outline" },
   { id: "bank", name: "Chuyển khoản", icon: "business-outline" },
   //{ id: "credit", name: "Thẻ tín dụng", icon: "card-outline" },
 ];
@@ -40,7 +42,7 @@ interface VoucherItem {
   isPercent: boolean;
 }
 
-const TABLE_TYPE_LABELS: Record<string, string> = {
+const TABLE_TYPE_LABELS: Record<string, TranslationKey> = {
   vip: "booking.select.typeVIP",
   view: "booking.select.typeView",
   regular: "booking.select.typeRegular",
@@ -80,7 +82,7 @@ export default function ConfirmBookingScreen() {
   const [loading, setLoading] = useState(false);
   const [voucherLoading, setVoucherLoading] = useState(true);
   const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("bank");
+  const [selectedPayment, setSelectedPayment] = useState<PaymentId>("payos");
   const [showPayments, setShowPayments] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherItem | null>(
@@ -192,6 +194,35 @@ export default function ConfirmBookingScreen() {
         voucherDiscount: discount,
       });
       const booking = res.data.booking;
+      if (selectedPayment === "payos") {
+        try {
+          const returnUrl = `https://amblebooking-production.up.railway.app/api/payment/payos-return?bookingId=${booking._id}`;
+          const cancelUrl = `https://amblebooking-production.up.railway.app/api/payment/payos-cancel-page?bookingId=${booking._id}`;
+          const payosRes = await paymentAPI.createPayosPayment({
+            bookingId: booking._id,
+            returnUrl,
+            cancelUrl,
+          });
+          const checkoutUrl = payosRes.data.checkoutUrl;
+
+          if (checkoutUrl) {
+            await Linking.openURL(checkoutUrl);
+          }
+
+          // Về màn history, user kiểm tra trạng thái sau
+          router.replace("/(tabs)/history" as any);
+          return;
+        } catch (payosErr: any) {
+          if (__DEV__) console.error('[DEBUG] PayOS error:', payosErr);
+          Alert.alert(
+            t("common.error"),
+            payosErr?.response?.data?.message || "Lỗi tạo link thanh toán PayOS. Vui lòng thử lại.",
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       if (selectedPayment === "bank") {
         router.push({
           pathname: "/booking/payment" as any,
@@ -480,8 +511,7 @@ export default function ConfirmBookingScreen() {
             style={{ marginTop: 1 }}
           />
           <Text style={s.infoTxt}>
-            Tiền cọc sẽ được trừ vào hóa đơn khi đến nhà hàng. Hủy trước 1 - 3 ngày sẽ được:
-            hoàn tiền cọc.
+            {t("booking.confirm.policy")}
           </Text>
         </View>
         <View style={{ height: 100 }} />

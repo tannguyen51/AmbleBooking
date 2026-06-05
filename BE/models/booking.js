@@ -41,23 +41,26 @@ const bookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "draft",
         "pending",
-        "pending_payment",
         "confirmed",
-        "paid",
+        "occupied",
         "completed",
         "cancelled",
-        "refund_pending",
-        "refunded",
+        "declined",
+        "no_show",
       ],
-      default: "draft",
+      default: "pending",
     },
     payment: {
+      status: {
+        type: String,
+        enum: ["unpaid", "paid", "refund_pending", "refunded"],
+        default: "unpaid",
+      },
       transactionId: String,
       method: {
         type: String,
-        enum: ["momo", "bank", "credit", "apple"],
+        enum: ["momo", "bank", "credit", "apple", "payos", "cash"],
       },
       paidAt: Date,
       expectedContent: String,
@@ -65,11 +68,23 @@ const bookingSchema = new mongoose.Schema(
       bankCode: String,
       accountNumber: String,
       amount: Number,
+      payosOrderCode: Number,
+      payosPaymentLinkId: String,
+      payosStatus: String,
     },
-    conversationSessionId: String,
-    confirmedAt: Date,
-    cancelledAt: Date,
-    cancellationReason: String,
+    // Nguồn đặt
+    source: {
+      type: String,
+      enum: ['app', 'walkin', 'phone', 'facebook', 'google', 'zalo', 'other'],
+      default: 'app',
+    },
+    // Thông tin khách (cho walk-in)
+    customerInfo: {
+      name:  { type: String, default: '' },
+      phone: { type: String, default: '' },
+      email: { type: String, default: '' },
+    },
+    // Refund
     refund: {
       refundPercent: { type: Number, default: 0 },
       refundAmount: { type: Number, default: 0 },
@@ -79,6 +94,11 @@ const bookingSchema = new mongoose.Schema(
       accountNumber: { type: String, default: "" },
       accountName: { type: String, default: "" },
     },
+    confirmedAt: Date,
+    cancelledAt: Date,
+    cancellationReason: String,
+    walkedInAt: Date,
+    completedAt: Date,
   },
   { timestamps: true },
 );

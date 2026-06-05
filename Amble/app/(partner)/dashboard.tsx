@@ -29,6 +29,9 @@ interface DashboardOverview {
   totalTables: number;
   availableTables: number;
   bookedTables: number;
+  reservedTables?: number;
+  occupiedTables?: number;
+  cleaningTables?: number;
   pendingOrders: number;
   todayBookings: number;
 }
@@ -70,6 +73,8 @@ export default function PartnerDashboard() {
   const [pendingBookings, setPendingBookings] = useState<PendingBookingItem[]>(
     [],
   );
+  const [floorTables, setFloorTables] = useState<any[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -78,11 +83,12 @@ export default function PartnerDashboard() {
     overview.totalTables > 0
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)
       : 0;
-  const estimatedBaseRevenue = Math.max(
+  const hasActivity = overview.todayBookings > 0 || overview.bookedTables > 0 || overview.pendingOrders > 0;
+  const estimatedBaseRevenue = hasActivity ? Math.max(
     overview.todayBookings * 950000,
     overview.bookedTables * 750000,
     3200000,
-  );
+  ) : 0;
   const dailyRevenue = [0.48, 0.66, 0.41, 0.76, 0.55, 0.84, 0.69].map((r) =>
     Math.round(estimatedBaseRevenue * r),
   );
@@ -91,10 +97,10 @@ export default function PartnerDashboard() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const avgDailyRevenue = dailyRevenue.reduce((sum, v) => sum + v, 0) / dailyRevenue.length;
   const monthlyRevenue = Math.round(avgDailyRevenue * daysInMonth);
-  const growthRate = Math.max(
-    8,
+  const growthRate = hasActivity ? Math.max(
+    0,
     Math.min(35, Math.round((occupancyRate + overview.todayBookings * 2) / 5)),
-  );
+  ) : 0;
   const maxRevenueInWeek = Math.max(...dailyRevenue, 1);
 
   const dayLabels = [
@@ -109,7 +115,7 @@ export default function PartnerDashboard() {
   const revenueBars = dailyRevenue.map((value, index) => ({
     label: dayLabels[index],
     value,
-    heightPercent: Math.max(18, Math.round((value / maxRevenueInWeek) * 100)),
+    heightPercent: hasActivity ? Math.max(18, Math.round((value / maxRevenueInWeek) * 100)) : 0,
     highlight: index === 6,
   }));
 
@@ -125,6 +131,8 @@ export default function PartnerDashboard() {
       const res = await partnerDashboardAPI.getOverview();
       setOverview(res.data?.overview || DEFAULT_OVERVIEW);
       setPendingBookings(res.data?.pendingBookings || []);
+      setFloorTables(res.data?.floorTables || []);
+      setUpcomingBookings(res.data?.upcomingBookings || []);
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không thể tải dashboard partner";
@@ -221,6 +229,24 @@ export default function PartnerDashboard() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────────────────
+
+  const getTableStatusColor = (status: string, table?: any) => {
+    // VIP tables get purple tint
+    const isVip = table?.type === "vip";
+    switch (status) {
+      case "available":
+        return { color: "#22C55E", bg: "#F0FDF4", border: "#86EFAC" };
+      case "reserved":
+        return { color: isVip ? "#9333EA" : "#EAB308", bg: isVip ? "#FAF5FF" : "#FEFCE8", border: isVip ? "#C4B5FD" : "#FDE68A" };
+      case "occupied":
+        return { color: "#EF4444", bg: "#FEF2F2", border: "#FECACA" };
+      case "cleaning":
+        return { color: "#9CA3AF", bg: "#F3F4F6", border: "#D1D5DB" };
+      default:
+        return { color: "#22C55E", bg: "#F0FDF4", border: "#86EFAC" };
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -300,6 +326,96 @@ export default function PartnerDashboard() {
           />
         </Animated.View>
 
+        {/* ── Floor Plan - Sơ đồ bàn ───────────────────────── */}
+        {floorTables.length > 0 && (
+          <Animated.View style={[slideUp(chartAnim), { marginBottom: 16 }]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="grid-outline" size={14} color="#1A1A1A" />
+                <Text style={styles.sectionTitle}>Sơ đồ bàn</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push("/(partner)/tables")}>
+                <View style={styles.sectionLinkBtn}>
+                  <Text style={styles.sectionLink}>{t("common.viewAll")}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            {/* Legend */}
+            <View style={styles.legendRow}>
+              {[
+                { color: "#22C55E", label: "Trống" },
+                { color: "#EAB308", label: "Đã đặt" },
+                { color: "#EF4444", label: "Đang dùng" },
+                { color: "#9CA3AF", label: "Đang dọn" },
+                { color: "#F97316", label: "Quá giờ" },
+              ].map((item) => (
+                <View key={item.color} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                  <Text style={styles.legendLabel}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+            {/* Table Grid */}
+            <View style={styles.floorGrid}>
+              {floorTables.map((table: any) => {
+                const tableStatus = getTableStatusColor(table.status, table);
+                return (
+                  <TouchableOpacity
+                    key={table.id}
+                    style={[
+                      styles.floorCell,
+                      { backgroundColor: tableStatus.bg, borderColor: tableStatus.color },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.floorCellName, { color: tableStatus.color }]}>
+                      {table.name}
+                    </Text>
+                    {table.currentBooking && (
+                      <Text style={[styles.floorCellGuest, { color: tableStatus.color }]}>
+                        {table.currentBooking.guests}kh
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ── Upcoming bookings ─────────────────────────────── */}
+        {upcomingBookings.length > 0 && (
+          <Animated.View style={[slideUp(ordersAnim), { marginBottom: 16 }]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="time-outline" size={14} color="#1A1A1A" />
+                <Text style={styles.sectionTitle}>Booking sắp tới</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push("/(partner)/orders")}>
+                <View style={styles.sectionLinkBtn}>
+                  <Text style={styles.sectionLink}>{t("common.viewAll")}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            {upcomingBookings.slice(0, 5).map((bk: any) => (
+              <View key={bk.id} style={styles.upcomingCard}>
+                <View style={styles.upcomingLeft}>
+                  <View style={styles.upcomingTimeBox}>
+                    <Text style={styles.upcomingTimeH}>{bk.time?.split(":")[0]}</Text>
+                    <Text style={styles.upcomingTimeM}>:{bk.time?.split(":")[1]}</Text>
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.upcomingName}>{bk.userName}</Text>
+                  <Text style={styles.upcomingDetail}>
+                    {bk.tableNumber} • {bk.guests} khách
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
         {/* ── Live operation metrics card ──────────────────────────────────────────────── */}
         <Animated.View style={slideUp(chartAnim)}>
           <LinearGradient
@@ -319,14 +435,16 @@ export default function PartnerDashboard() {
                   <Text style={styles.revenueLabel}>{t("partner.dashboard.revenue")}</Text>
                 </View>
                 <Text style={styles.revenueAmount}>
-                  {monthlyRevenue.toLocaleString("vi-VN")}vnd
+                  {hasActivity ? monthlyRevenue.toLocaleString("vi-VN") : "---"} vnd
                 </Text>
-                <View style={styles.revenueGrowthRow}>
-                  <Text style={styles.revenueGrowthUp}>â†‘ {growthRate}%</Text>
-                  <Text style={styles.revenueGrowthLabel}>
-                    {t("partner.dashboard.revenueCompare")}
-                  </Text>
-                </View>
+                {hasActivity && (
+                  <View style={styles.revenueGrowthRow}>
+                    <Text style={styles.revenueGrowthUp}>↑ {growthRate}%</Text>
+                    <Text style={styles.revenueGrowthLabel}>
+                      {t("partner.dashboard.revenueCompare")}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -387,7 +505,7 @@ export default function PartnerDashboard() {
                       {booking.tableNumber}
                     </Text>
                     <Text style={styles.pendingTime}>
-                      {booking.date} â€¢ {booking.time}
+                      {booking.date} • {booking.time}
                     </Text>
                     <Text style={styles.pendingGuests}>
                       {booking.guests} {t("partner.dashboard.guests")}
@@ -714,4 +832,34 @@ const styles = StyleSheet.create({
   confirmBtnGrad: { flex: 1, alignItems: "center", justifyContent: "center" },
   confirmBtnText: { fontSize: 13, color: "#fff", fontWeight: "800" },
 
+  // Floor plan
+  legendRow: {
+    flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 10, paddingHorizontal: 2,
+  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendLabel: { fontSize: 10, color: "#6B7280", fontWeight: "600" },
+  floorGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 8,
+  },
+  floorCell: {
+    width: "18%", aspectRatio: 1, borderRadius: 10, borderWidth: 2,
+    alignItems: "center", justifyContent: "center", padding: 2,
+  },
+  floorCellName: { fontSize: 9, fontWeight: "800", textAlign: "center" },
+  floorCellGuest: { fontSize: 7, marginTop: 1 },
+
+  // Upcoming bookings
+  upcomingCard: {
+    flexDirection: "row", backgroundColor: "#fff", borderRadius: 14,
+    borderWidth: 1, borderColor: "#F3F4F6", padding: 12, marginBottom: 8,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  upcomingLeft: { alignItems: "center", marginRight: 14, width: 44 },
+  upcomingTimeBox: { alignItems: "center" },
+  upcomingTimeH: { fontSize: 16, fontWeight: "900", color: "#FF6B35", lineHeight: 18 },
+  upcomingTimeM: { fontSize: 11, color: "#9CA3AF", fontWeight: "700" },
+  upcomingName: { fontSize: 14, fontWeight: "800", color: "#1A1A1A" },
+  upcomingDetail: { fontSize: 12, color: "#6B7280", marginTop: 2 },
 });

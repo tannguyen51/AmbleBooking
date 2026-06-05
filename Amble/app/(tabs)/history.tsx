@@ -25,7 +25,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 
-type Tab = "active" | "pending_payment" | "completed";
+type Tab = "active" | "completed";
 
 const BANK_OPTIONS = [
   "Vietcombank",
@@ -48,49 +48,29 @@ export default function BookingHistoryScreen() {
     {
       id: "active",
       label: t("history.tabActive"),
-      statuses: ["pending", "confirmed", "paid", "draft"],
+      statuses: ["pending", "confirmed", "occupied"],
     },
-    {
-      id: "pending_payment",
-      label: t("history.tabPendingPayment"),
-      statuses: ["pending_payment"],
-    },
-    { id: "completed", label: t("history.tabCompleted"), statuses: ["completed"] },
+    { id: "completed", label: t("history.tabCompleted"), statuses: ["completed", "cancelled", "no_show"] },
   ];
 
   const STATUS_DISPLAY: Record<
     string,
     { label: string; color: string; bg: string }
   > = {
-    draft: { label: t("history.statusPending"), color: "#92400E", bg: "#FEF3C7" },
-    pending: { label: t("history.statusPending"), color: "#92400E", bg: "#FEF3C7" },
-    pending_payment: {
-      label: t("history.statusPendingPayment"),
-      color: "#B45309",
-      bg: "#FEF3C7",
-    },
-    confirmed: { label: t("history.statusConfirmed"), color: "#065F46", bg: "#D1FAE5" },
-    paid: { label: t("history.statusPaid"), color: "#1D4ED8", bg: "#DBEAFE" },
-    completed: { label: t("history.statusCompleted"), color: "#374151", bg: "#F3F4F6" },
-    cancelled: { label: t("history.statusCancelled"), color: "#991B1B", bg: "#FEE2E2" },
-    refund_pending: {
-      label: t("history.statusRefundPending"),
-      color: "#92400E",
-      bg: "#FEF3C7",
-    },
-    refunded: { label: t("history.statusRefunded"), color: "#065F46", bg: "#D1FAE5" },
+    pending: { label: t("history.statusPending"), color: "#E69A00", bg: "#FFF7E2" },
+    confirmed: { label: t("history.statusConfirmed"), color: "#16A34A", bg: "#E6F7E6" },
+    occupied: { label: t("history.statusOccupied"), color: "#DC2626", bg: "#FFE6E6" },
+    completed: { label: t("history.statusCompleted"), color: "#6B7280", bg: "#F3F4F6" },
+    cancelled: { label: t("history.statusCancelled"), color: "#DC2626", bg: "#FFE6E6" },
+    no_show: { label: t("history.statusNoShow"), color: "#6B7280", bg: "#F3F4F6" },
   };
 
   const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
-    pending_payment: { label: t("history.statusPendingPayment"), color: "#B45309" },
-    paid: { label: t("history.statusPaid"), color: "#1D4ED8" },
-    completed: { label: t("history.statusPaid"), color: "#1D4ED8" },
-    cancelled: { label: t("history.statusCancelled"), color: "#991B1B" },
+    unpaid: { label: t("history.statusUnpaid"), color: "#E69A00" },
+    paid: { label: t("history.statusPaid"), color: "#16A34A" },
     refund_pending: { label: t("history.statusRefundPending"), color: "#92400E" },
     refunded: { label: t("history.statusRefunded"), color: "#065F46" },
-    confirmed: { label: t("history.statusUnpaid"), color: "#6B7280" },
-    pending: { label: t("history.statusUnpaid"), color: "#6B7280" },
-    draft: { label: t("history.statusUnpaid"), color: "#6B7280" },
+    confirmed: { label: "Đã xác nhận", color: "#16A34A" },
   };
 
   const [activeTab, setActiveTab] = useState<Tab>("active");
@@ -129,7 +109,7 @@ export default function BookingHistoryScreen() {
   };
 
   const getPaymentCountdown = (booking: any) => {
-    if (booking.status !== "pending_payment") return null;
+    if (booking.payment?.status !== "unpaid") return null;
     if (booking.paymentExpiresAt) {
       const secondsLeft = Math.max(
         0,
@@ -149,7 +129,7 @@ export default function BookingHistoryScreen() {
   };
 
   const hasPaidBooking = (booking: any) => {
-    return Boolean(booking?.payment?.paidAt) || ["paid", "completed"].includes(booking?.status);
+    return booking?.payment?.status === "paid";
   };
 
   const fetchBookings = useCallback(async () => {
@@ -180,7 +160,7 @@ export default function BookingHistoryScreen() {
 
     setCancelling(bookingId);
     try {
-      if (!hasPaidBooking(booking)) {
+      if (booking.payment?.status !== "paid") {
         const res = await bookingAPI.cancel(bookingId, { reason: "Người dùng hủy" });
         const newStatus = res.data?.booking?.status || "cancelled";
         setBookings((prev) =>
@@ -262,9 +242,9 @@ export default function BookingHistoryScreen() {
   const renderItem = ({ item }: { item: any }) => {
     const restaurant = item.restaurantId;
     const table = item.tableId;
-    const status = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.draft;
+    const status = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.pending;
     const paymentStatus =
-      PAYMENT_STATUS[item.status] || PAYMENT_STATUS.confirmed;
+      PAYMENT_STATUS[item.payment?.status] || PAYMENT_STATUS.confirmed;
     const paymentCountdown = getPaymentCountdown(item);
     const goToPayment = () =>
       router.push({
@@ -282,13 +262,10 @@ export default function BookingHistoryScreen() {
         },
       });
     const canCancel = [
-      "draft",
       "pending",
-      "pending_payment",
       "confirmed",
-      "paid",
     ].includes(item.status);
-    const canPay = item.status === "pending_payment";
+    const canPay = item.payment?.status === "unpaid";
 
     return (
       <View style={c.card}>

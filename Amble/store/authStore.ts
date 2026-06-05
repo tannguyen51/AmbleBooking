@@ -51,8 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
+      // Debug: log full error
+      console.log('[auth:login] error:', error.message);
+      console.log('[auth:login] response:', JSON.stringify(error.response?.data));
+      console.log('[auth:login] status:', error.response?.status);
       const message =
-        error.response?.data?.message || 'Login failed. Please try again.';
+        error.response?.data?.message || error.message || 'Login failed. Please try again.';
       throw new Error(message);
     }
   },

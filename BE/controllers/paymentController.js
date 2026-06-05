@@ -1,5 +1,23 @@
 const Booking = require("../models/booking");
+const Table = require("../models/table");
 const payos = require("../config/payos");
+
+// ── POST /api/payment/payos-register-webhook ──────────
+exports.registerPayosWebhook = async (req, res) => {
+  try {
+    const { webhookUrl } = req.body;
+    if (!webhookUrl) {
+      return res.status(400).json({ success: false, message: "Thiếu webhookUrl" });
+    }
+
+    const result = await payos.webhooks.confirm(webhookUrl);
+    console.log("[payos-register] Webhook registered:", webhookUrl);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error("[payos-register]", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi đăng ký webhook" });
+  }
+};
 
 // ── POST /api/payment/payos-create ─────────────────────
 exports.createPayosPayment = async (req, res) => {
@@ -72,15 +90,71 @@ exports.createPayosPayment = async (req, res) => {
   }
 };
 
-// ── POST /api/payment/payos-webhook ────────────────────
+// ── GET /api/payment/payos-return ───────────────────────
+exports.payosReturn = async (req, res) => {
+  const bookingId = req.query.bookingId || "";
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thanh toán thành công</title>
+<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px}
+.icon{font-size:64px;margin-bottom:16px}
+h1{color:#16a34a;margin:0 0 8px;font-size:24px}
+p{color:#666;margin:0 0 24px;line-height:1.5}
+.btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+.btn:hover{background:#e55a2b}</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">&#10004;&#65039;</div>
+<h1>Thanh toán thành công!</h1>
+<p>Cảm ơn bạn đã thanh toán. Bạn có thể quay lại ứng dụng để tiếp tục.</p>
+<a class="btn" href="munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}">Quay lại ứng dụng</a>
+<script>setTimeout(function(){window.location.href="munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}"},1500)</script>
+</div>
+</body>
+</html>`);
+};
+
+// ── GET /api/payment/payos-cancel-page ──────────────────
+exports.payosCancelPage = async (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đã hủy thanh toán</title>
+<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px}
+.icon{font-size:64px;margin-bottom:16px}
+h1{color:#dc2626;margin:0 0 8px;font-size:24px}
+p{color:#666;margin:0 0 24px;line-height:1.5}
+.btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">&#10060;</div>
+<h1>Đã hủy thanh toán</h1>
+<p>Bạn đã hủy thanh toán. Vui lòng quay lại ứng dụng để đặt bàn lại.</p>
+<a class="btn" href="munchmap://">Quay lại ứng dụng</a>
+</div>
+</body>
+</html>`);
+};
+
+// ── GET/POST /api/payment/payos-webhook ────────────────
 exports.handlePayosWebhook = async (req, res) => {
+  // GET: PayOS test webhook URL (xác thực endpoint)
+  if (req.method === "GET") {
+    return res.json({ success: true, message: "PayOS webhook endpoint ready" });
+  }
+
   try {
     const webhookData = req.body;
-    const signature = req.headers["x-signature"] || req.body.signature;
 
     // Verify webhook signature
     try {
-      payos.webhooks.verify(webhookData, signature);
+      await payos.webhooks.verify(webhookData);
     } catch {
       return res
         .status(400)
@@ -113,8 +187,17 @@ exports.handlePayosWebhook = async (req, res) => {
         transactionId: webhookData.data?.transactionId || `PAYOS-${Date.now()}`,
         paidAt: new Date(),
       };
-      booking.status = "paid";
+      booking.payment.status = "paid";
       await booking.save();
+
+      // Lock bàn sau khi thanh toán thành công
+      try {
+        await Table.findByIdAndUpdate(booking.tableId, {
+          isAvailable: false,
+          currentBookingId: booking._id,
+          status: 'reserved',
+        });
+      } catch (_) {}
 
       console.log(
         `[payos-webhook] Booking ${booking.bookingNumber} paid: ${amount}`
@@ -133,47 +216,60 @@ exports.getPaymentStatus = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId);
     if (!booking) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Booking không tồn tại" });
+      return res.status(404).json({ success: false, message: "Booking không tồn tại" });
+    }
+
+    // Nếu booking đã được webhook cập nhật → trả về ngay
+    if (booking.payment?.status === "paid") {
+      return res.json({ success: true, status: "PAID", paidAt: booking.payment?.paidAt });
     }
 
     const payosPaymentLinkId = booking.payment?.payosPaymentLinkId;
-    if (!payosPaymentLinkId) {
-      return res.json({
-        success: true,
-        status: booking.status,
-        payment: booking.payment,
-      });
+    const payosOrderCode = booking.payment?.payosOrderCode;
+
+    // Thử query PayOS API bằng paymentLinkId, fallback bằng orderCode
+    let paymentInfo = null;
+    if (payosPaymentLinkId) {
+      try {
+        paymentInfo = await payos.paymentRequests.get(payosPaymentLinkId);
+      } catch (err1) {
+        console.error("[getPaymentStatus] get by linkId failed:", err1.message);
+      }
+    }
+    if (!paymentInfo && payosOrderCode) {
+      try {
+        paymentInfo = await payos.paymentRequests.get(payosOrderCode);
+      } catch (err2) {
+        console.error("[getPaymentStatus] get by orderCode failed:", err2.message);
+      }
     }
 
-    // Lấy trạng thái mới nhất từ PayOS
-    try {
-      const paymentInfo = await payos.paymentRequests.get(payosPaymentLinkId);
-      if (paymentInfo.status !== booking.payment?.payosStatus) {
-        booking.payment = {
-          ...(booking.payment || {}),
-          payosStatus: paymentInfo.status,
-        };
-        if (paymentInfo.status === "PAID" || paymentInfo.status === "COMPLETED") {
-          booking.status = "paid";
+    if (paymentInfo && paymentInfo.status) {
+      const payosStatus = String(paymentInfo.status).toUpperCase();
+      if (payosStatus !== booking.payment?.payosStatus) {
+        booking.payment = { ...(booking.payment || {}), payosStatus };
+        if (payosStatus === "PAID" || payosStatus === "COMPLETED") {
+          booking.payment.status = "paid";
           booking.payment.paidAt = new Date();
+          // Lock bàn sau khi thanh toán thành công
+          try {
+            await Table.findByIdAndUpdate(booking.tableId, {
+              isAvailable: false,
+              currentBookingId: booking._id,
+              status: 'reserved',
+            });
+          } catch (_) {}
         }
         await booking.save();
       }
-      return res.json({ success: true, status: paymentInfo.status, data: paymentInfo });
-    } catch {
-      return res.json({
-        success: true,
-        status: booking.status,
-        payment: booking.payment,
-      });
+      return res.json({ success: true, status: payosStatus, data: paymentInfo });
     }
+
+    // Không query được PayOS → trả về status hiện tại của booking
+    return res.json({ success: true, status: booking.status, payment: booking.payment });
   } catch (err) {
     console.error("[getPaymentStatus]", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi server" });
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 
@@ -200,9 +296,20 @@ exports.cancelPayosPayment = async (req, res) => {
       ...(booking.payment || {}),
       payosStatus: "CANCELLED",
     };
+    booking.status = "cancelled";
+    booking.cancelledAt = new Date();
     await booking.save();
 
-    return res.json({ success: true, message: "Đã huỷ thanh toán PayOS" });
+    // Trả bàn về trạng thái trống
+    try {
+      await require("../models/table").findByIdAndUpdate(booking.tableId, {
+        isAvailable: true,
+        currentBookingId: null,
+        status: 'available',
+      });
+    } catch (_) {}
+
+    return res.json({ success: true, message: "Đã huỷ đặt bàn" });
   } catch (err) {
     console.error("[cancelPayosPayment]", err);
     return res

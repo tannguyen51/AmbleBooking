@@ -10,6 +10,7 @@ const {
   createTable,
   updateTable,
   deleteTable,
+  setCleaningDone,
   getRestaurantProfile,
   updateRestaurantProfile,
 } = require("../controllers/partnerDashboardController");
@@ -20,6 +21,12 @@ const {
   resendStaffCredentials,
   changeStaffPassword,
 } = require("../controllers/partnerStaffController");
+const {
+  releaseBooking,
+  checkInBooking,
+  completeBooking,
+  declineBooking,
+} = require("../controllers/bookingController");
 
 // Dashboard routes
 router.get("/dashboard/overview", protectPartner, checkPermission('dashboard', 'read'), getOverview);
@@ -30,7 +37,24 @@ router.get("/notifications", protectPartner, getNotifications);
 router.get("/tables", protectPartner, checkPermission('tables', 'read'), getTables);
 router.post("/tables", protectPartner, checkPermission('tables', 'create'), createTable);
 router.put("/tables/:tableId", protectPartner, checkPermission('tables', 'update'), updateTable);
+router.put("/tables/:tableId/cleaning-done", protectPartner, checkPermission('tables', 'update'), setCleaningDone);
 router.delete("/tables/:tableId", protectPartner, checkPermission('tables', 'delete'), deleteTable);
+
+// Booking action routes - release chỉ Owner/Manager, check-in/out cho staff
+const releaseAccess = (req, res, next) => {
+  const role = req.partner?.role || "staff";
+  if (!["owner", "manager"].includes(role)) {
+    return res.status(403).json({
+      success: false,
+      message: "Chỉ chủ nhà hàng hoặc quản lý mới có quyền release bàn.",
+    });
+  }
+  next();
+};
+router.post("/bookings/:bookingId/release", protectPartner, releaseAccess, releaseBooking);
+router.post("/bookings/:bookingId/check-in", protectPartner, checkPermission('orders', 'checkin'), checkInBooking);
+router.post("/bookings/:bookingId/decline", protectPartner, checkPermission('orders', 'decline'), declineBooking);
+router.post("/bookings/:bookingId/complete", protectPartner, checkPermission('orders', 'complete'), completeBooking);
 
 // Restaurant profile routes
 router.get("/restaurant-profile", protectPartner, checkPermission('restaurant', 'read'), getRestaurantProfile);

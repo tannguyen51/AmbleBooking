@@ -48,7 +48,7 @@ export default function AdminRestaurantsScreen() {
   const [cuisine, setCuisine] = useState("");
   const [activeFilter, setActiveFilter] = useState<
     "all" | "active" | "inactive"
-  >("all");
+  >("active");
   const [featuredFilter, setFeaturedFilter] = useState<
     "all" | "featured" | "normal"
   >("all");

@@ -19,33 +19,22 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { bookingAPI } from "@/services/api";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
-const { height: SCREEN_H } = Dimensions.get("window");
+const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
+const { width: SCREEN_W } = Dimensions.get("window");
+const ITEM_W = (SCREEN_W - 32 - 12) / 2;
 
-const TIMES = [
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
+const ALL_TIMES = [
+  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00',
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
 
 const TABLE_TYPE_CONFIG: Record<
   string,
   {
-    label: string;
+    label: TranslationKey;
     icon: keyof typeof Ionicons.glyphMap;
     color: string;
     bg: string;
@@ -55,30 +44,30 @@ const TABLE_TYPE_CONFIG: Record<
   standard: {
     label: "booking.select.typeRegular",
     icon: "restaurant-outline",
-    color: "#22C55E",
-    bg: "#F0FDF4",
-    border: "#86EFAC",
+    color: "#3B82F6", // Xanh dương cho bàn thường
+    bg: "#EFF6FF",
+    border: "#93C5FD",
   },
   view: {
     label: "booking.select.typeView",
     icon: "eye-outline",
-    color: "#3B82F6",
-    bg: "#EFF6FF",
-    border: "#93C5FD",
+    color: "#F59E0B", // Vàng/cam cho bàn view đẹp
+    bg: "#FEF3C7",
+    border: "#FCD34D",
   },
   vip: {
     label: "booking.select.typeVIP",
     icon: "diamond-outline",
-    color: "#9333EA",
+    color: "#9333EA", // Tím cho bàn VIP
     bg: "#FAF5FF",
     border: "#C4B5FD",
   },
   regular: {
     label: "booking.select.typeRegular",
     icon: "restaurant-outline",
-    color: "#22C55E",
-    bg: "#F0FDF4",
-    border: "#86EFAC",
+    color: "#3B82F6",
+    bg: "#EFF6FF",
+    border: "#93C5FD",
   },
 };
 
@@ -95,6 +84,18 @@ interface Table {
   description?: string;
 }
 
+interface TableGroup {
+  id: string;
+  name: string;
+  type: "vip" | "view" | "regular" | "standard";
+  capacity: { min: number; max: number };
+  pricing: { baseDeposit: number };
+  images: string[];
+  features: string[];
+  description?: string;
+  tables: Table[];
+}
+
 const formatDateVN = (d: Date) =>
   d.toLocaleDateString("vi-VN", {
     weekday: "short",
@@ -103,11 +104,73 @@ const formatDateVN = (d: Date) =>
     year: "numeric",
   });
 
+const getNext7Days = () => {
+  const days = [];
+  const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const now = new Date();
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+
+    let dayLabel = "";
+    if (i === 0) {
+      dayLabel = "Hôm nay";
+    } else {
+      dayLabel = weekdays[d.getDay()];
+    }
+
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dateLabel = `${dd}/${mm}`;
+
+    days.push({
+      date: d,
+      dayLabel,
+      dateLabel,
+    });
+  }
+  return days;
+};
+
+const groupTables = (rawTables: Table[]): TableGroup[] => {
+  const activeAndAvail = rawTables.filter((t) => t.isActive && t.isAvailable);
+  const groupsMap: Record<string, TableGroup> = {};
+
+  activeAndAvail.forEach((table) => {
+    // Chuẩn hóa tên bàn bằng cách loại bỏ số/ký tự đơn lẻ ở cuối (ví dụ "Bàn VIP 1" -> "Bàn VIP")
+    const normalizedName = table.name.replace(/\s+\d+$|\s+[A-Z]$/i, "").trim();
+    // Tạo key duy nhất cho nhóm bàn
+    const key = `${table.type}_${normalizedName}_${table.capacity.min}_${table.capacity.max}_${table.pricing.baseDeposit}`;
+
+    if (!groupsMap[key]) {
+      groupsMap[key] = {
+        id: key,
+        name: normalizedName,
+        type: table.type,
+        capacity: table.capacity,
+        pricing: table.pricing,
+        images:
+          table.images && table.images.length > 0
+            ? table.images
+            : ["https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600"],
+        features: table.features || [],
+        description: table.description,
+        tables: [],
+      };
+    }
+    groupsMap[key].tables.push(table);
+  });
+
+  return Object.values(groupsMap);
+};
+
 export default function SelectTableScreen() {
   const router = useRouter();
-  const { restaurantId, restaurantName } = useLocalSearchParams<{
+  const { restaurantId, restaurantName, restaurantAddress } = useLocalSearchParams<{
     restaurantId: string;
     restaurantName: string;
+    restaurantAddress?: string;
   }>();
 
   const { t } = useTranslation();
@@ -115,105 +178,67 @@ export default function SelectTableScreen() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [guests, setGuests] = useState(2);
-  const [showDrawer, setShowDrawer] = useState(false);
 
+  // Multi-step flow state
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedGroup, setSelectedGroup] = useState<TableGroup | null>(null);
   // ── Ngày ──────────────────────────────────────────────
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // ── Giờ ───────────────────────────────────────────────
   const [time, setTime] = useState("19:00");
-  const [showTimePicker, setShowTimePicker] = useState(false);
-
-  // ── Drawer animation ───────────────────────────────────
-  const drawerAnim = useRef(new Animated.Value(SCREEN_H)).current;
 
   // ── Fetch tables — chạy lại mỗi khi màn hình được focus ──
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setLoading(true);
-      setSelectedTableId(null); // reset selection khi quay lại
+      setSelectedTableId(null);
+      setSelectedGroup(null);
+      setStep(1);
 
       bookingAPI
         .getTables(restaurantId)
         .then((res) => {
           if (active) setTables(res.data.tables);
         })
-        .catch((err) => { if (__DEV__) console.error("Error fetching tables:", err); })
+        .catch((err) => {
+          if (__DEV__) console.error("Error fetching tables:", err);
+        })
         .finally(() => {
           if (active) setLoading(false);
         });
 
       return () => {
         active = false;
-      }; // cleanup nếu unmount giữa chừng
+      };
     }, [restaurantId]),
   );
-
-  const openDrawer = () => {
-    setShowDrawer(true);
-    Animated.spring(drawerAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      damping: 30,
-      stiffness: 400,
-    }).start();
-  };
-
-  const closeDrawer = () => {
-    Animated.timing(drawerAnim, {
-      toValue: SCREEN_H,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => setShowDrawer(false));
-  };
-
-  const handleSelectTable = (table: Table) => {
-    if (!table.isActive || !table.isAvailable) return;
-    setSelectedTableId(table._id);
-    openDrawer();
-  };
 
   const handleContinue = () => {
     const sel = tables.find((t) => t._id === selectedTableId);
     if (!sel) return;
     const dateStr = date.toISOString().split("T")[0];
-    closeDrawer();
-    setTimeout(() => {
-      router.push({
-        pathname: "/booking/confirm" as any,
-        params: {
-          restaurantId,
-          restaurantName,
-          tableId: sel._id,
-          tableName: sel.name,
-          tableType: sel.type,
-          tableImage: sel.images?.[0] || "",
-          deposit: sel.pricing.baseDeposit.toString(),
-          date: dateStr,
-          time,
-          partySize: guests.toString(),
-        },
-      });
-    }, 260);
+    router.push({
+      pathname: "/booking/confirm" as any,
+      params: {
+        restaurantId,
+        restaurantName,
+        tableId: sel._id,
+        tableName: sel.name,
+        tableType: sel.type,
+        tableImage: sel.images?.[0] || "",
+        deposit: sel.pricing.baseDeposit.toString(),
+        date: dateStr,
+        time,
+        partySize: guests.toString(),
+      },
+    });
   };
-
-  const availableTables = tables.filter((t) => t.isActive && t.isAvailable);
-  const selectedTable = availableTables.find((t) => t._id === selectedTableId);
-  const filtered = selectedType
-    ? availableTables.filter((t) => t.type === selectedType)
-    : availableTables;
-  const groups = Object.keys(TABLE_TYPE_CONFIG).reduce<Record<string, Table[]>>(
-    (acc, k) => {
-      const g = filtered.filter((t) => t.type === k);
-      if (g.length) acc[k] = g;
-      return acc;
-    },
-    {},
-  );
+const next7Days = getNext7Days();
+  const tableGroups = groupTables(tables);
 
   if (loading)
     return (
@@ -225,379 +250,401 @@ export default function SelectTableScreen() {
       </SafeAreaView>
     );
 
-  return (
-    <SafeAreaView style={s.container}>
-      {/* ── Header ──────────────────────────────────── */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <View style={{ alignItems: "center" }}>
-          <Text style={s.headerTitle}>{t("booking.select.title")}</Text>
-          <Text style={s.headerSub}>{restaurantName}</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ── Ngày / Giờ / Khách ──────────────────── */}
-        <View style={s.dtgRow}>
-          {/* Ngày — mở DateTimePicker native */}
-          <TouchableOpacity
-            style={s.dtgBox}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>{t("booking.select.date")}</Text>
-            <Text style={s.dtgVal}>{formatDateVN(date)}</Text>
+  // ── Render Header ──────────────────────────────────────
+  const renderHeader = () => {
+    if (step === 1) {
+      return (
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-
-          {/* Giờ — mở bottom sheet */}
-          <TouchableOpacity
-            style={s.dtgBox}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>{t("booking.select.time")}</Text>
-            <Text style={s.dtgVal}>{time}</Text>
-          </TouchableOpacity>
-
-          {/* Khách — stepper */}
-          <View style={s.dtgBox}>
-            <Ionicons name="people-outline" size={16} color={PRIMARY} />
-            <Text style={s.dtgLabel}>{t("booking.select.guests")}</Text>
-            <View style={s.stepper}>
-              <TouchableOpacity
-                onPress={() => setGuests((g) => Math.max(1, g - 1))}
-                style={s.stepBtn}
-              >
-                <Text style={s.stepTxt}>−</Text>
-              </TouchableOpacity>
-              <Text style={s.stepNum}>{guests}</Text>
-              <TouchableOpacity
-                onPress={() => setGuests((g) => Math.min(20, g + 1))}
-                style={[s.stepBtn, s.stepBtnPlus]}
-              >
-                <Text style={[s.stepTxt, { color: "#fff" }]}>+</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={s.headerTextWrapRight}>
+            <Text style={s.headerTitleRight} numberOfLines={1}>{restaurantName}</Text>
+            <Text style={s.headerSubRight} numberOfLines={1}>
+              {restaurantAddress || t("favorites.addressFallback")}
+            </Text>
           </View>
         </View>
+      );
+    }
 
-        {/* ── Native Date Picker (iOS inline / Android dialog) */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            minimumDate={new Date()}
-            onChange={(event, selectedDate) => {
-              if (Platform.OS === "android") setShowDatePicker(false);
-              if (selectedDate) setDate(selectedDate);
-            }}
-            locale="vi"
-          />
-        )}
-        {/* iOS: nút Xong để đóng */}
-        {showDatePicker && Platform.OS === "ios" && (
-          <TouchableOpacity
-            style={s.iosDoneBtn}
-            onPress={() => setShowDatePicker(false)}
-          >
-            <Text style={s.iosDoneTxt}>{t("common.confirm")}</Text>
+    if (step === 2) {
+      return (
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => setStep(1)} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-        )}
-
-        {/* ── Legend ──────────────────────────────── */}
-        <View style={s.legend}>
-          {[
-            ["#22C55E", t("booking.select.legendAvailable")],
-            ["#EF4444", t("booking.select.legendBooked")],
-            [PRIMARY, t("booking.select.legendSelected")],
-          ].map(([c, l]) => (
-            <View key={l} style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: c }]} />
-              <Text style={s.legendTxt}>{l}</Text>
-            </View>
-          ))}
+          <View style={s.headerTextWrapRight}>
+            <Text style={s.headerTitleRight}>Loại bàn</Text>
+          </View>
         </View>
+      );
+    }
 
-        {/* ── Filter chips ─────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chips}
-        >
-          <TouchableOpacity
-            style={s.chip}
-            onPress={() => setSelectedType(null)}
-          >
-            {!selectedType ? (
-              <LinearGradient
-                colors={["#FF6B35", "#FFD700"]}
-                style={s.chipGrad}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={s.chipTxtActive}>{t("booking.select.all")} ({availableTables.length})</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={s.chipTxt}>{t("booking.select.all")} ({availableTables.length})</Text>
-            )}
-          </TouchableOpacity>
-          {Object.entries(TABLE_TYPE_CONFIG).map(([type, cfg]) => {
-            const total = tables.filter((t) => t.type === type).length;
-            const avail = availableTables.filter(
-              (t) => t.type === type && t.isActive && t.isAvailable,
-            ).length;
-            if (!total) return null;
-            const active = selectedType === type;
-            return (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  s.chip,
-                  active && {
-                    backgroundColor: cfg.bg,
-                    borderColor: cfg.border,
-                  },
-                ]}
-                onPress={() => setSelectedType(active ? null : type)}
-              >
-                <View style={s.chipContent}>
-                  <Ionicons
-                    name={cfg.icon}
-                    size={14}
-                    color={active ? cfg.color : "#6B7280"}
-                    style={{ paddingLeft: 8 }}
-                  />
-
-                  <Text style={[s.chipTxt, active && { color: cfg.color }]}>
-                    {t(cfg.label)} ({avail}/{total})
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* ── Grid bàn ────────────────────────────── */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-          {availableTables.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Ionicons name="time-outline" size={28} color="#9CA3AF" />
-              <Text style={s.emptyTitle}>{t("booking.select.emptyTitle")}</Text>
-              <Text style={s.emptyText}>
-                {t("booking.select.emptySubtitle")}
-              </Text>
-            </View>
-          ) : (
-            Object.entries(groups).map(([type, typeTables]) => {
-              const cfg = TABLE_TYPE_CONFIG[type];
-              return (
-                <View key={type} style={{ marginBottom: 24 }}>
-                  <View style={s.groupHeader}>
-                    <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                    <Text style={s.groupTitle}>{t(cfg.label)}</Text>
-                    <View style={[s.groupBadge, { backgroundColor: cfg.bg }]}>
-                      <Text style={[s.groupBadgeTxt, { color: cfg.color }]}>
-                        {typeTables.length} {t("booking.select.available")}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={s.grid}>
-                    {typeTables.map((table) => {
-                      const isSel = selectedTableId === table._id;
-                      return (
-                        <TouchableOpacity
-                          key={table._id}
-                          style={[
-                            s.cell,
-                            {
-                              borderColor: isSel ? PRIMARY : cfg.border,
-                              backgroundColor: isSel ? "#FFF3ED" : cfg.bg,
-                            },
-                          ]}
-                          onPress={() => handleSelectTable(table)}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              s.cellName,
-                              { color: isSel ? PRIMARY : cfg.color },
-                            ]}
-                          >
-                            {table.name}
-                          </Text>
-                          <Text style={[s.cellStatus, { color: "#9CA3AF" }]}>
-                            {t("booking.select.available")}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              );
-            })
-          )}
+    // Step 3
+    return (
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => setStep(2)} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <View style={s.headerTextWrapRight}>
+          <Text style={s.headerTitleRight}>{selectedGroup?.name || "Chi tiết bàn"}</Text>
         </View>
-      </ScrollView>
+      </View>
+    );
+  };
 
-      {/* ══ Time Picker Modal ═══════════════════════════ */}
-      <Modal
-        visible={showTimePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowTimePicker(false)}
-      >
-        <View style={s.modalWrap}>
-          {/* backdrop */}
-          <TouchableOpacity
-            style={s.backdrop}
-            activeOpacity={1}
-            onPress={() => setShowTimePicker(false)}
-          />
-          {/* sheet */}
-          <View style={s.timeSheet}>
-            <View style={s.handle} />
-            <View style={s.timeSheetHeader}>
-              <Text style={s.timeSheetTitle}>Chọn giờ</Text>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                <Ionicons name="close" size={22} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-              {TIMES.map((t) => {
-                const active = time === t;
+  // ── Step 1: Chọn ngày, khách, giờ ─────────────────────────
+  const renderStep1 = () => {
+    const isDateInGrid = next7Days.some(
+      (item) =>
+        date.getDate() === item.date.getDate() &&
+        date.getMonth() === item.date.getMonth() &&
+        date.getFullYear() === item.date.getFullYear(),
+    );
+
+    const guestOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const filteredTimes = ALL_TIMES;
+
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+          {/* Section: Chọn ngày */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Chọn ngày</Text>
+            <View style={s.dateGrid}>
+              {next7Days.map((item, idx) => {
+                const isSelected =
+                  date.getDate() === item.date.getDate() &&
+                  date.getMonth() === item.date.getMonth() &&
+                  date.getFullYear() === item.date.getFullYear();
                 return (
                   <TouchableOpacity
-                    key={t}
-                    style={[s.timeItem, active && s.timeItemActive]}
-                    onPress={() => {
-                      setTime(t);
-                      setShowTimePicker(false);
-                    }}
-                    activeOpacity={0.6}
+                    key={idx}
+                    style={[s.dateBox, isSelected && s.boxActive]}
+                    onPress={() => setDate(item.date)}
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={[s.timeItemTxt, active && s.timeItemTxtActive]}
-                    >
-                      {t}
-                    </Text>
-                    {active && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color={PRIMARY}
-                      />
-                    )}
+                    <Text style={[s.dateBoxDay, isSelected && s.textActive]}>{item.dayLabel}</Text>
+                    <Text style={[s.dateBoxDate, isSelected && s.textActive]}>{item.dateLabel}</Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+              {/* Ô thứ 8: Mở lịch đặt */}
+              <TouchableOpacity
+                style={[s.dateBox, !isDateInGrid && s.boxActive]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.dateBoxDay, !isDateInGrid && s.textActive, { fontSize: 10 }]}>
+                  {!isDateInGrid
+                    ? date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
+                    : "Mở lịch đặt"}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={12}
+                  color={!isDateInGrid ? PRIMARY : "#6B7280"}
+                  style={{ marginTop: 2 }}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
 
-      {/* ══ Table Detail Drawer ══════════════════════════ */}
-      <Modal
-        visible={showDrawer}
-        transparent
-        animationType="none"
-        onRequestClose={closeDrawer}
-      >
-        <View style={s.modalWrap}>
-          <TouchableOpacity
-            style={s.backdrop}
-            activeOpacity={1}
-            onPress={closeDrawer}
-          />
-          <Animated.View
-            style={[s.drawer, { transform: [{ translateY: drawerAnim }] }]}
-          >
-            <View style={s.handle} />
-            {selectedTable &&
-              (() => {
-                const cfg =
-                  TABLE_TYPE_CONFIG[selectedTable.type] ??
-                  TABLE_TYPE_CONFIG.regular;
+          {/* DateTimePicker Native */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              minimumDate={new Date()}
+              onChange={(event, selectedDate) => {
+                if (Platform.OS === "android") setShowDatePicker(false);
+                if (selectedDate) setDate(selectedDate);
+              }}
+              locale="vi"
+            />
+          )}
+          {showDatePicker && Platform.OS === "ios" && (
+            <TouchableOpacity style={s.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
+              <Text style={s.iosDoneTxt}>{t("common.confirm")}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Section: Số khách */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Số khách</Text>
+            <View style={s.guestGrid}>
+              {guestOptions.map((num) => {
+                const isSelected = guests === num;
                 return (
-                  <>
-                    <Image
-                      source={{
-                        uri:
-                          selectedTable.images?.[0] ||
-                          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600",
-                      }}
-                      style={s.drawerImg}
-                      resizeMode="cover"
-                    />
-                    <View style={s.drawerBody}>
-                      <View style={s.drawerTopRow}>
-                        <View>
-                          <Text style={s.drawerName}>
-                            {cfg.icon} {selectedTable.name}
-                          </Text>
-                          <Text style={[s.drawerType, { color: cfg.color }]}>
-                            {t(cfg.label)}
-                          </Text>
-                        </View>
-                        <View style={{ alignItems: "flex-end" }}>
-                          <Text style={s.drawerDeposit}>
-                            {(selectedTable.pricing.baseDeposit / 1000).toFixed(
-                              0,
-                            )}
-                            .000đ
-                          </Text>
-                          <Text style={s.drawerDepositLbl}>{t("booking.select.deposit")}</Text>
-                        </View>
-                      </View>
-                      <View style={s.drawerBadges}>
-                        <View style={s.badge}>
-                          <Text style={s.badgeTxt}>
-                            👥 {selectedTable.capacity.min}–
-                            {selectedTable.capacity.max} {t("booking.select.unitGuest")}
-                          </Text>
-                        </View>
-                        <View style={s.badge}>
-                          <Text style={s.badgeTxt}>✅ {t("booking.select.legendAvailable")}</Text>
-                        </View>
-                      </View>
-                      {(selectedTable.description ||
-                        selectedTable.features?.length > 0) && (
-                        <Text style={s.drawerDesc}>
-                          {selectedTable.description ||
-                            selectedTable.features.join(" • ")}
-                        </Text>
-                      )}
-                      <TouchableOpacity
-                        style={s.contBtn}
-                        onPress={handleContinue}
-                        activeOpacity={0.85}
-                      >
-                        <LinearGradient
-                          colors={["#FF6B35", "#FFD700"]}
-                          style={s.contBtnInner}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                        >
-                          <Text style={s.contBtnTxt}>{t("booking.select.continue")}</Text>
-                          <Ionicons
-                            name="chevron-forward"
-                            size={18}
-                            color="#fff"
-                          />
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-                  </>
+                  <TouchableOpacity
+                    key={num}
+                    style={[s.guestBox, isSelected && s.boxActive]}
+                    onPress={() => setGuests(num)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.guestTxt, isSelected && s.textActive]}>{num}</Text>
+                  </TouchableOpacity>
                 );
-              })()}
-          </Animated.View>
+              })}
+              {/* Ô thứ 10: Dấu + */}
+              <TouchableOpacity
+                style={[s.guestBox, guests >= 10 && s.boxActive]}
+                onPress={() => {
+                  if (guests < 10) {
+                    setGuests(10);
+                  } else {
+                    setGuests((g) => Math.min(30, g + 1));
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.guestTxt, guests >= 10 && s.textActive]}>
+                  {guests >= 10 ? `${guests}` : "+"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Stepper phụ khi >= 10 khách */}
+            {guests >= 10 && (
+              <View style={s.extraGuestRow}>
+                <Text style={s.extraGuestLabel}>Số lượng khách: </Text>
+                <View style={s.extraStepper}>
+                  <TouchableOpacity
+                    onPress={() => setGuests((g) => Math.max(9, g - 1))}
+                    style={s.extraStepBtn}
+                  >
+                    <Text style={s.extraStepTxt}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={s.extraStepNum}>{guests}</Text>
+                  <TouchableOpacity
+                    onPress={() => setGuests((g) => Math.min(30, g + 1))}
+                    style={[s.extraStepBtn, { backgroundColor: PRIMARY }]}
+                  >
+                    <Text style={[s.extraStepTxt, { color: "#fff" }]}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <Text style={s.guestNote}>
+              Nếu trên 12 khách, vui lòng liên hệ trực tiếp với chúng tôi để xem các tùy chọn đặt bàn có sẵn cho bạn
+            </Text>
+          </View>
+
+          {/* Section: Chọn khung giờ */}
+          <View style={s.section}>
+            <View style={s.timeHeader}>
+              <Text style={s.sectionTitle}>Chọn khung giờ</Text>
+            </View>
+
+            <View style={s.timeGrid}>
+              {filteredTimes.map((t) => {
+                const isSelected = time === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[s.timeBox, isSelected && s.boxActive]}
+                    onPress={() => setTime(t)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.timeTxt, isSelected && s.textActive]}>{t}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Nút tiếp tục ở dưới cùng */}
+        <View style={s.bottomBar}>
+          <TouchableOpacity
+            style={s.gradientBtn}
+            onPress={() => setStep(2)}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={GRAD}
+              style={s.gradientBtnInner}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={s.gradientBtnTxt}>Tiếp tục</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </View>
+    );
+  };
+
+  // ── Step 2: Chọn Loại bàn ────────────────────────────────
+  const renderStep2 = () => {
+    if (tableGroups.length === 0) {
+      return (
+        <View style={s.emptyWrap}>
+          <Ionicons name="time-outline" size={32} color="#9CA3AF" />
+          <Text style={s.emptyTitle}>{t("booking.select.emptyTitle")}</Text>
+          <Text style={s.emptyText}>{t("booking.select.emptySubtitle")}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}>
+          {tableGroups.map((group) => {
+            const cfg = TABLE_TYPE_CONFIG[group.type] ?? TABLE_TYPE_CONFIG.regular;
+            const availableCount = group.tables.length;
+
+            return (
+              <View key={group.id} style={s.tableCard}>
+                {/* Ảnh bàn */}
+                <View style={s.cardImgContainer}>
+                  <Image source={{ uri: group.images[0] }} style={s.cardImg} resizeMode="cover" />
+                  {/* Nhãn loại bàn */}
+                  <View style={[s.typeTag, { backgroundColor: cfg.color }]}>
+                    <Text style={s.typeTagTxt}>{t(cfg.label)}</Text>
+                  </View>
+                </View>
+
+                {/* Thông tin bàn */}
+                <View style={s.cardBody}>
+                  <View style={s.cardRow}>
+                    <Text style={s.cardTitle}>{group.name}</Text>
+                    <Text style={s.cardPrice}>
+                      {group.pricing.baseDeposit.toLocaleString("vi-VN")}đ
+                    </Text>
+                  </View>
+                  <View style={[s.cardRow, { marginTop: 4, marginBottom: 12 }]}>
+                    <Text style={s.cardSub}>
+                      {group.capacity.min} - {group.capacity.max} người
+                    </Text>
+                    <Text style={s.cardStatus}>Còn trống {availableCount} bàn</Text>
+                  </View>
+
+                  {/* Nút đặt bàn */}
+                  <TouchableOpacity
+                    style={s.cardBtn}
+                    onPress={() => {
+                      setSelectedGroup(group);
+                      // Chọn bàn đầu tiên làm mặc định
+                      if (group.tables.length > 0) {
+                        setSelectedTableId(group.tables[0]._id);
+                      }
+                      setStep(3);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={GRAD}
+                      style={s.cardBtnInner}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={s.cardBtnTxt}>Đặt bàn</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // ── Step 3: Chi tiết bàn & Chọn bàn cụ thể ──────────────────
+  const renderStep3 = () => {
+    if (!selectedGroup) return null;
+    const availableCount = selectedGroup.tables.length;
+
+    return (
+      <View style={{ flex: 1, backgroundColor: "#fff" }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          {/* Hero Image */}
+          <View style={prem.heroWrap}>
+            <Image source={{ uri: selectedGroup.images[0] }} style={prem.heroImg} resizeMode="cover" />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.75)"]}
+              style={prem.heroGradient}
+            />
+            <TouchableOpacity onPress={() => setStep(2)} style={prem.heroBack}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={prem.heroTextWrap}>
+              <Text style={prem.heroTitle}>{selectedGroup.name}</Text>
+              <Text style={prem.heroSub}>
+                {selectedGroup.capacity.min}–{selectedGroup.capacity.max} người
+              </Text>
+            </View>
+          </View>
+
+          {/* Specific table grid */}
+          <View style={prem.section}>
+            <Text style={prem.sectionTitle}>CHỌN BÀN</Text>
+            <View style={prem.grid}>
+              {selectedGroup.tables.map((table) => {
+                const isSelected = selectedTableId === table._id;
+                return (
+                  <TouchableOpacity
+                    key={table._id}
+                    style={[prem.tableBox, isSelected && prem.tableBoxActive]}
+                    onPress={() => setSelectedTableId(table._id)}
+                    activeOpacity={0.7}
+                  >
+                  <View style={prem.tableBoxInner}>
+                      <Ionicons
+                        name="restaurant-outline"
+                        size={36}
+                        color={isSelected ? "#FF8A4D" : "#D4A574"}
+                      />
+                      <Text style={[prem.tableBoxTxt, isSelected && prem.tableBoxTxtActive]}>
+                        {table.name.replace(selectedGroup.name, "").replace(/^[\s-]+/, "").trim() || table.name.match(/\d+/)?.[0] || ""}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={prem.availRow}>
+              <Text style={prem.availText}>Còn {availableCount} bàn trống!!</Text>
+              <Ionicons name="sparkles" size={18} color="#FF8A4D" />
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Bottom button */}
+        <View style={prem.bottomBar}>
+          <TouchableOpacity
+            style={prem.bookBtnOuter}
+            onPress={handleContinue}
+            disabled={!selectedTableId}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={["#FF8A4D", "#FF6B35"]}
+              style={[prem.bookBtnInner, !selectedTableId && { opacity: 0.5 }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={prem.bookBtnTxt}>Đặt bàn</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={s.container}>
+      {renderHeader()}
+      {step === 1 && renderStep1()}
+      {step === 2 && renderStep2()}
+      {step === 3 && renderStep3()}
     </SafeAreaView>
   );
 }
@@ -607,46 +654,117 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   loadTxt: { fontSize: 14, color: "#999" },
 
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 35,
+    paddingTop: Platform.OS === "ios" ? 15 : 35,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#F3F4F6",
   },
   backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "700" },
-  headerSub: { fontSize: 12, color: "#9CA3AF", marginTop: 1 },
-
-  // Date/Time/Guests row
-  dtgRow: { flexDirection: "row", gap: 10, padding: 14 },
-  dtgBox: {
+  headerTextWrapRight: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 14,
-    borderWidth: 1,
+    alignItems: "flex-end",
+    paddingLeft: 20,
+  },
+  headerTitleRight: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    textAlign: "right",
+  },
+  headerSubRight: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 2,
+    textAlign: "right",
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    marginBottom: 12,
+  },
+
+  // Grids
+  dateGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  dateBox: {
+    width: "23%",
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
     borderColor: "#E5E7EB",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 4,
+    justifyContent: "center",
+    backgroundColor: "#fff",
   },
-  dtgLabel: { fontSize: 10, fontWeight: "600", color: "#9CA3AF" },
-  dtgVal: {
+  dateBoxDay: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "600",
+    color: "#6B7280",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  dateBoxDate: {
+    fontSize: 12,
+    fontWeight: "800",
     color: "#1A1A1A",
     textAlign: "center",
   },
 
-  // iOS done button
+  // Guest Grid
+  guestGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  guestBox: {
+    width: "18%",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  guestTxt: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    textAlign: "center",
+    textAlignVertical: "center",
+    includeFontPadding: false,
+  },
+
+  // State Active styles
+  boxActive: {
+    borderColor: PRIMARY,
+    backgroundColor: "#FFF0E6",
+  },
+  textActive: {
+    color: PRIMARY,
+  },
+
+  // iOS Done Button
   iosDoneBtn: {
     alignSelf: "flex-end",
     marginRight: 16,
-    marginBottom: 8,
+    marginVertical: 8,
     backgroundColor: PRIMARY,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -654,184 +772,341 @@ const s = StyleSheet.create({
   },
   iosDoneTxt: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  // Stepper
-  stepper: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  stepBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: "#E5E7EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepBtnPlus: { backgroundColor: PRIMARY },
-  stepTxt: { fontSize: 14, fontWeight: "700", color: "#6B7280" },
-  stepNum: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    marginHorizontal: 6,
-  },
-
-  // Legend
-  legend: {
+  // Extra guest Stepper
+  extraGuestRow: {
     flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 10, height: 10, borderRadius: 3 },
-  legendTxt: { fontSize: 11, color: "#6B7280" },
-
-  // Filter chips
-  chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
-  chip: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 14,
+    backgroundColor: "#F9FAFB",
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    overflow: "hidden",
-    backgroundColor: "#fff",
   },
-  chipGrad: { paddingHorizontal: 12, paddingVertical: 8 },
-  chipTxt: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    paddingLeft: 1,
+  extraGuestLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#374151",
   },
-  chipTxtActive: { fontSize: 12, fontWeight: "700", color: "#fff" },
-
-  // Group
-  groupHeader: {
+  extraStepper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
   },
-  groupTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
-  groupBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  groupBadgeTxt: { fontSize: 11, fontWeight: "700" },
-  emptyWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-    gap: 8,
-  },
-  emptyTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
-  emptyText: { fontSize: 13, color: "#6B7280", textAlign: "center" },
-
-  // Grid
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  cell: {
-    width: "18%",
-    aspectRatio: 1,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 4,
-  },
-  cellName: { fontSize: 9, fontWeight: "800", textAlign: "center" },
-  cellStatus: { fontSize: 7, marginTop: 2 },
-
-  // Modal wrapper — flex column, sheet sticks to bottom
-  modalWrap: { flex: 1, justifyContent: "flex-end" },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-
-  // Time sheet
-  timeSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-    maxHeight: SCREEN_H * 0.55,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+  extraStepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: "#E5E7EB",
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  timeSheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "center",
   },
-  timeSheetTitle: { fontSize: 16, fontWeight: "800", color: "#1A1A1A" },
-  timeItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+  extraStepTxt: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#4B5563",
   },
-  timeItemActive: {
-    backgroundColor: "#FFF3ED",
-    borderRadius: 10,
-    marginHorizontal: -8,
-    paddingHorizontal: 16,
+  extraStepNum: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#111827",
+    marginHorizontal: 12,
   },
-  timeItemTxt: { fontSize: 15, color: "#374151" },
-  timeItemTxtActive: { color: PRIMARY, fontWeight: "700" },
+  guestNote: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 8,
+    lineHeight: 16,
+  },
 
-  // Drawer
-  drawer: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: "hidden",
-  },
-  drawerImg: { width: "100%", height: 200 },
-  drawerBody: { padding: 20 },
-  drawerTopRow: {
+  // Time grid
+  timeHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 12,
   },
-  drawerName: { fontSize: 20, fontWeight: "900", color: "#1A1A1A" },
-  drawerType: { fontSize: 13, fontWeight: "700", marginTop: 2 },
-  drawerDeposit: { fontSize: 20, fontWeight: "900", color: PRIMARY },
-  drawerDepositLbl: { fontSize: 11, color: "#9CA3AF" },
-  drawerBadges: { flexDirection: "row", gap: 8, marginBottom: 10 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: "#F0FDF4",
+  timeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  badgeTxt: { fontSize: 12, fontWeight: "700", color: "#22C55E" },
-  drawerDesc: {
-    fontSize: 13,
-    color: "#6B7280",
-    lineHeight: 20,
-    marginBottom: 14,
+  timeBox: {
+    width: "18%",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
   },
-  contBtn: { borderRadius: 16, overflow: "hidden" },
-  contBtnInner: {
+  timeTxt: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
+    textAlign: "center",
+    textAlignVertical: "center",
+  },
+
+  // Bottom Fixed Bar
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 30 : 15,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  gradientBtn: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  gradientBtnInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
   },
-  contBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  chipContent: {
+  gradientBtnTxt: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+
+  // Step 2: Table Card
+  tableCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    // shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardImgContainer: {
+    width: "100%",
+    height: 160,
+    position: "relative",
+  },
+  cardImg: {
+    width: "100%",
+    height: "100%",
+  },
+  typeTag: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  typeTagTxt: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  cardBody: {
+    padding: 16,
+  },
+  cardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1A1A1A",
+  },
+  cardPrice: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: PRIMARY,
+  },
+  cardSub: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  cardStatus: {
+    fontSize: 12,
+    color: "#22C55E",
+    fontWeight: "700",
+  },
+  cardBtn: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  cardBtnInner: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  cardBtnTxt: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  // Empty Wrap
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
+  emptyText: { fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 18 },
+
+});
+
+// ── Premium Step 3 styles ─────────────────────────────
+const prem = StyleSheet.create({
+  heroWrap: {
+    width: SCREEN_W,
+    height: 300,
+    position: "relative",
+  },
+  heroImg: {
+    width: "100%",
+    height: "100%",
+  },
+  heroGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+  },
+  heroBack: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 40,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroTextWrap: {
+    position: "absolute",
+    bottom: 24,
+    left: 20,
+    right: 20,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  heroSub: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 4,
+  },
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  tableBox: {
+    width: ITEM_W,
+    aspectRatio: 1,
+    backgroundColor: "#FFF5EB",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#FFE0CC",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tableBoxActive: {
+    borderColor: "#FF8A4D",
+    backgroundColor: "#FFF0E6",
+  },
+  tableBoxInner: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    gap: 4,
+  },
+  tableBoxTxt: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#C4956A",
+  },
+  tableBoxTxtActive: {
+    color: "#FF8A4D",
+  },
+  availRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
+    marginTop: 20,
+  },
+  availText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1A1A1A",
+  },
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  bookBtnOuter: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bookBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 18,
+  },
+  bookBtnTxt: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
   },
 });

@@ -7,15 +7,8 @@ const Route = require("../models/route");
 const AdminAudit = require("../models/adminAudit");
 
 const BOOKING_STATUSES = [
-  "draft",
-  "pending",
-  "pending_payment",
-  "confirmed",
-  "paid",
-  "completed",
-  "cancelled",
-  "refund_pending",
-  "refunded",
+  "pending", "confirmed", "occupied", "completed",
+  "cancelled", "declined", "no_show",
 ];
 
 const parseBool = (value) => {
@@ -54,7 +47,6 @@ exports.getDashboard = async (req, res) => {
       partnersActive,
       restaurantsActive,
       bookingsToday,
-      pendingPayments,
     ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ isActive: true }),
@@ -63,9 +55,8 @@ exports.getDashboard = async (req, res) => {
       Restaurant.countDocuments({ isActive: true }),
       Booking.countDocuments({
         "bookingDetails.date": today,
-        status: { $in: ["pending", "pending_payment", "confirmed", "paid"] },
+        status: { $in: ["pending", "confirmed", "occupied"] },
       }),
-      Booking.countDocuments({ status: "pending_payment" }),
     ]);
 
     return res.json({
@@ -77,7 +68,6 @@ exports.getDashboard = async (req, res) => {
         partnersActive,
         restaurantsActive,
         bookingsToday,
-        pendingPayments,
       },
     });
   } catch (err) {
@@ -285,9 +275,25 @@ exports.getPartners = async (req, res) => {
       ];
     }
 
-    const partners = await Partner.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const partners = await Partner.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "restaurantId",
+          foreignField: "_id",
+          as: "restaurant",
+        },
+      },
+      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          restaurantImage: { $arrayElemAt: ["$restaurant.images", 0] },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $project: { restaurant: 0 } },
+    ]);
 
     return res.json({ success: true, partners });
   } catch (err) {
@@ -348,6 +354,11 @@ exports.approvePartner = async (req, res) => {
         .json({ success: false, message: "Partner not found" });
     }
 
+    // Kích hoạt nhà hàng của partner
+    if (partner.restaurantId) {
+      await Restaurant.findByIdAndUpdate(partner.restaurantId, { isActive: true });
+    }
+
     await logAudit({
       actorId: req.user._id,
       action: "partner.approved",
@@ -392,6 +403,11 @@ exports.rejectPartner = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Partner not found" });
+    }
+
+    // Vô hiệu hóa nhà hàng khi từ chối partner
+    if (partner.restaurantId) {
+      await Restaurant.findByIdAndUpdate(partner.restaurantId, { isActive: false });
     }
 
     await logAudit({
@@ -448,6 +464,16 @@ exports.getRestaurants = async (req, res) => {
 
     const isActiveBool = parseBool(isActive);
     if (isActiveBool !== undefined) filter.isActive = isActiveBool;
+
+    // Khi lọc isActive=true, chỉ lấy nhà hàng có partner đã được duyệt
+    if (isActiveBool === true) {
+      const approvedPartners = await Partner.find(
+        { subscriptionStatus: "active", isActive: true },
+        { _id: 1 }
+      ).lean();
+      const approvedPartnerIds = approvedPartners.map(p => p._id);
+      filter.partnerId = { $in: approvedPartnerIds };
+    }
 
     const isFeaturedBool = parseBool(isFeatured);
     if (isFeaturedBool !== undefined) filter.isFeatured = isFeaturedBool;
@@ -640,16 +666,6 @@ exports.updateBookingStatus = async (req, res) => {
       booking.cancellationReason = reason || "Admin override";
     }
 
-    if (status === "paid") {
-      booking.payment = {
-        ...(booking.payment || {}),
-        method: paymentMethod || booking.payment?.method || "bank",
-        transactionId:
-          transactionId || booking.payment?.transactionId || `ADM-${Date.now()}`,
-        paidAt: booking.payment?.paidAt || new Date(),
-      };
-    }
-
     if (status === "refunded") {
       booking.refund = {
         ...(booking.refund || {}),
@@ -669,15 +685,15 @@ exports.updateBookingStatus = async (req, res) => {
       meta: { status, reason: reason || "", paymentMethod: paymentMethod || "" },
     });
 
-    if (["cancelled", "refund_pending", "refunded"].includes(status)) {
+    if (["cancelled", "declined", "no_show"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
-        isAvailable: true,
         currentBookingId: null,
+        status: 'available',
       });
-    } else if (["confirmed", "paid", "completed"].includes(status)) {
+    } else if (["confirmed", "occupied"].includes(status)) {
       await Table.findByIdAndUpdate(booking.tableId, {
-        isAvailable: false,
         currentBookingId: booking._id,
+        status: status === 'occupied' ? 'occupied' : 'reserved',
       });
     }
 

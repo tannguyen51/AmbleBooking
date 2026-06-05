@@ -8,8 +8,8 @@ export default function AdminLayout() {
       <Stack.Screen name="partners" />
       <Stack.Screen name="partners/[id]" />
       <Stack.Screen name="restaurants" />
+      <Stack.Screen name="analytics" />
       <Stack.Screen name="bookings" />
-      <Stack.Screen name="routes" />
     </Stack>
   );
 }

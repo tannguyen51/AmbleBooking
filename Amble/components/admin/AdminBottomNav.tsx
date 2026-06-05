@@ -8,6 +8,7 @@ const TABS = [
   { name: "dashboard", label: "Tổng Quan", icon: "speedometer" },
   { name: "partners", label: "Đối Tác", icon: "business" },
   { name: "restaurants", label: "Nhà Hàng", icon: "restaurant" },
+  { name: "analytics", label: "Phân Tích", icon: "stats-chart" },
   { name: "bookings", label: "Đơn Hàng", icon: "calendar" },
 ];
 

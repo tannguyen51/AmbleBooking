@@ -3,27 +3,24 @@
 
 const ROLE_PERMISSIONS = {
   owner: {
-    // Owner has full access
     tables: ["create", "read", "update", "delete"],
     staff: ["create", "read", "update", "delete"],
     restaurant: ["read", "update"],
-    orders: ["read"],
+    orders: ["read", "checkin", "checkout", "complete", "decline", "release"],
     dashboard: ["read"],
   },
   manager: {
-    // Manager can manage tables, staff, and restaurant profile
     tables: ["create", "read", "update", "delete"],
     staff: ["create", "read", "update"],
     restaurant: ["read", "update"],
-    orders: ["read"],
+    orders: ["read", "checkin", "checkout", "complete", "decline", "release"],
     dashboard: ["read"],
   },
   staff: {
-    // Staff can only view
     tables: ["read"],
     staff: [],
     restaurant: ["read"],
-    orders: ["read"],
+    orders: ["read", "checkin", "complete", "decline"],
     dashboard: ["read"],
   },
 };

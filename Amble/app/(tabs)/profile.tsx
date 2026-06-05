@@ -202,7 +202,7 @@ export default function ProfileScreen() {
       .getUserBookings(user._id)
       .then((res: any) => {
         const done = (res.data?.bookings || []).filter((b: any) =>
-          ["confirmed", "paid", "completed"].includes(b.status),
+          ["pending", "confirmed", "occupied", "completed"].includes(b.status),
         ).length;
         setBookingCount(done);
       })

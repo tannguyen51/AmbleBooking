@@ -29,29 +29,48 @@ exports.getOverview = async (req, res) => {
     const [
       totalTables,
       availableTables,
-      bookedTables,
+      reservedTables,
+      occupiedTables,
+      cleaningTables,
       pendingOrders,
       todayBookings,
       pendingBookings,
+      upcomingBookings,
+      allTables,
     ] = await Promise.all([
       Table.countDocuments({ restaurantId, isActive: true }),
-      Table.countDocuments({ restaurantId, isActive: true, isAvailable: true }),
-      Table.countDocuments({
-        restaurantId,
-        isActive: true,
-        isAvailable: false,
-      }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'available' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'reserved' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'occupied' }),
+      Table.countDocuments({ restaurantId, isActive: true, status: 'cleaning' }),
       Booking.countDocuments({ restaurantId, status: "pending" }),
       Booking.countDocuments({
         restaurantId,
         "bookingDetails.date": today,
-        status: { $in: ["pending", "confirmed", "paid", "completed"] },
+        status: { $in: ["pending", "confirmed", "occupied", "completed"] },
       }),
       Booking.find({ restaurantId, status: "pending" })
         .populate("userId", "fullName phone")
         .populate("tableId", "name")
         .sort({ createdAt: -1 })
         .limit(5)
+        .lean(),
+      Booking.find({
+        restaurantId,
+        "bookingDetails.date": today,
+        status: { $in: ["confirmed"] },
+      })
+        .populate("userId", "fullName phone")
+        .populate("tableId", "name type")
+        .sort({ "bookingDetails.time": 1 })
+        .limit(20)
+        .lean(),
+      Table.find({ restaurantId, isActive: true })
+        .populate({
+          path: "currentBookingId",
+          populate: { path: "userId", select: "fullName phone" },
+        })
+        .sort({ name: 1 })
         .lean(),
     ]);
 
@@ -67,16 +86,59 @@ exports.getOverview = async (req, res) => {
       status: booking.status,
     }));
 
+    const upcomingBookingItems = upcomingBookings.map((booking) => ({
+      id: booking._id,
+      bookingNumber: booking.bookingNumber,
+      userName: booking.userId?.fullName || "Khách hàng",
+      userPhone: booking.userId?.phone || "",
+      tableId: booking.tableId?._id,
+      tableNumber: booking.tableId?.name || "Bàn",
+      tableType: booking.tableId?.type || "regular",
+      date: booking.bookingDetails?.date || "",
+      time: booking.bookingDetails?.time || "",
+      guests: booking.bookingDetails?.partySize || 0,
+      depositAmount: booking.pricing?.depositAmount || 0,
+      status: booking.status,
+    }));
+
+    const tableFloorItems = allTables.map((table) => {
+      const currentBooking = table.currentBookingId;
+      return {
+        id: table._id,
+        name: table.name,
+        type: table.type,
+        capacity: table.capacity,
+        status: table.status,
+        features: table.features || [],
+        currentBooking: currentBooking
+          ? {
+              id: currentBooking._id,
+              status: currentBooking.status,
+              date: currentBooking.bookingDetails?.date || "",
+              time: currentBooking.bookingDetails?.time || "",
+              expectedEndTime: currentBooking.bookingDetails?.expectedEndTime || "",
+              guests: currentBooking.bookingDetails?.partySize || 0,
+              customerName: currentBooking.userId?.fullName || "",
+            }
+          : null,
+      };
+    });
+
     return res.json({
       success: true,
       overview: {
         totalTables,
         availableTables,
-        bookedTables,
+        reservedTables,
+        occupiedTables,
+        cleaningTables,
+        bookedTables: reservedTables + occupiedTables,
         pendingOrders,
         todayBookings,
       },
       pendingBookings: pendingBookingItems,
+      upcomingBookings: upcomingBookingItems,
+      floorTables: tableFloorItems,
     });
   } catch (err) {
     console.error("[getOverview]", err);
@@ -132,8 +194,10 @@ exports.getOrders = async (req, res) => {
       all: allBookings.length,
       pending: allBookings.filter((b) => b.status === "pending").length,
       confirmed: allBookings.filter((b) => b.status === "confirmed").length,
+      occupied: allBookings.filter((b) => b.status === "occupied").length,
       completed: allBookings.filter((b) => b.status === "completed").length,
       cancelled: allBookings.filter((b) => b.status === "cancelled").length,
+      no_show: allBookings.filter((b) => b.status === "no_show").length,
     };
 
     return res.json({ success: true, orders, counts });
@@ -177,8 +241,8 @@ exports.getTables = async (req, res) => {
         images: table.images || [],
         features: table.features || [],
         description: table.description || "",
+        status: table.status || "available",
         isAvailable: table.isAvailable,
-        status: table.isAvailable ? "available" : "booked",
         currentBooking: currentBooking
           ? {
               id: currentBooking._id,
@@ -297,6 +361,7 @@ exports.createTable = async (req, res) => {
       description = "",
       features = [],
       images = [],
+      isAvailable,
     } = req.body;
 
     const minCap = Number(capacity?.min);
@@ -347,7 +412,7 @@ exports.createTable = async (req, res) => {
         : [],
       images: normalizeImageList(images),
       isActive: true,
-      isAvailable: true,
+      isAvailable: isAvailable !== undefined ? !!isAvailable : true,
     });
 
     return res.status(201).json({ success: true, table: newTable });
@@ -445,15 +510,8 @@ exports.updateTable = async (req, res) => {
       table.images = normalizeImageList(images);
     }
 
-    if (isAvailable !== undefined) {
-      table.isAvailable = !!isAvailable;
-      if (!table.isAvailable) {
-        table.currentBookingId = table.currentBookingId || null;
-      }
-      if (table.isAvailable) {
-        table.currentBookingId = null;
-      }
-    }
+    // Không cho phép update isAvailable từ form — pre-save hook tự đồng bộ từ status.
+    // Việc thay đổi trạng thái phải qua các route chuyên biệt (check-in, complete, cleaning-done, release).
 
     await table.save();
     return res.json({ success: true, table });
@@ -487,7 +545,7 @@ exports.deleteTable = async (req, res) => {
         .lean();
       if (
         booking &&
-        ["pending", "confirmed", "paid"].includes(booking.status)
+        ["pending", "confirmed", "occupied"].includes(booking.status)
       ) {
         return res.status(400).json({
           success: false,
@@ -504,6 +562,31 @@ exports.deleteTable = async (req, res) => {
     return res.json({ success: true, message: "Đã xóa bàn." });
   } catch (err) {
     console.error("[deleteTable]", err);
+    return res.status(500).json({ success: false, message: "Loi server" });
+  }
+};
+
+// PUT /api/partner/tables/:tableId/cleaning-done
+exports.setCleaningDone = async (req, res) => {
+  try {
+    const restaurantId = req.partner.restaurantId;
+    const { tableId } = req.params;
+
+    const table = await Table.findOne({ _id: tableId, restaurantId, isActive: true });
+    if (!table) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy bàn." });
+    }
+    if (table.status !== 'cleaning') {
+      return res.status(400).json({ success: false, message: "Bàn không ở trạng thái dọn dẹp." });
+    }
+
+    table.status = 'available';
+    table.currentBookingId = null;
+    await table.save();
+
+    return res.json({ success: true, message: "Bàn đã sẵn sàng.", table });
+  } catch (err) {
+    console.error("[setCleaningDone]", err);
     return res.status(500).json({ success: false, message: "Loi server" });
   }
 };
