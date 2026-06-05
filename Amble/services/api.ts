@@ -90,6 +90,7 @@ export const restaurantAPI = {
     cuisine?: string;
     category?: string;
     search?: string;
+    priceRange?: string;
   }) => api.get("/restaurants", { params }),
   getFeatured: () => api.get("/restaurants/featured"),
   getById: (id: string) => api.get(`/restaurants/${id}`),
@@ -214,6 +215,10 @@ export const partnerDashboardAPI = {
   deleteTable: (tableId: string) => api.delete(`/partner/tables/${tableId}`),
   getNotifications: () => api.get("/partner/notifications"),
   getRestaurantProfile: () => api.get("/partner/restaurant-profile"),
+  upgradeSubscription: (data: {
+    package: "pro" | "premium";
+    paymentMethod?: "in_app" | "bank_transfer" | "payos";
+  }) => api.post("/partner/subscription/upgrade", data),
   updateRestaurantProfile: (data: {
     coverImage?: string;
     name?: string;

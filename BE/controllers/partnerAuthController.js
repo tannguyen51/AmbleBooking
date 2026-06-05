@@ -47,7 +47,7 @@ exports.register = async (req, res) => {
       restaurantAddress: restaurantAddress || "",
       restaurantCity: restaurantCity || "",
       cuisine: cuisine || "",
-      subscriptionPackage: subscriptionPackage || "basic",
+      subscriptionPackage: subscriptionPackage || "pro",
       subscriptionStatus: "pending",
       role: "owner",
     });

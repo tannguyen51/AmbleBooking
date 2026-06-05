@@ -26,6 +26,36 @@ import { useTranslation } from "../../i18n/useTranslation";
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
 
 type Step = "account" | "restaurant" | "package";
+type PartnerPackage = "pro" | "premium";
+
+const PACKAGE_OPTIONS: Array<{
+  key: PartnerPackage;
+  title: string;
+  label: string;
+  setupFee: string;
+  monthlyFee: string;
+  description: string;
+  tone: "base" | "premium";
+}> = [
+  {
+    key: "pro",
+    title: "Gói cơ bản",
+    label: "Pro",
+    setupFee: "799k/tháng",
+    monthlyFee: "Miễn phí tháng",
+    description: "Phù hợp nhà hàng mới bắt đầu nhận đặt bàn trên Amble.",
+    tone: "base",
+  },
+  {
+    key: "premium",
+    title: "Gói thông dụng",
+    label: "Premium",
+    setupFee: "599k/tháng",
+    monthlyFee: "699k/tháng",
+    description: "Được ưu tiên hiển thị trên trang chủ để tăng lượt tiếp cận.",
+    tone: "premium",
+  },
+];
 
 export default function PartnerRegisterScreen() {
   const { t } = useTranslation();
@@ -43,12 +73,12 @@ export default function PartnerRegisterScreen() {
     restaurantAddress: "",
     restaurantCity: "",
     cuisine: "",
-    subscriptionPackage: "pro" as "basic" | "pro" | "premium",
+    subscriptionPackage: "pro" as PartnerPackage,
   });
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const update = (key: string, value: string) =>
+  const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleNext = () => {
@@ -282,6 +312,84 @@ export default function PartnerRegisterScreen() {
           {step === "package" && (
             <>
               <Text style={styles.sectionTitle}>{t("partnerAuth.register.step3Title")}</Text>
+              <View style={styles.packageNotice}>
+                <Ionicons name="gift-outline" size={18} color="#C2410C" />
+                <Text style={styles.packageNoticeText}>
+                  Tháng đầu free phí khởi tạo cho cả 2 gói. Tháng sau áp dụng phí khởi tạo bình thường.
+                </Text>
+              </View>
+
+              <View style={styles.packageList}>
+                {PACKAGE_OPTIONS.map((option) => {
+                  const active = form.subscriptionPackage === option.key;
+                  const premium = option.tone === "premium";
+
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      activeOpacity={0.9}
+                      style={[
+                        styles.packageCard,
+                        active && styles.packageCardActive,
+                        premium && styles.packageCardPremium,
+                        active && premium && styles.packageCardPremiumActive,
+                      ]}
+                      onPress={() => update("subscriptionPackage", option.key)}
+                    >
+                      <View style={styles.packageTopRow}>
+                        <View style={styles.packageTitleWrap}>
+                          <View style={styles.packageNameRow}>
+                            <Text style={styles.packageTitle}>{option.title}</Text>
+                            <Text
+                              style={[
+                                styles.packageLabel,
+                                premium && styles.packageLabelPremium,
+                              ]}
+                            >
+                              {option.label}
+                            </Text>
+                          </View>
+                          <Text style={styles.packageDesc}>{option.description}</Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.packageRadio,
+                            active && styles.packageRadioActive,
+                            premium && active && styles.packageRadioPremium,
+                          ]}
+                        >
+                          {active && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        </View>
+                      </View>
+
+                      <View style={styles.packageFeeGrid}>
+                        <View style={styles.packageFeeBox}>
+                          <Text style={styles.packageFeeLabel}>Phí khởi tạo</Text>
+                          <Text
+                            style={[
+                              styles.packageFeeValue,
+                              premium && styles.packageFeeValuePremium,
+                            ]}
+                          >
+                            {option.setupFee}
+                          </Text>
+                        </View>
+                        <View style={styles.packageFeeBox}>
+                          <Text style={styles.packageFeeLabel}>Phí tháng</Text>
+                          <Text
+                            style={[
+                              styles.packageFeeValue,
+                              premium && styles.packageFeeValuePremium,
+                            ]}
+                          >
+                            {option.monthlyFee}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               <TouchableOpacity
                 style={styles.nextBtn}
@@ -385,6 +493,131 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 20,
+  },
+  packageNotice: {
+    marginTop: -8,
+    marginBottom: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    backgroundColor: "#FFF7ED",
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  packageNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: "#9A3412",
+  },
+  packageList: {
+    gap: 12,
+  },
+  packageCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: "#fff",
+    padding: 14,
+    gap: 12,
+  },
+  packageCardActive: {
+    borderColor: "#FF6B35",
+    backgroundColor: "#FFF7ED",
+  },
+  packageCardPremium: {
+    borderColor: "#DDD6FE",
+  },
+  packageCardPremiumActive: {
+    borderColor: "#8B5CF6",
+    backgroundColor: "#F5F3FF",
+  },
+  packageTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  packageTitleWrap: {
+    flex: 1,
+  },
+  packageNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 5,
+  },
+  packageTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#111827",
+  },
+  packageLabel: {
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "#FFEDD5",
+    color: "#C2410C",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  packageLabelPremium: {
+    backgroundColor: "#EDE9FE",
+    color: "#6D28D9",
+  },
+  packageDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+    fontWeight: "600",
+  },
+  packageRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  packageRadioActive: {
+    borderColor: "#FF6B35",
+    backgroundColor: "#FF6B35",
+  },
+  packageRadioPremium: {
+    borderColor: "#8B5CF6",
+    backgroundColor: "#8B5CF6",
+  },
+  packageFeeGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  packageFeeBox: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    padding: 10,
+  },
+  packageFeeLabel: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  packageFeeValue: {
+    fontSize: 14,
+    color: "#C2410C",
+    fontWeight: "900",
+  },
+  packageFeeValuePremium: {
+    color: "#6D28D9",
   },
 
   inputGroup: {
