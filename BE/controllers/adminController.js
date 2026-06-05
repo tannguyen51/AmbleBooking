@@ -644,7 +644,7 @@ exports.getRestaurantRevenue = async (req, res) => {
     const { id } = req.params;
     const { from, to } = req.query;
 
-    const match = { restaurantId: id as any, status: { $in: ['confirmed', 'occupied', 'completed'] } };
+    const match = { restaurantId: id, status: { $in: ['confirmed', 'occupied', 'completed'] } };
     if (from || to) {
       match.createdAt = {};
       if (from) match.createdAt.$gte = new Date(from);
@@ -658,7 +658,7 @@ exports.getRestaurantRevenue = async (req, res) => {
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
       Booking.aggregate([
-        { $match: { restaurantId: id as any, status: "completed", "payment.status": "paid" } },
+        { $match: { restaurantId: id, status: "completed", "payment.status": "paid" } },
         {
           $group: {
             _id: { $month: "$createdAt" },
