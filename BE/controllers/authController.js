@@ -18,12 +18,12 @@ const buildGoogleStateToken = (redirectUri) => {
 };
 
 const getGoogleAppRedirect = (req) => {
-  const configured =
-    process.env.GOOGLE_APP_REDIRECT || "munchmap://auth/google";
+  const configured = process.env.GOOGLE_APP_REDIRECT; // không fallback cứng
   const requested = req.query.redirect;
-  if (!requested) return configured;
-  if (configured && requested !== configured) return configured;
-  return requested;
+  // Nếu không có env cấu hình, dùng redirect từ app (hỗ trợ Expo Go dev scheme)
+  if (!configured) return requested || "munchmap://auth/google";
+  // Nếu có cấu hình rõ ràng, ưu tiên dùng nó (bảo mật)
+  return configured;
 };
 
 const buildRedirectUrl = (baseUrl, params) => {
@@ -278,31 +278,29 @@ exports.googleAuthStart = async (req, res) => {
 exports.googleAuthCallback = async (req, res) => {
   try {
     const { code, state, error } = req.query;
-    if (error) {
-      return res.redirect(
-        buildRedirectUrl(
-          process.env.GOOGLE_APP_REDIRECT || "munchmap://auth/google",
-          { error },
-        ),
+
+    // Luôn redirect về app khi có lỗi (không trả JSON)
+    const redirectWithError = (msg) =>
+      res.redirect(
+        buildRedirectUrl(getGoogleAppRedirect(req), { error: msg }),
       );
+
+    if (error) {
+      return redirectWithError(error);
     }
 
     if (!code || !state) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing code or state",
-      });
+      return redirectWithError("missing_code_or_state");
     }
 
     let decoded;
     try {
       decoded = jwt.verify(state, process.env.JWT_SECRET);
     } catch {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid state",
-      });
+      return redirectWithError("invalid_state");
     }
+
+    const redirectUri = decoded?.redirect || getGoogleAppRedirect(req);
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -311,10 +309,7 @@ exports.googleAuthCallback = async (req, res) => {
       "http://localhost:5000/api/auth/google/callback";
 
     if (!clientId || !clientSecret) {
-      return res.status(500).json({
-        success: false,
-        message: "Missing Google OAuth credentials",
-      });
+      return redirectWithError("missing_google_credentials");
     }
 
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -333,10 +328,8 @@ exports.googleAuthCallback = async (req, res) => {
     const idToken = tokenData.id_token;
 
     if (!idToken) {
-      return res.status(502).json({
-        success: false,
-        message: "Failed to fetch Google token",
-      });
+      console.error("[googleAuthCallback] Token exchange failed:", tokenData.error, tokenData.error_description);
+      return redirectWithError("google_token_failed");
     }
 
     const infoRes = await fetch(
@@ -345,10 +338,7 @@ exports.googleAuthCallback = async (req, res) => {
     const info = await infoRes.json();
 
     if (!info.email || info.aud !== clientId) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Google token",
-      });
+      return redirectWithError("invalid_google_token");
     }
 
     const email = String(info.email).toLowerCase();
@@ -388,22 +378,18 @@ exports.googleAuthCallback = async (req, res) => {
     }
 
     if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: "Your account has been deactivated.",
-      });
+      return redirectWithError("account_deactivated");
     }
 
     const token = signToken(user._id);
-    const redirectUri = decoded?.redirect || getGoogleAppRedirect(req);
 
     return res.redirect(
       buildRedirectUrl(redirectUri, { token, provider: "google" }),
     );
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Google login failed.",
-    });
+    console.error("[googleAuthCallback]", error?.message || error);
+    return res.redirect(
+      buildRedirectUrl(getGoogleAppRedirect(req), { error: "google_login_failed" }),
+    );
   }
 };

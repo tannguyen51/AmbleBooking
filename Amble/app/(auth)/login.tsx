@@ -30,7 +30,10 @@ const TEXT_SEC = "#6B7280";
 const TEXT_MUTED = "#9CA3AF";
 const BORDER = "#E5E7EB";
 
+let initialUrlProcessed = false;
+
 export default function LoginScreen() {
+
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -63,7 +66,10 @@ export default function LoginScreen() {
     };
 
     Linking.getInitialURL().then((url) => {
-      if (url) handleUrl(url);
+       if (url && !initialUrlProcessed) {
+        initialUrlProcessed = true;
+        handleUrl(url);
+      }
     });
 
     const sub = Linking.addEventListener("url", (event) => {
