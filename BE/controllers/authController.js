@@ -37,44 +37,27 @@ const buildRedirectUrl = (baseUrl, params) => {
   return baseUrl + sep + qs;
 };
 
-// Trả về HTML page với deep link về app cho mọi nền tảng
-const sendAppRedirect = (req, res, deepLink, isError = false) => {
-  const rawLink = String(deepLink);
+// Success: redirect thẳng về app (302)
+const sendAppRedirect = (res, deepLink) => {
+  res.redirect(302, deepLink);
+};
 
-  // Trích token từ deep link để copy vào clipboard (fallback khi deep link thất bại)
+// Error: HTML page với copy token + nút mở app
+const sendErrorPage = (res, deepLink) => {
+  const rawLink = String(deepLink);
   const tokenMatch = rawLink.match(/[?&]token=([^&]+)/);
   const tokenValue = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
-
   const escapedHref = rawLink.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-
-  const title = isError ? "Đăng nhập thất bại" : "Đăng nhập thành công";
-  const msg = isError
-    ? "Có lỗi xảy ra. Vui lòng thử lại."
-    : "Bạn có thể quay lại ứng dụng để tiếp tục.";
-  const icon = isError ? "&#10060;" : "&#9989;";
-
-  // JS redirect + clipboard fallback (chỉ dùng munchmap://, không intent:// để tránh redirect sang CH Play)
   const safeToken = tokenValue.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
   const safeLink = rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-const jsCode = `
-    try { navigator.clipboard.writeText("${safeToken}").catch(function(){}); } catch(e) {}
-    function tryOpen() {
-      try { window.location.href = "${safeLink}"; } catch(e) {}
-      setTimeout(function(){
-        try { window.location.replace("${safeLink}"); } catch(e) {}
-      }, 400);
-    }
-    setTimeout(tryOpen, 200);
-    setTimeout(function(){
-      var hint = document.getElementById("hint");
-      if (hint) hint.textContent = "Token da duoc copy. Vui long mo app.";
-    }, 3000);`;
-
+  const btnOnClick = safeToken
+    ? `navigator.clipboard.writeText('${safeToken}').catch(function(){}); setTimeout(function(){ try { window.location.href='${safeLink}'; } catch(e){} }, 100); return false;`
+    : `setTimeout(function(){ try { window.location.href='${safeLink}'; } catch(e){} }, 100); return false;`;
 
   res.send(`<!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title} - MunchMap</title>
+<title>Đăng nhập thất bại - MunchMap</title>
 <style>
   body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
   .card{background:#fff;border-radius:16px;padding:40px 24px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px;width:100%}
@@ -84,30 +67,15 @@ const jsCode = `
   .btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
   .btn:active{background:#cc5522}
   .hint{font-size:12px;color:#9ca3af;margin-top:16px}
-  .manual{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:16px;font-size:11px;color:#6b7280;word-break:break-all}
 </style>
 </head>
 <body>
 <div class="card">
-<div class="icon">${icon}</div>
-<h1>${title}</h1>
-<p>${msg}</p>
-<a class="btn" href="${escapedHref}" id="backBtn">Mở ứng dụng</a>
-<p class="hint" id="hint">Ứng dụng sẽ tự động mở sau giây lát...</p>
-
-<script>
-  var opened = false;
-  function tryAll() {
-    if (opened) return;
-    opened = true;
-    ${jsCode}
-  }
-  setTimeout(tryAll, 300);
-  setTimeout(function(){
-    var hint = document.getElementById('hint');
-    if (hint) hint.textContent = 'Nếu ứng dụng chưa mở, vui lòng bấm nút trên.';
-  }, 3000);
-</script>
+<div class="icon">&#10060;</div>
+<h1>Đăng nhập thất bại</h1>
+<p>Có lỗi xảy ra. Vui lòng thử lại.</p>
+<a class="btn" href="${escapedHref}" id="backBtn" onclick="${btnOnClick}">Quay lại ứng dụng</a>
+${tokenValue ? `<p class="hint">Token đã được copy. Mở app để tiếp tục.</p>` : ''}
 </div>
 </body>
 </html>`);
@@ -361,7 +329,7 @@ exports.googleAuthCallback = async (req, res) => {
       console.error("[googleAuthCallback] SAFETY TIMEOUT — forcing response");
       try {
         const fb = buildRedirectUrl(getGoogleAppRedirect(req), { error: "timeout" });
-        sendAppRedirect(req, res, fb, true);
+        sendErrorPage(res, fb);
       } catch {
         res.status(500).send("Timeout");
       }
@@ -374,12 +342,7 @@ exports.googleAuthCallback = async (req, res) => {
     const { code, state, error } = req.query;
 
     const redirectWithError = (msg) =>
-      sendAppRedirect(
-        req,
-        res,
-        buildRedirectUrl(getGoogleAppRedirect(req), { error: msg }),
-        true,
-      );
+      sendErrorPage(res, buildRedirectUrl(getGoogleAppRedirect(req), { error: msg }));
 
     if (error) {
       return redirectWithError(error);
@@ -492,17 +455,12 @@ exports.googleAuthCallback = async (req, res) => {
 
     const token = signToken(user._id);
 
-    return sendAppRedirect(
-      req,
-      res,
-      buildRedirectUrl(redirectUri, { token, provider: "google" }),
-      false,
-    );
+    return sendAppRedirect(res, buildRedirectUrl(redirectUri, { token, provider: "google" }));
   } catch (error) {
     console.error("[googleAuthCallback]", error?.message || error);
     try {
       const fb = buildRedirectUrl(getGoogleAppRedirect(req), { error: "google_login_failed" });
-      sendAppRedirect(req, res, fb, true);
+      sendErrorPage(res, fb);
     } catch {
       res.status(500).send("Login failed. Please try again.");
     }
