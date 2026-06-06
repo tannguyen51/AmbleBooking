@@ -397,27 +397,24 @@ exports.partnerPayosWebhook = async (req, res) => {
       payment.status = "paid";
       payment.payosStatus = webhookData.data.status;
       payment.paidAt = new Date();
-
-      const now = new Date();
-      const expiryDate = new Date(now);
-      expiryDate.setMonth(expiryDate.getMonth() + 1);
-      payment.expiryDate = expiryDate;
-
       await payment.save();
 
-      // Kích hoạt subscription cho partner
+      // Đánh dấu partner đã thanh toán, chờ admin duyệt
       await Partner.findByIdAndUpdate(payment.partnerId, {
+        subscriptionStatus: "paid_pending",
         subscriptionPackage: payment.subscriptionPackage,
-        subscriptionStatus: "active",
-        subscriptionExpiry: expiryDate,
       });
 
-      const partner = await Partner.findById(payment.partnerId);
-      if (partner?.restaurantId) {
-        await Restaurant.findByIdAndUpdate(partner.restaurantId, {
+      const partnerData = await Partner.findById(payment.partnerId);
+      if (partnerData?.restaurantId) {
+        await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
           subscriptionPackage: payment.subscriptionPackage,
         });
       }
+    } else if (webhookData.data?.status === "CANCELLED") {
+      payment.status = "cancelled";
+      payment.payosStatus = "CANCELLED";
+      await payment.save();
     }
 
     return res.json({ success: true });

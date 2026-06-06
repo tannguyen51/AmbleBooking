@@ -28,7 +28,7 @@ interface PartnerItem {
   phone: string;
   restaurantName: string;
   subscriptionPackage: string;
-  subscriptionStatus: "pending" | "active" | "expired" | "cancelled";
+  subscriptionStatus: "pending" | "paid_pending" | "active" | "expired" | "cancelled";
   isActive: boolean;
   rejectionReason?: string;
   approvalNote?: string;
@@ -52,6 +52,7 @@ export default function AdminPartnersScreen() {
 
   const STATUS_OPTIONS = [
     { value: "pending", label: t("admin.partners.pending") },
+    { value: "paid_pending", label: "Đã TT" },
     { value: "active", label: t("admin.partners.running") },
     { value: "expired", label: t("admin.partners.expired") },
     { value: "cancelled", label: t("admin.partners.cancelled") },
@@ -224,15 +225,17 @@ export default function AdminPartnersScreen() {
 
                 <View style={styles.badgeRow}>
                   <Badge
-                    label={toLabelCase(item.subscriptionStatus)}
+                    label={item.subscriptionStatus === "paid_pending" ? "Đã thanh toán" : toLabelCase(item.subscriptionStatus)}
                     tone={
                       item.subscriptionStatus === "pending"
                         ? "warning"
-                        : item.subscriptionStatus === "active"
-                          ? "success"
-                          : item.subscriptionStatus === "expired"
-                            ? "danger"
-                            : "default"
+                        : item.subscriptionStatus === "paid_pending"
+                          ? "info"
+                          : item.subscriptionStatus === "active"
+                            ? "success"
+                            : item.subscriptionStatus === "expired"
+                              ? "danger"
+                              : "default"
                     }
                   />
                   <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
@@ -243,7 +246,7 @@ export default function AdminPartnersScreen() {
                 </View>
 
                 <View style={styles.actionsRow}>
-                  {item.subscriptionStatus === "pending" ? (
+                  {item.subscriptionStatus === "pending" || item.subscriptionStatus === "paid_pending" ? (
                     <>
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.actionPrimary]}

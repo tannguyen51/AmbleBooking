@@ -262,7 +262,11 @@ exports.getPartners = async (req, res) => {
     const { status, search, isActive } = req.query;
     const filter = {};
 
-    if (status) filter.subscriptionStatus = status;
+    if (status === "pending") {
+      filter.subscriptionStatus = { $in: ["pending", "paid_pending"] };
+    } else if (status) {
+      filter.subscriptionStatus = status;
+    }
     const isActiveBool = parseBool(isActive);
     if (isActiveBool !== undefined) filter.isActive = isActiveBool;
 

@@ -172,21 +172,23 @@ export default function PartnerRegisterScreen() {
         subscriptionPackage: form.subscriptionPackage,
       });
 
-      // Nếu chọn gói premium → tạo PayOS payment
-      if (form.subscriptionPackage === "premium") {
-        const p = usePartnerAuthStore.getState().partner;
-        if (p?._id) {
+      // Tạo PayOS payment cho gói đã chọn (phí khởi tạo)
+      const p = usePartnerAuthStore.getState().partner;
+      if (p?._id) {
+        try {
           const returnUrl = "https://amblebooking-production.up.railway.app/api/payment/partner/webhook";
           const cancelUrl = "https://amblebooking-production.up.railway.app/api/payment/partner/webhook";
           const res = await paymentAPI.createPartnerPayosPayment({
             partnerId: p._id,
-            subscriptionPackage: "premium",
+            subscriptionPackage: form.subscriptionPackage,
             returnUrl,
             cancelUrl,
           });
           if (res.data?.checkoutUrl) {
             await Linking.openURL(res.data.checkoutUrl);
           }
+        } catch (e: any) {
+          if (__DEV__) console.warn("[register] PayOS:", e?.message);
         }
       }
 

@@ -62,7 +62,7 @@ const partnerSchema = new mongoose.Schema(
     },
     subscriptionStatus: {
       type: String,
-      enum: ['pending', 'active', 'expired', 'cancelled'],
+      enum: ['pending', 'paid_pending', 'active', 'expired', 'cancelled'],
       default: 'pending',
     },
     subscriptionExpiry: {
