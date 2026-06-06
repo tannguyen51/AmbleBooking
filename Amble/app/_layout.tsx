@@ -75,7 +75,11 @@ function RootLayout() {
       pathname.includes("/notifications") ||
       pathname.includes("/profile") ||
       pathname.startsWith("/(partner)");
-    const inPartnerPending = pathname.includes("/(partner-auth)");
+    const inPartnerPending =
+      pathname.includes("/partner-register") ||
+      pathname.includes("/partner-login") ||
+      pathname.includes("/partner-forgot-password") ||
+      pathname.includes("/partner-pending");
     const inAdminGroup = pathname.startsWith("/admin");
     const onAdminLogin = pathname.startsWith("/admin/login");
     const onWelcome = pathname === "/welcome";
