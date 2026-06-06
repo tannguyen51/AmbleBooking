@@ -124,6 +124,8 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
+    if (isHandlingRef.current) return;
+    isHandlingRef.current = true;
     try {
       const redirectUri = Linking.createURL("auth/google");
       const authUrl = `${API_BASE_URL}/auth/google?redirect=${encodeURIComponent(redirectUri)}`;
@@ -142,6 +144,9 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       Alert.alert("Lỗi", err?.message || "Không thể mở đăng nhập Google");
+    }
+    finally {
+      isHandlingRef.current = false;
     }
   };
 
