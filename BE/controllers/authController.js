@@ -38,15 +38,57 @@ const buildRedirectUrl = (baseUrl, params) => {
 };
 
 // Trả về HTML page với deep link về app cho mọi nền tảng
-// 302 redirect bị chặn trên iOS Safari & một số Android ROM (MIUI, ColorOS)
 const sendAppRedirect = (req, res, deepLink, isError = false) => {
-  const escapedLink = String(deepLink).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const ua = (req.headers["user-agent"] || "").toLowerCase();
+  const isAndroid = /android/.test(ua);
   const rawLink = String(deepLink);
+
+  // Trích token từ deep link để copy vào clipboard (fallback khi deep link thất bại)
+  const tokenMatch = rawLink.match(/[?&]token=([^&]+)/);
+  const tokenValue = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
+
+  // Android: dùng intent:// scheme (đáng tin cậy hơn custom scheme trên Chrome)
+  // iOS: dùng custom scheme trực tiếp (Safari xử lý tốt với user touch)
+  const hrefLink = isAndroid
+    ? rawLink
+        .replace(/^munchmap:\/\//, "intent://")
+        .replace(/$/, "#Intent;scheme=munchmap;package=com.amble.app;end")
+    : rawLink;
+  const escapedHref = hrefLink.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
   const title = isError ? "Đăng nhập thất bại" : "Đăng nhập thành công";
   const msg = isError
     ? "Có lỗi xảy ra. Vui lòng thử lại."
     : "Bạn có thể quay lại ứng dụng để tiếp tục.";
   const icon = isError ? "&#10060;" : "&#9989;";
+
+  // JS redirect + clipboard fallback
+  const safeToken = tokenValue.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
+  const jsCode = `
+    // 1. Copy token vào clipboard (fallback khi deep link thất bại)
+    try { navigator.clipboard.writeText("${safeToken}").catch(function(){}); } catch(e) {}
+    // 2. Thử mở app qua deep link
+    function tryOpen() {
+      var ua = navigator.userAgent || '';
+      var isAndroid = /android/i.test(ua);
+      ${isAndroid ? `
+      // Android: intent:// scheme
+      try { window.location.href = "${hrefLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"; } catch(e) {}
+      setTimeout(function(){
+        try { window.location.replace("${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"); } catch(e) {}
+      }, 500);` : `
+      // iOS: custom scheme
+      try { window.location.href = "${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"; } catch(e) {}
+      setTimeout(function(){
+        try { window.location.replace("${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"); } catch(e) {}
+      }, 500);`}
+    }
+    setTimeout(tryOpen, 300);
+    // Sau 3 giây thông báo nếu chưa mở được
+    setTimeout(function(){
+      var hint = document.getElementById('hint');
+      if (hint) hint.textContent = 'Đã copy mã đăng nhập. Vui lòng mở app để tiếp tục.';
+    }, 3000);`;
 
   res.send(`<!DOCTYPE html>
 <html lang="vi">
@@ -60,7 +102,8 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
   p{font-size:14px;color:#6b7280;margin:0 0 24px}
   .btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
   .btn:active{background:#cc5522}
-  .hint{font-size:12px;color:#9ca3af;margin-top:12px}
+  .hint{font-size:12px;color:#9ca3af;margin-top:16px}
+  .manual{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:16px;font-size:11px;color:#6b7280;word-break:break-all}
 </style>
 </head>
 <body>
@@ -68,19 +111,17 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
 <div class="icon">${icon}</div>
 <h1>${title}</h1>
 <p>${msg}</p>
-<a class="btn" href="${escapedLink}" id="backBtn">Mở ứng dụng</a>
+<a class="btn" href="${escapedHref}" id="backBtn">Mở ứng dụng</a>
 <p class="hint" id="hint">Ứng dụng sẽ tự động mở sau giây lát...</p>
+${isAndroid ? `<div class="manual"><strong>Thủ công:</strong> Vào app <strong>munchmap</strong> trên điện thoại. Vào mục <strong>Tài khoản</strong> để kiểm tra trạng thái đăng nhập.</div>` : ''}
 <script>
-  var url = "${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}";
   var opened = false;
-  function openApp() {
+  function tryAll() {
     if (opened) return;
     opened = true;
-    try { window.location.href = url; } catch(e) {}
-    setTimeout(function(){ try { window.location.replace(url); } catch(e) {} }, 300);
-    setTimeout(function(){ try { window.location.assign(url); } catch(e) {} }, 800);
+    ${jsRedirect}
   }
-  setTimeout(openApp, 300);
+  setTimeout(tryAll, 300);
   setTimeout(function(){
     var hint = document.getElementById('hint');
     if (hint) hint.textContent = 'Nếu ứng dụng chưa mở, vui lòng bấm nút trên.';

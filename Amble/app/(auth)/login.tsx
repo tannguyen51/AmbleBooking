@@ -14,6 +14,7 @@ import {
   AppStateStatus,
 } from "react-native";
 import * as Linking from "expo-linking";
+import * as Clipboard from "expo-clipboard";
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
@@ -81,13 +82,22 @@ export default function LoginScreen() {
       handleDeepLink(event.url);
     });
 
-    // Fallback: khi app quay lại foreground, kiểm tra xem có URL mới không
-    // (phòng trường hợp Linking event không fire trên một số thiết bị)
+    // Fallback: khi app quay lại foreground
     const appStateSub = AppState.addEventListener("change", (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
-        // App vừa quay lại foreground — kiểm tra URL
+        // 1. Thử deep link
         Linking.getInitialURL().then((url) => {
-          if (url) handleDeepLink(url);
+          if (url) {
+            handleDeepLink(url);
+          } else {
+            // 2. Fallback: kiểm tra clipboard cho JWT token
+            Clipboard.getStringAsync().then((text) => {
+              if (text && text.startsWith("eyJ")) {
+                Clipboard.setStringAsync(""); // Xóa token khỏi clipboard
+                handleDeepLink(`munchmap://auth/google?token=${text}`);
+              }
+            }).catch(() => {});
+          }
         });
       }
       appStateRef.current = nextState;
