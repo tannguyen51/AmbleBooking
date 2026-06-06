@@ -188,6 +188,8 @@ export const paymentAPI = {
     api.post(`/payment/payos-cancel/${bookingId}`),
   createPartnerPayosPayment: (data: { partnerId: string; subscriptionPackage: string; returnUrl: string; cancelUrl: string }) =>
     api.post("/payment/partner/create-payos", data),
+  checkPartnerPaymentStatus: (partnerId: string) =>
+    api.post("/payment/partner/check-status", { partnerId }),
 };
 
 // ── Partner Dashboard ───────────────────────────────────

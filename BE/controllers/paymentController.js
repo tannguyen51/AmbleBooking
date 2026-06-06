@@ -423,3 +423,67 @@ exports.partnerPayosWebhook = async (req, res) => {
     return res.status(500).json({ success: false, message: "Lỗi xử lý webhook" });
   }
 };
+
+// ── POST /api/payment/partner/check-status ─────────────
+exports.checkPartnerPaymentStatus = async (req, res) => {
+  try {
+    const { partnerId } = req.body;
+    if (!partnerId) {
+      return res.status(400).json({ success: false, message: "Thiếu partnerId" });
+    }
+
+    // Tìm payment pending mới nhất của partner
+    const payment = await PartnerPayment.findOne({
+      partnerId,
+      status: "pending",
+    }).sort({ createdAt: -1 });
+
+    if (!payment) {
+      const partner = await Partner.findById(partnerId);
+      return res.json({
+        success: true,
+        subscriptionStatus: partner?.subscriptionStatus || "pending",
+      });
+    }
+
+    // Kiểm tra trực tiếp với PayOS
+    const payosResult = await payos.paymentRequests.get(payment.payosPaymentLinkId);
+
+    if (payosResult?.status === "PAID") {
+      payment.status = "paid";
+      payment.payosStatus = "PAID";
+      payment.paidAt = new Date();
+      await payment.save();
+
+      await Partner.findByIdAndUpdate(partnerId, {
+        subscriptionStatus: "active",
+        subscriptionPackage: payment.subscriptionPackage,
+      });
+
+      const partnerData = await Partner.findById(partnerId);
+      if (partnerData?.restaurantId) {
+        await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
+          subscriptionPackage: payment.subscriptionPackage,
+        });
+      }
+
+      return res.json({ success: true, subscriptionStatus: "active" });
+    }
+
+    if (payosResult?.status === "CANCELLED") {
+      payment.status = "cancelled";
+      payment.payosStatus = "CANCELLED";
+      await payment.save();
+      return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "CANCELLED" });
+    }
+
+    return res.json({
+      success: true,
+      subscriptionStatus: "pending",
+      payosStatus: payosResult?.status || "unknown",
+    });
+  } catch (err) {
+    console.error("[checkPartnerPaymentStatus]", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi kiểm tra thanh toán" });
+  }
+};

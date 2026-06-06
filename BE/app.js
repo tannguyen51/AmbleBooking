@@ -72,6 +72,19 @@ mongoose
   .then(() => {
     console.log("MongoDB connected");
     startBookingCleanupJob();
+
+    // Tự động đăng ký webhook PayOS
+    try {
+      const payos = require("./config/payos");
+      const webhookUrl = `${process.env.API_BASE_URL || "https://amblebooking-production.up.railway.app"}/api/payment/partner/webhook`;
+      payos.webhooks.confirm(webhookUrl).then(() => {
+        console.log("[payos] Webhook registered:", webhookUrl);
+      }).catch((err) => {
+        console.error("[payos] Webhook registration failed:", err.message);
+      });
+    } catch (err) {
+      console.error("[payos] Webhook setup error:", err.message);
+    }
   })
   .catch((err) => console.error("MongoDB error:", err));
 
