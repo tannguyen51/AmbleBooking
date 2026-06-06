@@ -102,17 +102,21 @@ function RootLayout() {
 
       const subStatus = partner?.subscriptionStatus;
 
-      // Chưa thanh toán → chỉ cho phép ở màn partner-auth, redirect về register
+      // Chưa thanh toán → chỉ cho phép ở register hoặc payment
       if (subStatus === "pending") {
-        if (!inPartnerPending) {
+        const isRegister = pathname.includes("/partner-register");
+        const isPayment = pathname.includes("/partner-payment");
+        if (!isRegister && !isPayment) {
           router.replace("/(partner-auth)/partner-register");
         }
         return;
       }
 
-      // Đã thanh toán chờ duyệt → chỉ cho phép ở pending/auth, redirect về pending
+      // Đã thanh toán chờ duyệt → chỉ cho phép ở pending hoặc payment
       if (subStatus === "paid_pending") {
-        if (!inPartnerPending) {
+        const isPending = pathname.includes("/partner-pending");
+        const isPayment = pathname.includes("/partner-payment");
+        if (!isPending && !isPayment) {
           router.replace("/(partner-auth)/partner-pending");
         }
         return;

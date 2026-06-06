@@ -33,15 +33,16 @@ export default function PartnerPaymentScreen() {
       try {
         const res = await partnerAuthAPI.getMe();
         const p = res.data?.partner;
-        if (p?.subscriptionStatus === "paid_pending") {
+        if (p?.subscriptionStatus === "paid_pending" || p?.subscriptionStatus === "active") {
           setStatus("paid");
           clearInterval(timer);
           setTimeout(() => {
-            router.replace("/(partner-auth)/partner-pending");
+            if (p?.subscriptionStatus === "active") {
+              router.replace("/dashboard");
+            } else {
+              router.replace("/(partner-auth)/partner-pending");
+            }
           }, 1500);
-        } else if (p?.subscriptionStatus === "active") {
-          clearInterval(timer);
-          router.replace("/dashboard");
         }
       } catch {}
     }, 3000);

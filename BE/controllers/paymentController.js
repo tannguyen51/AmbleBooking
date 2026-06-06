@@ -399,9 +399,9 @@ exports.partnerPayosWebhook = async (req, res) => {
       payment.paidAt = new Date();
       await payment.save();
 
-      // Đánh dấu partner đã thanh toán, chờ admin duyệt
+      // Kích hoạt partner ngay sau khi thanh toán thành công
       await Partner.findByIdAndUpdate(payment.partnerId, {
-        subscriptionStatus: "paid_pending",
+        subscriptionStatus: "active",
         subscriptionPackage: payment.subscriptionPackage,
       });
 
