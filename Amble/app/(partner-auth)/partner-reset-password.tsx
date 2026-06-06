@@ -15,7 +15,6 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { partnerAuthAPI } from "@/services/api";
-import { useTranslation } from "../../i18n/useTranslation";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -24,27 +23,43 @@ const TEXT = "#1A1A1A";
 const TEXT_MUTED = "#9CA3AF";
 const BORDER = "#E5E7EB";
 
-export default function PartnerForgotPasswordScreen() {
+export default function PartnerResetPasswordScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [form, setForm] = useState({
+    token: "",
+    password: "",
+    confirm: "",
+  });
   const [loading, setLoading] = useState(false);
-  const { t } = useTranslation();
 
-  const handleSubmit = async () => {
-    if (!email.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email");
+  const update = (key: "token" | "password" | "confirm", value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleReset = async () => {
+    if (!form.token.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập mã xác nhận");
       return;
     }
+    if (form.password.length < 6) {
+      Alert.alert("Lỗi", "Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+    if (form.password !== form.confirm) {
+      Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp");
+      return;
+    }
+
     setLoading(true);
     try {
-      await partnerAuthAPI.forgotPassword({ email: email.trim().toLowerCase() });
-      Alert.alert("Thành công", "Mã xác nhận đã được gửi đến email của bạn.");
-      router.replace({
-        pathname: "/(partner-auth)/partner-reset-password",
-        params: { email: email.trim().toLowerCase() },
-      } as any);
+      await partnerAuthAPI.resetPassword({
+        token: form.token.trim(),
+        newPassword: form.password,
+      });
+      Alert.alert("Thành công", "Mật khẩu đã được đặt lại thành công.");
+      router.replace("/(partner-auth)/partner-login");
     } catch (error: any) {
-      const message = error.response?.data?.message || "Không thể gửi yêu cầu. Vui lòng thử lại.";
+      const message =
+        error.response?.data?.message || "Không thể đặt lại mật khẩu. Vui lòng thử lại.";
       Alert.alert("Lỗi", message);
     } finally {
       setLoading(false);
@@ -61,30 +76,57 @@ export default function PartnerForgotPasswordScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Quên mật khẩu</Text>
+          <Text style={styles.headerTitle}>Đặt lại mật khẩu</Text>
           <Text style={styles.headerSubtitle}>
-            Nhập email đã đăng ký để nhận hướng dẫn đặt lại mật khẩu
+            Nhập mã xác nhận đã gửi đến email của bạn
           </Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Mã xác nhận</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={18} color={TEXT_MUTED} />
+            <Ionicons name="key-outline" size={18} color={TEXT_MUTED} />
             <TextInput
               style={styles.input}
-              placeholder="your@email.com"
+              placeholder="Nhập mã 6 ký tự"
               placeholderTextColor={TEXT_MUTED}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              value={form.token}
+              onChangeText={(v) => update("token", v)}
               autoCapitalize="none"
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Mật khẩu mới</Text>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.input}
+              placeholder="Tối thiểu 6 ký tự"
+              placeholderTextColor={TEXT_MUTED}
+              value={form.password}
+              onChangeText={(v) => update("password", v)}
+              secureTextEntry
+            />
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Xác nhận mật khẩu mới</Text>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="lock-closed-outline" size={18} color={TEXT_MUTED} />
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập lại mật khẩu mới"
+              placeholderTextColor={TEXT_MUTED}
+              value={form.confirm}
+              onChangeText={(v) => update("confirm", v)}
+              secureTextEntry
             />
           </View>
 
           <TouchableOpacity
             style={[styles.submitBtn, loading && { opacity: 0.75 }]}
-            onPress={handleSubmit}
+            onPress={handleReset}
             disabled={loading}
           >
             <LinearGradient
@@ -96,7 +138,7 @@ export default function PartnerForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Gửi hướng dẫn</Text>
+                <Text style={styles.submitText}>Đặt lại mật khẩu</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

@@ -149,6 +149,19 @@ export default function PartnerProfileScreen() {
   const upgradeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const getExpiryText = (expiry: string | null | undefined): string | null => {
+    if (!expiry) return null;
+    const now = Date.now();
+    const end = new Date(expiry).getTime();
+    const diff = end - now;
+    if (diff <= 0) return "Đã hết hạn";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return `Còn ${days} ngày`;
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (hours > 0) return `Còn ${hours} giờ`;
+    return "Sắp hết hạn";
+  };
+
   const PRIMARY = "#FF6B35";
 
   const [coverImage, setCoverImage] = useState("");
@@ -542,14 +555,19 @@ export default function PartnerProfileScreen() {
                 </Text>
               </View>
             </View>
-            <Text
-              style={[
-                styles.subscriptionBadge,
-                currentPlan === "premium" && styles.subscriptionBadgePremium,
-              ]}
-            >
-              {currentPlan === "premium" ? "Premium" : "Pro"}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text
+                style={[
+                  styles.subscriptionBadge,
+                  currentPlan === "premium" && styles.subscriptionBadgePremium,
+                ]}
+              >
+                {currentPlan === "premium" ? "Premium" : "Pro"}
+              </Text>
+              {currentPlan === "premium" && getExpiryText(partner?.subscriptionExpiry) ? (
+                <Text style={styles.expiryLabel}>{getExpiryText(partner?.subscriptionExpiry)}</Text>
+              ) : null}
+            </View>
           </View>
 
           <TouchableOpacity style={styles.menuItem} onPress={openSubscription}>
@@ -1480,6 +1498,18 @@ const styles = StyleSheet.create({
   subscriptionBadgePremium: {
     backgroundColor: "#EDE9FE",
     color: "#6D28D9",
+  },
+  expiryLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#B45309",
+    backgroundColor: "#FFFBEB",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
   },
   subscriptionModal: {
     maxHeight: "88%",

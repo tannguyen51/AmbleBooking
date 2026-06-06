@@ -198,22 +198,23 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const partner = await Partner.findOne({ email: email.toLowerCase().trim() });
+    // Luôn trả về success để tránh lộ thông tin email tồn tại
     if (!partner) {
-      return res.status(404).json({ success: false, message: "No account with that email" });
+      return res.status(200).json({ success: true, message: "If the email exists, instructions have been sent." });
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex");
+    // Mã 6 chữ số (giống luồng khách hàng)
+    const rawToken = Math.floor(Math.random() * 1000000).toString().padStart(6, "0");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
     partner.resetPasswordToken = hashedToken;
     partner.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000);
     await partner.save();
 
-    const resetLink = `${req.protocol}://${req.get("host")}/api/partner/reset-password/${rawToken}`;
     await sendMail({
       to: email,
       subject: "Đặt lại mật khẩu Munchmap Partner",
-      text: `Mở liên kết để đặt lại mật khẩu: ${resetLink}\nMã: ${rawToken}`,
-      html: `<p>Mở liên kết để đặt lại mật khẩu:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Mã: <strong>${rawToken}</strong></p>`,
+      text: `Mã xác nhận đặt lại mật khẩu: ${rawToken}\nMã có hiệu lực trong 30 phút.`,
+      html: `<p>Mã xác nhận đặt lại mật khẩu của bạn:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${rawToken}</p><p>Mã có hiệu lực trong 30 phút.</p>`,
     });
 
     return res.status(200).json({ success: true, message: "Reset instructions sent to email." });
