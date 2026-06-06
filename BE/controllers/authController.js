@@ -39,22 +39,13 @@ const buildRedirectUrl = (baseUrl, params) => {
 
 // Trả về HTML page với deep link về app cho mọi nền tảng
 const sendAppRedirect = (req, res, deepLink, isError = false) => {
-  const ua = (req.headers["user-agent"] || "").toLowerCase();
-  const isAndroid = /android/.test(ua);
   const rawLink = String(deepLink);
 
   // Trích token từ deep link để copy vào clipboard (fallback khi deep link thất bại)
   const tokenMatch = rawLink.match(/[?&]token=([^&]+)/);
   const tokenValue = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
 
-  // Android: dùng intent:// scheme (đáng tin cậy hơn custom scheme trên Chrome)
-  // iOS: dùng custom scheme trực tiếp (Safari xử lý tốt với user touch)
-  const hrefLink = isAndroid
-    ? rawLink
-        .replace(/^munchmap:\/\//, "intent://")
-        .replace(/$/, "#Intent;scheme=munchmap;package=com.amble.app;end")
-    : rawLink;
-  const escapedHref = hrefLink.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const escapedHref = rawLink.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 
   const title = isError ? "Đăng nhập thất bại" : "Đăng nhập thành công";
   const msg = isError
@@ -62,33 +53,23 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
     : "Bạn có thể quay lại ứng dụng để tiếp tục.";
   const icon = isError ? "&#10060;" : "&#9989;";
 
-  // JS redirect + clipboard fallback
+  // JS redirect + clipboard fallback (chỉ dùng munchmap://, không intent:// để tránh redirect sang CH Play)
   const safeToken = tokenValue.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
-  const jsCode = `
-    // 1. Copy token vào clipboard (fallback khi deep link thất bại)
+  const safeLink = rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+const jsCode = `
     try { navigator.clipboard.writeText("${safeToken}").catch(function(){}); } catch(e) {}
-    // 2. Thử mở app qua deep link
     function tryOpen() {
-      var ua = navigator.userAgent || '';
-      var isAndroid = /android/i.test(ua);
-      ${isAndroid ? `
-      // Android: intent:// scheme
-      try { window.location.href = "${hrefLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"; } catch(e) {}
+      try { window.location.href = "${safeLink}"; } catch(e) {}
       setTimeout(function(){
-        try { window.location.replace("${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"); } catch(e) {}
-      }, 500);` : `
-      // iOS: custom scheme
-      try { window.location.href = "${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"; } catch(e) {}
-      setTimeout(function(){
-        try { window.location.replace("${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}"); } catch(e) {}
-      }, 500);`}
+        try { window.location.replace("${safeLink}"); } catch(e) {}
+      }, 400);
     }
-    setTimeout(tryOpen, 300);
-    // Sau 3 giây thông báo nếu chưa mở được
+    setTimeout(tryOpen, 200);
     setTimeout(function(){
-      var hint = document.getElementById('hint');
-      if (hint) hint.textContent = 'Đã copy mã đăng nhập. Vui lòng mở app để tiếp tục.';
+      var hint = document.getElementById("hint");
+      if (hint) hint.textContent = "Token da duoc copy. Vui long mo app.";
     }, 3000);`;
+
 
   res.send(`<!DOCTYPE html>
 <html lang="vi">
@@ -113,7 +94,7 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
 <p>${msg}</p>
 <a class="btn" href="${escapedHref}" id="backBtn">Mở ứng dụng</a>
 <p class="hint" id="hint">Ứng dụng sẽ tự động mở sau giây lát...</p>
-${isAndroid ? `<div class="manual"><strong>Thủ công:</strong> Vào app <strong>munchmap</strong> trên điện thoại. Vào mục <strong>Tài khoản</strong> để kiểm tra trạng thái đăng nhập.</div>` : ''}
+
 <script>
   var opened = false;
   function tryAll() {
