@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, AppState, AppStateStatus,
 } from "react-native";
@@ -15,44 +15,54 @@ export default function PartnerPaymentScreen() {
   const { checkoutUrl } = useLocalSearchParams<{ checkoutUrl: string }>();
   const { partner } = usePartnerAuthStore();
   const [status, setStatus] = useState<"opening" | "waiting" | "paid" | "failed">("opening");
+  const [isCheckingDirect, setIsCheckingDirect] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const checkStatus = async () => {
+  const onPaid = (subStatus: string) => {
+    setStatus("paid");
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeout(() => {
+      if (subStatus === "active") {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/(partner-auth)/partner-pending");
+      }
+    }, 1500);
+  };
+
+  // Poll nhẹ: chỉ gọi getMe(), không tốn PayOS rate limit
+  const checkStatus = useCallback(async () => {
     try {
-      // Ưu tiên check nhanh qua getMe (webhook đã cập nhật)
       const res = await partnerAuthAPI.getMe();
       const p = res.data?.partner;
       if (p?.subscriptionStatus === "paid_pending" || p?.subscriptionStatus === "active") {
-        setStatus("paid");
-        if (timerRef.current) clearInterval(timerRef.current);
-        setTimeout(() => {
-          if (p?.subscriptionStatus === "active") {
-            router.replace("/dashboard");
-          } else {
-            router.replace("/(partner-auth)/partner-pending");
-          }
-        }, 1500);
+        onPaid(p?.subscriptionStatus);
+      }
+    } catch {}
+  }, []);
+
+  // Check nặng: gọi cả PayOS API trực tiếp — chỉ dùng khi user bấm nút hoặc app từ background về
+  const checkStatusDirect = useCallback(async () => {
+    if (isCheckingDirect) return;
+    setIsCheckingDirect(true);
+    try {
+      const res = await partnerAuthAPI.getMe();
+      const p = res.data?.partner;
+      if (p?.subscriptionStatus === "paid_pending" || p?.subscriptionStatus === "active") {
+        onPaid(p?.subscriptionStatus);
         return;
       }
-
-      // Nếu vẫn pending → check trực tiếp với PayOS (fallback khi webhook chưa kịp)
       if (p?._id) {
         const payosCheck = await paymentAPI.checkPartnerPaymentStatus(p._id);
         const subStatus = payosCheck.data?.subscriptionStatus;
         if (subStatus === "active" || subStatus === "paid_pending") {
-          setStatus("paid");
-          if (timerRef.current) clearInterval(timerRef.current);
-          setTimeout(() => {
-            if (subStatus === "active") {
-              router.replace("/dashboard");
-            } else {
-              router.replace("/(partner-auth)/partner-pending");
-            }
-          }, 1500);
+          onPaid(subStatus);
         }
       }
-    } catch {}
-  };
+    } catch {} finally {
+      setIsCheckingDirect(false);
+    }
+  }, [isCheckingDirect]);
 
   // Mở PayOS khi vào screen
   useEffect(() => {
@@ -68,16 +78,16 @@ export default function PartnerPaymentScreen() {
   useEffect(() => {
     if (status !== "waiting") return;
 
-    // Kiểm tra ngay lập tức
-    checkStatus();
+    // Lần đầu check kỹ (có fallback PayOS)
+    checkStatusDirect();
 
-    // Poll mỗi 3 giây
+    // Poll nhẹ mỗi 3 giây (chỉ getMe)
     timerRef.current = setInterval(checkStatus, 3000);
 
-    // Khi app quay lại foreground → kiểm tra ngay
+    // Khi app quay lại foreground → check kỹ
     const onAppStateChange = (nextState: AppStateStatus) => {
       if (nextState === "active") {
-        checkStatus();
+        checkStatusDirect();
       }
     };
     const sub = AppState.addEventListener("change", onAppStateChange);
@@ -99,12 +109,20 @@ export default function PartnerPaymentScreen() {
               Vui lòng hoàn tất thanh toán qua PayOS.{"\n"}
               Trang này sẽ tự động cập nhật khi thanh toán thành công.
             </Text>
-            <Text style={s.note}>Đang kiểm tra trạng thái thanh toán...</Text>
+            <Text style={s.note}>
+              {isCheckingDirect ? "Đang kiểm tra với PayOS..." : "Đang kiểm tra trạng thái thanh toán..."}
+            </Text>
 
             {status === "waiting" && (
-              <TouchableOpacity style={s.retryBtn} onPress={checkStatus}>
+              <TouchableOpacity
+                style={[s.retryBtn, isCheckingDirect && { opacity: 0.5 }]}
+                onPress={checkStatusDirect}
+                disabled={isCheckingDirect}
+              >
                 <Ionicons name="refresh" size={16} color={PRIMARY} />
-                <Text style={s.retryText}>Kiểm tra lại</Text>
+                <Text style={s.retryText}>
+                  {isCheckingDirect ? "Đang kiểm tra..." : "Kiểm tra lại"}
+                </Text>
               </TouchableOpacity>
             )}
           </>

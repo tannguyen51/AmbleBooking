@@ -446,8 +446,24 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       });
     }
 
-    // Kiểm tra trực tiếp với PayOS
-    const payosResult = await payos.paymentRequests.get(payment.payosPaymentLinkId);
+    // Kiểm tra trực tiếp với PayOS — thử bằng paymentLinkId trước, rồi orderCode
+    let payosResult;
+    try {
+      payosResult = await payos.paymentRequests.get(payment.payosPaymentLinkId);
+    } catch (e) {
+      // Nếu không tìm thấy bằng paymentLinkId, thử lại bằng orderCode
+      if (e?.code === "101" && payment.payosOrderCode) {
+        try {
+          payosResult = await payos.paymentRequests.get(String(payment.payosOrderCode));
+        } catch (e2) {
+          console.error("[checkPartnerPaymentStatus] Cả paymentLinkId và orderCode đều không tìm thấy:", e2?.message);
+          return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "NOT_FOUND" });
+        }
+      } else {
+        console.error("[checkPartnerPaymentStatus] Lỗi tra PayOS:", e?.message);
+        return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "ERROR" });
+      }
+    }
 
     if (payosResult?.status === "PAID") {
       payment.status = "paid";
