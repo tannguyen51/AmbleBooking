@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
+import * as WebBrowser from "expo-web-browser";
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../../store/authStore";
@@ -123,19 +124,25 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    if (__DEV__ && API_BASE_URL.includes("localhost")) {
-      Alert.alert(
-        t("auth.login.missingConfig"),
-        t("auth.login.missingConfig"),
-      );
-      return;
-    }
+    try {
+      const redirectUri = Linking.createURL("auth/google");
+      const authUrl = `${API_BASE_URL}/auth/google?redirect=${encodeURIComponent(redirectUri)}`;
 
-    const redirectUri = Linking.createURL("auth/google");
-    const url = `${API_BASE_URL}/auth/google?redirect=${encodeURIComponent(
-      redirectUri,
-    )}`;
-    await Linking.openURL(url);
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      if (result.type === "success" && result.url) {
+        const parsed = Linking.parse(result.url);
+        const token = parsed.queryParams?.token;
+        if (typeof token === "string") {
+          await loginWithToken(token);
+        } else {
+          const error = parsed.queryParams?.error;
+          if (error) Alert.alert("Lỗi đăng nhập", String(error));
+        }
+      }
+    } catch (err: any) {
+      Alert.alert("Lỗi", err?.message || "Không thể mở đăng nhập Google");
+    }
   };
 
   return (
