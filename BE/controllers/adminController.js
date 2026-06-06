@@ -669,38 +669,49 @@ exports.getRestaurantRevenue = async (req, res) => {
 
     const objId = new mongoose.Types.ObjectId(id);
 
-    // Tất cả đều filter theo createdAt để đồng bộ dữ liệu
-    const baseMatch = {
+    // Doanh thu: filter theo completedAt
+    const revenueMatch = {
+      restaurantId: objId,
+      status: "completed",
+      $or: [
+        { completedAt: { $gte: start, $lte: end } },
+        { completedAt: null, updatedAt: { $gte: start, $lte: end } },
+      ],
+    };
+    // Thống kê: filter theo createdAt
+    const countMatch = {
       restaurantId: objId,
       createdAt: { $gte: start, $lte: end },
     };
 
     const [totalRevenue, periodBreakdown, totalBookings, avgPartySizeData] = await Promise.all([
-      // Doanh thu: chỉ tính đơn completed trong kỳ
       Booking.aggregate([
-        { $match: { ...baseMatch, status: "completed" } },
+        { $match: revenueMatch },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
-      // Breakdown doanh thu theo ngày (dùng createdAt để đồng bộ)
       Booking.aggregate([
-        { $match: { ...baseMatch, status: "completed" } },
+        { $match: revenueMatch },
         {
           $group: {
-            _id: { $dateToString: { format: period === "quarter" ? "%m/%Y" : "%d/%m", date: "$createdAt" } },
+            _id: {
+              $cond: {
+                if: { $ne: ["$completedAt", null] },
+                then: { $dateToString: { format: period === "quarter" ? "%m/%Y" : "%d/%m", date: "$completedAt" } },
+                else: { $dateToString: { format: period === "quarter" ? "%m/%Y" : "%d/%m", date: "$updatedAt" } },
+              },
+            },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },
         },
         { $sort: { _id: 1 } },
       ]),
-      // Tổng đơn active trong kỳ
       Booking.countDocuments({
-        ...baseMatch,
+        ...countMatch,
         status: { $in: ["confirmed", "occupied", "completed"] },
       }),
-      // Trung bình khách
       Booking.aggregate([
-        { $match: { ...baseMatch, status: { $in: ["confirmed", "occupied", "completed"] } } },
+        { $match: { ...countMatch, status: { $in: ["confirmed", "occupied", "completed"] } } },
         { $group: { _id: null, avgParty: { $avg: "$bookingDetails.partySize" } } },
       ]),
     ]);

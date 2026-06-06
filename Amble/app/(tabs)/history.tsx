@@ -188,6 +188,19 @@ export default function BookingHistoryScreen() {
     }
   };
 
+  const handleDelete = (bookingId: string) => {
+    Alert.alert("Xóa đơn", "Bạn có chắc muốn xóa đơn này khỏi lịch sử?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: () => {
+          setBookings((prev) => prev.filter((b) => b._id !== bookingId));
+        },
+      },
+    ]);
+  };
+
   const submitCancel = async () => {
     if (!selectedBooking) return;
     const amount = refundPreview?.refundAmount || 0;
@@ -262,6 +275,12 @@ export default function BookingHistoryScreen() {
     const canCancel = [
       "pending",
       "confirmed",
+    ].includes(item.status);
+    const canDelete = [
+      "completed",
+      "cancelled",
+      "no_show",
+      "declined",
     ].includes(item.status);
     const canPay = item.payment?.status === "unpaid";
 
@@ -375,6 +394,17 @@ export default function BookingHistoryScreen() {
               ) : (
                 <Text style={c.cancelTxt}>{t("history.cancelBooking")}</Text>
               )}
+            </TouchableOpacity>
+          )}
+
+          {canDelete && (
+            <TouchableOpacity
+              style={c.deleteBtn}
+              onPress={() => handleDelete(item._id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={14} color="#9CA3AF" />
+              <Text style={c.deleteTxt}>Xóa</Text>
             </TouchableOpacity>
           )}
 
@@ -684,6 +714,18 @@ const c = StyleSheet.create({
     alignItems: "center",
   },
   cancelTxt: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
+  deleteBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  deleteTxt: { fontSize: 12, fontWeight: "600", color: "#9CA3AF" },
   payBtn: {
     marginTop: 10,
     borderRadius: 10,

@@ -123,6 +123,9 @@ export default function PartnerTablesScreen() {
   const [form, setForm] = useState<TableFormState>(DEFAULT_FORM);
   const { partner } = usePartnerAuthStore();
   const canManageTables = hasPartnerPermission(partner?.role, "tables:manage");
+  if (__DEV__) {
+    console.log("[tables] role:", partner?.role, "canManageTables:", canManageTables);
+  }
 
   const getTableTypeLabel = (type: TableType): string => {
     switch (type) {
@@ -392,12 +395,6 @@ export default function PartnerTablesScreen() {
       <View style={styles.headerWrap}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.headerTitle}>{t("partner.tables.title")}</Text>
-          {canManageTables && (
-            <TouchableOpacity style={styles.addBtn} onPress={openCreateModal} disabled={isSubmitting}>
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={styles.addBtnText}>{t("partner.tables.add")}</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -790,6 +787,11 @@ export default function PartnerTablesScreen() {
         </View>
       </Modal>
 
+      {canManageTables && (
+        <TouchableOpacity style={styles.fab} onPress={openCreateModal} disabled={isSubmitting} activeOpacity={0.85}>
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
       <PartnerBottomNav pendingCount={pendingCount} />
     </SafeAreaView>
   );
@@ -812,16 +814,23 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#1A1A1A",
   },
-  addBtn: {
-    flexDirection: "row",
+  fab: {
+    position: "absolute",
+    bottom: 80,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FF6B35",
     alignItems: "center",
-    gap: 2,
-    backgroundColor: "#1A1A1A",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    justifyContent: "center",
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 100,
   },
-  addBtnText: { fontSize: 10, fontWeight: "700", color: "#fff" },
 
   // Stats Cards
   statsRow: {
