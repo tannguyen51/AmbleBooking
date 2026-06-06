@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "munchmap",
+    "scheme": "amble",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -47,11 +47,7 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "79cd0e80-dc0d-48de-bd50-b418e9102b01"
       }
-    },
-    "owner": "xuantan51"
+    }
   }
 }
