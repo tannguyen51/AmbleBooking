@@ -115,7 +115,7 @@ const CATEGORIES: Category[] = [
   { icon: "gift", label: "Sinh nhật", key: "celebration", bg: "#EDE9FE", iconColor: "#8B5CF6" },
 ];
 
-const QUICK_TAGS = ["Món Việt", "Đồ Âu", "Rooftop", "Nhật Bản", "Lẩu nướng"];
+const QUICK_TAGS: string[] = [];
 
 const PRICE_OPTIONS = [
   "Dưới 100k/người",
@@ -976,37 +976,6 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          {/* Quick Tags — bấm được, highlight khi active */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickTagsRow}
-          >
-            {QUICK_TAGS.map((tag) => {
-              const active = draftFilters.quickTags.includes(tag);
-              return (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.quickTag, active && styles.quickTagActive]}
-                  onPress={() => {
-                    const next = toggleInList(draftFilters.quickTags, tag);
-                    setDraftFilters((prev) => ({ ...prev, quickTags: next }));
-                  }}
-                  activeOpacity={0.75}
-                >
-                  <Text
-                    style={[
-                      styles.quickTagText,
-                      active && styles.quickTagTextActive,
-                    ]}
-                  >
-                    {tag}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
 
           {/* Filter panel */}
           {showFilters && (

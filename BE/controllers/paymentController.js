@@ -113,8 +113,14 @@ p{color:#666;margin:0 0 24px;line-height:1.5}
 <div class="icon">&#10004;&#65039;</div>
 <h1>Thanh toán thành công!</h1>
 <p>Cảm ơn bạn đã thanh toán. Bạn có thể quay lại ứng dụng để tiếp tục.</p>
-<a class="btn" href="munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}">Quay lại ứng dụng</a>
-<script>setTimeout(function(){window.location.href="munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}"},1500)</script>
+<a class="btn" href="munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}" id="backBtn">Quay lại ứng dụng</a>
+<script>
+try { window.location.href = "munchmap://booking/success?bookingId=${encodeURIComponent(bookingId)}"; } catch(e) {}
+setTimeout(function(){
+  var btn = document.getElementById('backBtn');
+  if (btn) btn.textContent = 'Quay lại ứng dụng (Mở lại app nếu chưa tự chuyển)';
+}, 2000);
+</script>
 </div>
 </body>
 </html>`);

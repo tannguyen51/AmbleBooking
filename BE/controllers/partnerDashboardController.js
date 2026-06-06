@@ -943,10 +943,7 @@ exports.getRevenue = async (req, res) => {
     const match = {
       restaurantId: objId,
       status: "completed",
-      $or: [
-        { completedAt: { $gte: start, $lte: now } },
-        { completedAt: null, updatedAt: { $gte: start, $lte: now } },
-      ],
+      createdAt: { $gte: start, $lte: now },
     };
 
     const [revenueAgg, breakdownAgg] = await Promise.all([
@@ -958,13 +955,7 @@ exports.getRevenue = async (req, res) => {
         { $match: match },
         {
           $group: {
-            _id: {
-              $cond: {
-                if: { $ne: ["$completedAt", null] },
-                then: { $dateToString: { format: "%d/%m", date: "$completedAt" } },
-                else: { $dateToString: { format: "%d/%m", date: "$updatedAt" } },
-              },
-            },
+            _id: { $dateToString: { format: "%d/%m", date: "$createdAt" } },
             total: { $sum: "$pricing.totalAmount" },
             count: { $sum: 1 },
           },

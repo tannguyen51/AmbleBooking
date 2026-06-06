@@ -479,9 +479,22 @@ const next7Days = getNext7Days();
     );
   };
 
-  // ── Step 2: Chọn Loại bàn ────────────────────────────────
+  // ── Step 2: Danh sách bàn riêng lẻ ────────────────────────────
   const renderStep2 = () => {
-    if (tableGroups.length === 0) {
+    // Lấy tất cả bàn riêng lẻ (không gộp nhóm)
+    const allTables = tableGroups.flatMap((g) =>
+      g.tables.map((t) => ({
+        ...t,
+        groupName: g.name,
+        groupType: g.type,
+        groupCapacity: g.capacity,
+        groupImages: g.images,
+        groupDescription: g.description,
+        groupFeatures: g.features,
+      }))
+    );
+
+    if (allTables.length === 0) {
       return (
         <View style={s.emptyWrap}>
           <Ionicons name="time-outline" size={32} color="#9CA3AF" />
@@ -494,45 +507,70 @@ const next7Days = getNext7Days();
     return (
       <View style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}>
-          {tableGroups.map((group) => {
-            const cfg = TABLE_TYPE_CONFIG[group.type] ?? TABLE_TYPE_CONFIG.regular;
-            const availableCount = group.tables.length;
-
+          {allTables.map((table) => {
+            const cfg = TABLE_TYPE_CONFIG[table.groupType] ?? TABLE_TYPE_CONFIG.regular;
+            const isVip = table.groupType === "vip";
             return (
-              <View key={group.id} style={s.tableCard}>
+              <View key={table._id} style={[s.tableCard, isVip && { borderColor: "#D4AF37", borderWidth: 1.5 }]}>
                 {/* Ảnh bàn */}
                 <View style={s.cardImgContainer}>
-                  <Image source={{ uri: group.images[0] }} style={s.cardImg} resizeMode="cover" />
-                  {/* Nhãn loại bàn */}
+                  <Image source={{ uri: table.groupImages[0] }} style={s.cardImg} resizeMode="cover" />
                   <View style={[s.typeTag, { backgroundColor: cfg.color }]}>
                     <Text style={s.typeTagTxt}>{t(cfg.label)}</Text>
                   </View>
+                  {isVip && (
+                    <View style={s.vipBadgeCard}>
+                      <Ionicons name="diamond" size={12} color="#fff" />
+                      <Text style={s.vipBadgeCardText}>VIP</Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Thông tin bàn */}
                 <View style={s.cardBody}>
                   <View style={s.cardRow}>
-                    <Text style={s.cardTitle}>{group.name}</Text>
+                    <Text style={s.cardTitle}>{table.name}</Text>
                     <Text style={s.cardPrice}>
-                      {group.pricing.baseDeposit.toLocaleString("vi-VN")}đ
+                      {table.pricing.baseDeposit.toLocaleString("vi-VN")}đ
                     </Text>
                   </View>
-                  <View style={[s.cardRow, { marginTop: 4, marginBottom: 12 }]}>
+                  <View style={[s.cardRow, { marginTop: 4 }]}>
                     <Text style={s.cardSub}>
-                      {group.capacity.min} - {group.capacity.max} người
+                      <Ionicons name="people-outline" size={14} color="#6B7280" /> {table.capacity.min}–{table.capacity.max} người
                     </Text>
-                    <Text style={s.cardStatus}>Còn trống {availableCount} bàn</Text>
                   </View>
 
-                  {/* Nút đặt bàn */}
+                  {/* Mô tả + tiện ích */}
+                  {table.groupDescription && (
+                    <Text style={s.cardDesc} numberOfLines={2}>{table.groupDescription}</Text>
+                  )}
+                  {table.groupFeatures?.length > 0 && (
+                    <View style={s.featureRow}>
+                      {table.groupFeatures.slice(0, 3).map((f, i) => (
+                        <View key={i} style={s.featureChip}>
+                          <Text style={s.featureChipText}>{f}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Nút Xem */}
                   <TouchableOpacity
                     style={s.cardBtn}
                     onPress={() => {
-                      setSelectedGroup(group);
-                      // Chọn bàn đầu tiên làm mặc định
-                      if (group.tables.length > 0) {
-                        setSelectedTableId(group.tables[0]._id);
-                      }
+                      const fakeGroup: TableGroup = {
+                        id: table._id,
+                        name: table.name,
+                        type: table.groupType,
+                        capacity: table.groupCapacity,
+                        pricing: table.pricing,
+                        images: table.groupImages,
+                        features: table.groupFeatures,
+                        description: table.groupDescription,
+                        tables: [table],
+                      };
+                      setSelectedGroup(fakeGroup);
+                      setSelectedTableId(table._id);
                       setStep(3);
                     }}
                     activeOpacity={0.8}
@@ -543,7 +581,7 @@ const next7Days = getNext7Days();
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={s.cardBtnTxt}>Đặt bàn</Text>
+                      <Text style={s.cardBtnTxt}>Xem</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -558,7 +596,9 @@ const next7Days = getNext7Days();
   // ── Step 3: Chi tiết bàn & Chọn bàn cụ thể ──────────────────
   const renderStep3 = () => {
     if (!selectedGroup) return null;
-    const availableCount = selectedGroup.tables.length;
+    const table = selectedGroup.tables[0];
+    const cfg = TABLE_TYPE_CONFIG[selectedGroup.type] ?? TABLE_TYPE_CONFIG.regular;
+    const isVip = selectedGroup.type === "vip";
 
     return (
       <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -573,6 +613,10 @@ const next7Days = getNext7Days();
             <TouchableOpacity onPress={() => setStep(2)} style={prem.heroBack}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
+            {/* Tag loại bàn */}
+            <View style={[prem.heroTag, { backgroundColor: cfg.color }]}>
+              <Text style={prem.heroTagText}>{t(cfg.label)}</Text>
+            </View>
             <View style={prem.heroTextWrap}>
               <Text style={prem.heroTitle}>{selectedGroup.name}</Text>
               <Text style={prem.heroSub}>
@@ -581,37 +625,55 @@ const next7Days = getNext7Days();
             </View>
           </View>
 
-          {/* Specific table grid */}
-          <View style={prem.section}>
-            <Text style={prem.sectionTitle}>CHỌN BÀN</Text>
-            <View style={prem.grid}>
-              {selectedGroup.tables.map((table) => {
-                const isSelected = selectedTableId === table._id;
-                return (
-                  <TouchableOpacity
-                    key={table._id}
-                    style={[prem.tableBox, isSelected && prem.tableBoxActive]}
-                    onPress={() => setSelectedTableId(table._id)}
-                    activeOpacity={0.7}
-                  >
-                  <View style={prem.tableBoxInner}>
-                      <Ionicons
-                        name="restaurant-outline"
-                        size={36}
-                        color={isSelected ? "#FF8A4D" : "#D4A574"}
-                      />
-                      <Text style={[prem.tableBoxTxt, isSelected && prem.tableBoxTxtActive]}>
-                        {table.name.replace(selectedGroup.name, "").replace(/^[\s-]+/, "").trim() || table.name.match(/\d+/)?.[0] || ""}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+          {/* Thông tin chi tiết */}
+          <View style={prem.detailSection}>
+            {/* Giá */}
+            <View style={prem.priceRow}>
+              <Ionicons name="wallet-outline" size={18} color="#FF6B35" />
+              <Text style={prem.priceLabel}>Tiền cọc</Text>
+              <Text style={prem.priceValue}>{table.pricing.baseDeposit.toLocaleString("vi-VN")}đ</Text>
             </View>
 
-            <View style={prem.availRow}>
-              <Text style={prem.availText}>Còn {availableCount} bàn trống!!</Text>
-              <Ionicons name="sparkles" size={18} color="#FF8A4D" />
+            {/* Mô tả */}
+            {selectedGroup.description && (
+              <View style={prem.descBlock}>
+                <Text style={prem.descTitle}>Mô tả</Text>
+                <Text style={prem.descText}>{selectedGroup.description}</Text>
+              </View>
+            )}
+
+            {/* Tiện ích */}
+            {selectedGroup.features && selectedGroup.features.length > 0 && (
+              <View style={prem.descBlock}>
+                <Text style={prem.descTitle}>Tiện ích</Text>
+                <View style={prem.featureRowDetail}>
+                  {selectedGroup.features.map((f, i) => (
+                    <View key={i} style={prem.featureChipDetail}>
+                      <Ionicons name="checkmark-circle" size={12} color="#16A34A" />
+                      <Text style={prem.featureChipDetailText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Thông tin bổ sung */}
+            <View style={prem.descBlock}>
+              <Text style={prem.descTitle}>Thông tin bàn</Text>
+              <View style={prem.infoRow}>
+                <Ionicons name="people-outline" size={16} color="#6B7280" />
+                <Text style={prem.infoText}>Sức chứa: {selectedGroup.capacity.min}–{selectedGroup.capacity.max} người</Text>
+              </View>
+              <View style={prem.infoRow}>
+                <Ionicons name="restaurant-outline" size={16} color="#6B7280" />
+                <Text style={prem.infoText}>Loại: {t(cfg.label)}</Text>
+              </View>
+              {isVip && (
+                <View style={prem.infoRow}>
+                  <Ionicons name="diamond" size={16} color="#D4AF37" />
+                  <Text style={[prem.infoText, { color: "#D4AF37", fontWeight: "700" }]}>Bàn VIP — Ưu tiên phục vụ</Text>
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -958,6 +1020,47 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  cardDesc: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  featureRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+  },
+  featureChip: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  featureChipText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  vipBadgeCard: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#D4AF37",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  vipBadgeCardText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0.3,
+  },
 
   // Empty Wrap
   emptyWrap: {
@@ -1109,4 +1212,46 @@ const prem = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
   },
+
+  // Step 3 detail styles
+  heroTag: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 100 : 90,
+    left: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  heroTagText: { fontSize: 12, fontWeight: "800", color: "#fff" },
+  detailSection: { padding: 20, gap: 16 },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+  },
+  priceLabel: { fontSize: 14, fontWeight: "600", color: "#6B7280", flex: 1 },
+  priceValue: { fontSize: 20, fontWeight: "900", color: "#FF6B35" },
+  descBlock: { gap: 8 },
+  descTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
+  descText: { fontSize: 13, color: "#6B7280", lineHeight: 20 },
+  featureRowDetail: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  featureChipDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  featureChipDetailText: { fontSize: 12, fontWeight: "600", color: "#16A34A" },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  infoText: { fontSize: 13, color: "#6B7280" },
 });

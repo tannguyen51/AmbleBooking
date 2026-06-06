@@ -95,6 +95,7 @@ app.get("/api/health", (req, res) => {
 
 // 404
 app.use((req, res) => {
+  if (req.url === '/favicon.ico') return res.status(204).end();
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
