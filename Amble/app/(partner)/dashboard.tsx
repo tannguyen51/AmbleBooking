@@ -423,7 +423,7 @@ export default function PartnerDashboard() {
                 </View>
               </View>
               <Text style={styles.revenueAmount}>
-                {revenueData ? (revenueData.totalRevenue / 1000).toFixed(0) : "---"} <Text style={{ fontSize: 12, fontWeight: "600" }}>k vnd</Text>
+                {revenueData ? revenueData.totalRevenue.toLocaleString("vi-VN") : "---"} <Text style={{ fontSize: 12, fontWeight: "600" }}>vnd</Text>
               </Text>
               {revenueData && revenueData.totalRevenue > 0 && (
                 <View style={styles.revenueGrowthRow}>

@@ -168,7 +168,7 @@ export default function AnalyticsScreen({ isAdmin = false }: Props) {
       <View style={s.tabContent}>
         <View style={s.kpiRow}>
           <KpiCard icon="calendar" label="Total Bookings" value={d.totalBookings || 0} color={PRIMARY} trend={calcTrend(d.totalBookings, p.totalBookings)} />
-          <KpiCard icon="cash" label="Revenue" value={`${((d.totalRevenue || 0) / 1000000).toFixed(1)}M`} color="#16A34A" trend={calcTrend(d.totalRevenue, p.totalRevenue)} />
+          <KpiCard icon="cash" label="Revenue" value={`${(d.totalRevenue || 0).toLocaleString("vi-VN")} vnd`} color="#16A34A" trend={calcTrend(d.totalRevenue, p.totalRevenue)} />
         </View>
         <View style={s.kpiRow}>
           <KpiCard icon="people" label="Today" value={d.todayBookings || 0} color="#2563EB" />

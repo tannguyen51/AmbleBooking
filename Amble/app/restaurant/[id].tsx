@@ -564,8 +564,8 @@ export default function DetailScreen() {
                 <>
                   <Text style={s.metaDot}>•</Text>
                   <Text style={s.priceRangeText}>
-                    {(restaurant.priceMin / 1000).toFixed(0)}k –{" "}
-                    {(restaurant.priceMax / 1000).toFixed(0)}k đ
+                    {(restaurant.priceMin || 0).toLocaleString("vi-VN")}đ –{" "}
+                    {(restaurant.priceMax || 0).toLocaleString("vi-VN")}đ
                   </Text>
                 </>
               )}

@@ -39,7 +39,12 @@ export default function PartnerLoginScreen() {
 
     try {
       await login(email.trim().toLowerCase(), password);
-      router.replace("/dashboard");
+      const p = usePartnerAuthStore.getState().partner;
+      if (p?.subscriptionStatus === "pending") {
+        router.replace("/(partner-auth)/partner-pending");
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (error: any) {
       Alert.alert(t("common.error"), error.message);
     }

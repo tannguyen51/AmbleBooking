@@ -166,7 +166,7 @@ function TableCardItem({
             <View style={tc.metaItem}>
               <Ionicons name="wallet-outline" size={13} color="#9CA3AF" />
               <Text style={tc.metaText}>
-                {t("chat.deposit")} {(card.deposit / 1000).toFixed(0)}k
+                {t("chat.deposit")} {card.deposit.toLocaleString("vi-VN")}đ
               </Text>
             </View>
           </View>

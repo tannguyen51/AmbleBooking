@@ -122,7 +122,7 @@ export default function ConfirmBookingScreen() {
         setVoucherError("");
       } else
         setVoucherError(
-          `Hóa đơn tối thiểu: ${(found.minBill / 1000).toFixed(0)}k`,
+          `Hóa đơn tối thiểu: ${found.minBill.toLocaleString("vi-VN")}đ`,
         );
     } else setVoucherError(t("booking.confirm.invalidVoucher"));
   };

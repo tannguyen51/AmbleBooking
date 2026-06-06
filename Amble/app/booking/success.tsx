@@ -113,8 +113,8 @@ export default function BookingSuccessScreen() {
                         {/* Payment Info */}
                         <View style={s.paymentRow}>
                             <Text style={s.paymentLabel}>{t("booking.success.depositPaid")}</Text>
-                            <Text style={s.paymentValue}>
-                                {(parseInt(deposit) / 1000).toFixed(0)}.000đ
+                                <Text style={s.paymentValue}>
+                                {parseInt(deposit || "0").toLocaleString("vi-VN")}đ
                             </Text>
                         </View>
 

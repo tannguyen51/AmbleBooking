@@ -296,7 +296,7 @@ export default function AdminBookingsScreen() {
             {/* 4 KPI Cards */}
             <View style={styles.kpiGrid}>
               <View style={[styles.kpiCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                <Text style={[styles.kpiValue, { color: '#067647' }]}>{(revenue.totalRevenue / 1000000).toFixed(1)}M</Text>
+                <Text style={[styles.kpiValue, { color: '#067647' }]}>{revenue.totalRevenue.toLocaleString("vi-VN")} vnd</Text>
                 <Text style={[styles.kpiLabel, { color: '#067647' }]}>Doanh thu</Text>
               </View>
               <View style={[styles.kpiCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
@@ -318,7 +318,7 @@ export default function AdminBookingsScreen() {
               <View style={styles.chartCard}>
                 <View style={styles.chartHeaderRow}>
                   <Text style={styles.chartTitle}>DOANH THU</Text>
-                  <Text style={styles.chartSubtitle}>(triệu đồng)</Text>
+                  <Text style={styles.chartSubtitle}>(nghìn đồng)</Text>
                 </View>
                 <Svg width={Math.max(280, revenue.breakdown.length * 80)} height={180}>
                   {(() => {
@@ -345,7 +345,7 @@ export default function AdminBookingsScreen() {
                         {data.map((d: any, i: number) => {
                           const cx = pad.left + i * gap + gap / 2;
                           return (
-                            <SvgText key={i} x={cx} y={getY(d.total) - 6} fill="#101828" fontSize={9} fontWeight="700" textAnchor="middle">{(d.total / 1000000).toFixed(1)}</SvgText>
+                            <SvgText key={i} x={cx} y={getY(d.total) - 6} fill="#101828" fontSize={9} fontWeight="700" textAnchor="middle">{(d.total / 1000).toFixed(0)}k</SvgText>
                           );
                         })}
                         {data.map((d: any, i: number) => {

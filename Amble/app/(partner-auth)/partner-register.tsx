@@ -79,28 +79,7 @@ const PLAN_BENEFITS = [
     core: "—",
     premium: "Có",
   },
-  {
-    feature: "Tăng khả năng tiếp cận khách hàng mới trên app",
-    core: "—",
-    premium: "Có",
-  },
-  { feature: "Phân tích lưu lượng khách", core: "—", premium: "Có" },
-  {
-    feature: "Phân tích hiệu suất bàn và khu vực",
-    core: "—",
-    premium: "Có",
-  },
-  { feature: "Phân tích hành vi khách hàng", core: "—", premium: "Có" },
-  {
-    feature: "Theo dõi tỷ lệ khách hàng quay lại",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Xuất báo cáo và thống kê nâng cao",
-    core: "—",
-    premium: "Có",
-  },
+  
 ];
 
 export default function PartnerRegisterScreen() {
@@ -123,6 +102,7 @@ export default function PartnerRegisterScreen() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -210,7 +190,8 @@ export default function PartnerRegisterScreen() {
         }
       }
 
-      router.replace("/dashboard");
+      // Về màn chờ duyệt (không vào dashboard)
+      router.push("/(partner-auth)/partner-pending" as any);
     } catch (err: any) {
       Alert.alert(t("common.error"), err.message);
     }
