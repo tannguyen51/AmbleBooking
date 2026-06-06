@@ -312,19 +312,32 @@ exports.googleAuthCallback = async (req, res) => {
       return redirectWithError("missing_google_credentials");
     }
 
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code: String(code),
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      }),
-    });
+    // Timeout 15 giây cho Google API calls
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const tokenData = await tokenRes.json();
+    let tokenData;
+    try {
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: String(code),
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: callbackUrl,
+          grant_type: "authorization_code",
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      tokenData = await tokenRes.json();
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      console.error("[googleAuthCallback] Token exchange error:", fetchErr?.message || fetchErr);
+      return redirectWithError("google_api_timeout");
+    }
+
     const idToken = tokenData.id_token;
 
     if (!idToken) {

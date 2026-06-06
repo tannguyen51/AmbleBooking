@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  AppState,
+  AppStateStatus,
 } from "react-native";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
@@ -42,42 +44,60 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
 
   const { login, loginWithToken, isLoading } = useAuthStore();
+  const isHandlingRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
+  const handleDeepLink = useCallback(async (url: string) => {
+    if (isHandlingRef.current) return;
+    const parsed = Linking.parse(url);
+    const token = parsed.queryParams?.token;
+    const error = parsed.queryParams?.error;
+
+    if (typeof token === "string") {
+      try {
+        isHandlingRef.current = true;
+        await loginWithToken(token);
+      } catch (err: any) {
+        Alert.alert(t("auth.login.googleFail"), err.message);
+      } finally {
+        isHandlingRef.current = false;
+      }
+    } else if (typeof error === "string") {
+      Alert.alert(t("auth.login.googleFail"), error);
+    }
+  }, [loginWithToken, t]);
 
   useEffect(() => {
-    let isHandling = false;
-    const handleUrl = async (url: string) => {
-      if (isHandling) return;
-      const parsed = Linking.parse(url);
-      const token = parsed.queryParams?.token;
-      const error = parsed.queryParams?.error;
-
-      if (typeof token === "string") {
-        try {
-          isHandling = true;
-          await loginWithToken(token);
-        } catch (err: any) {
-          Alert.alert(t("auth.login.googleFail"), err.message);
-        } finally {
-          isHandling = false;
-        }
-      } else if (typeof error === "string") {
-        Alert.alert(t("auth.login.googleFail"), error);
-      }
-    };
-
+    // Xử lý deep link khi app bắt đầu (cold start)
     Linking.getInitialURL().then((url) => {
-       if (url && !initialUrlProcessed) {
+      if (url && !initialUrlProcessed) {
         initialUrlProcessed = true;
-        handleUrl(url);
+        handleDeepLink(url);
       }
     });
 
-    const sub = Linking.addEventListener("url", (event) => {
-      handleUrl(event.url);
+    // Xử lý deep link khi app đang chạy
+    const linkSub = Linking.addEventListener("url", (event) => {
+      handleDeepLink(event.url);
     });
 
-    return () => sub.remove();
-  }, [loginWithToken]);
+    // Fallback: khi app quay lại foreground, kiểm tra xem có URL mới không
+    // (phòng trường hợp Linking event không fire trên một số thiết bị)
+    const appStateSub = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
+        // App vừa quay lại foreground — kiểm tra URL
+        Linking.getInitialURL().then((url) => {
+          if (url) handleDeepLink(url);
+        });
+      }
+      appStateRef.current = nextState;
+    });
+
+    return () => {
+      linkSub.remove();
+      appStateSub.remove();
+    };
+  }, [handleDeepLink]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
