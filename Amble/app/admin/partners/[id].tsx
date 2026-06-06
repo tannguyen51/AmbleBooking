@@ -62,7 +62,7 @@ export default function AdminPartnerDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const canApprove = useMemo(
-    () => partner?.subscriptionStatus === "pending",
+    () => partner?.subscriptionStatus === "pending" || partner?.subscriptionStatus === "paid_pending",
     [partner?.subscriptionStatus],
   );
 

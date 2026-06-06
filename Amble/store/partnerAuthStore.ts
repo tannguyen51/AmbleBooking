@@ -27,7 +27,8 @@ export interface PartnerUser {
   restaurantName: string;
   restaurantId: string | null;
   subscriptionPackage: 'basic' | 'pro' | 'premium';
-  subscriptionStatus: 'pending' | 'active' | 'expired' | 'cancelled';
+  subscriptionStatus: 'pending' | 'paid_pending' | 'active' | 'expired' | 'cancelled';
+  subscriptionExpiry: string | null;
   role: 'owner' | 'manager' | 'staff';
 }
 

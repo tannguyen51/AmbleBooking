@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  AppState,
+  AppStateStatus,
   Image,
+  Linking,
   SafeAreaView,
   Modal,
   ScrollView,
@@ -17,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
-import { partnerDashboardAPI } from "../../services/api";
+import { partnerDashboardAPI, paymentAPI } from "../../services/api";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -47,6 +50,46 @@ const CUISINE_OPTIONS = [
 const FALLBACK_COVER =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
 
+type SubscriptionPlan = "pro" | "premium";
+
+const SUBSCRIPTION_PLANS: Array<{
+  key: SubscriptionPlan;
+  title: string;
+  subtitle: string;
+  monthlyFee: string;
+  setupFee: string;
+  tone: "base" | "premium";
+}> = [
+  {
+    key: "pro",
+    title: "Gói cơ bản (Pro)",
+    subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn",
+    monthlyFee: "Miễn phí tháng",
+    setupFee: "Phí khởi tạo 799k/tháng",
+    tone: "base",
+  },
+  {
+    key: "premium",
+    title: "Gói thông dụng (Premium)",
+    subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ",
+    monthlyFee: "699k/tháng",
+    setupFee: "Phí khởi tạo 599k/tháng",
+    tone: "premium",
+  },
+];
+
+const PLAN_BENEFITS = [
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
+  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", premium: "Có" },
+  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
+  { feature: "Hiển thị trong danh sách nhà hàng trên Amble", core: "Có", premium: "Có" },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
+  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", premium: "Có" },
+];
+
+const PRIMARY = "#FF6B35";
+
 export default function PartnerProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -58,6 +101,14 @@ export default function PartnerProfileScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAccountCenterMenu, setShowAccountCenterMenu] = useState(false);
+
+  // Subscription upgrade
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
+  const [isUpgradePaying, setIsUpgradePaying] = useState(false);
+  const [upgradeCheckoutUrl, setUpgradeCheckoutUrl] = useState<string | null>(null);
+  const [upgradePaymentStatus, setUpgradePaymentStatus] = useState<"idle" | "paying" | "checking" | "success" | "failed">("idle");
+  const upgradeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -244,9 +295,93 @@ export default function PartnerProfileScreen() {
     }
   };
 
+  const currentPlan: SubscriptionPlan =
+    partner?.subscriptionPackage === "premium" ? "premium" : "pro";
+
   const openSubscription = () => {
-    Alert.alert(t("partner.profile.subscription"), t("partner.profile.subscriptionInfo", { package: partner?.subscriptionPackage || "basic" }));
+    setSelectedPlan(currentPlan);
+    setUpgradePaymentStatus("idle");
+    setUpgradeCheckoutUrl(null);
+    setShowSubscriptionModal(true);
   };
+
+  const handleUpgrade = async () => {
+    if (selectedPlan === currentPlan) return;
+    if (!partner?._id) return;
+
+    try {
+      setIsUpgradePaying(true);
+      setUpgradePaymentStatus("paying");
+
+      const returnUrl = `${process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app"}/api/payment/partner/webhook`;
+      const cancelUrl = returnUrl;
+
+      const res = await paymentAPI.createPartnerUpgradePayosPayment({
+        partnerId: partner._id,
+        fromPackage: currentPlan,
+        toPackage: "premium",
+        returnUrl,
+        cancelUrl,
+      });
+
+      const checkoutUrl = res.data?.checkoutUrl;
+      if (checkoutUrl) {
+        setUpgradeCheckoutUrl(checkoutUrl);
+        Linking.openURL(checkoutUrl).catch(() => {});
+      }
+    } catch (error: any) {
+      setUpgradePaymentStatus("failed");
+      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể tạo thanh toán nâng cấp.");
+    } finally {
+      setIsUpgradePaying(false);
+    }
+  };
+
+  const checkUpgradePayment = useCallback(async () => {
+    if (!partner?._id) return;
+    try {
+      const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
+      const subStatus = res.data?.subscriptionStatus;
+      const pkg = res.data?.subscriptionPackage;
+      // After upgrade, status stays "active" and package becomes "premium"
+      if (pkg === "premium" || res.data?.paymentType === "upgrade") {
+        setUpgradePaymentStatus("success");
+        if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+        await usePartnerAuthStore.getState().loadPartner();
+        setTimeout(() => {
+          setShowSubscriptionModal(false);
+          Alert.alert("Thành công", "Nhà hàng đã được nâng cấp lên gói Premium trong 1 tháng.");
+        }, 500);
+      }
+    } catch {}
+  }, [partner?._id]);
+
+  // Poll khi user quay lại từ PayOS
+  useEffect(() => {
+    if (upgradePaymentStatus !== "paying") return;
+
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        setUpgradePaymentStatus("checking");
+        checkUpgradePayment();
+      }
+    };
+
+    const sub = AppState.addEventListener("change", onAppStateChange);
+    upgradeTimerRef.current = setInterval(checkUpgradePayment, 5000);
+
+    return () => {
+      sub.remove();
+      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+    };
+  }, [upgradePaymentStatus, checkUpgradePayment]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+    };
+  }, []);
   const openVoucher = () => {
     Alert.alert(t("partner.profile.voucher"), t("partner.profile.voucherComingSoon"));
   };
@@ -336,7 +471,12 @@ export default function PartnerProfileScreen() {
               <Ionicons name="diamond-outline" size={18} color="#374151" />
               <Text style={styles.menuItemText}>{t("partner.profile.subscription")}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: currentPlan === "premium" ? "#B45309" : "#059669" }}>
+                {currentPlan === "premium" ? "Premium" : "Pro"}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
@@ -809,6 +949,146 @@ export default function PartnerProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Subscription Upgrade Modal ── */}
+      <Modal
+        visible={showSubscriptionModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowSubscriptionModal(false);
+          setUpgradePaymentStatus("idle");
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: "85%" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Gói thành viên</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSubscriptionModal(false);
+                  setUpgradePaymentStatus("idle");
+                }}
+              >
+                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: "90%" }} showsVerticalScrollIndicator={false}>
+              {/* Plan cards */}
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+                {SUBSCRIPTION_PLANS.map((plan) => {
+                  const active = selectedPlan === plan.key;
+                  const isCurrent = currentPlan === plan.key;
+                  const premium = plan.tone === "premium";
+
+                  return (
+                    <TouchableOpacity
+                      key={plan.key}
+                      style={[
+                        subStyles.planCard,
+                        active && subStyles.planCardActive,
+                        premium && active && subStyles.planCardPremium,
+                      ]}
+                      onPress={() => setSelectedPlan(plan.key)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={subStyles.planHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={subStyles.planTitle}>{plan.title}</Text>
+                          <Text style={subStyles.planSubtitle}>{plan.subtitle}</Text>
+                        </View>
+                        <View
+                          style={[
+                            subStyles.planRadio,
+                            active && subStyles.planRadioActive,
+                            premium && active && subStyles.planRadioPremium,
+                          ]}
+                        >
+                          {active && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        </View>
+                      </View>
+
+                      <View style={subStyles.planPriceRow}>
+                        <Text style={[subStyles.planPrice, premium && subStyles.planPricePremium]}>
+                          {plan.monthlyFee}
+                        </Text>
+                        {isCurrent && <Text style={subStyles.currentPlanPill}>Đang dùng</Text>}
+                      </View>
+                      <Text style={subStyles.planSetup}>{plan.setupFee}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Feature table */}
+              <View style={subStyles.featureTable}>
+                <View style={[subStyles.featureRow, subStyles.featureHeaderRow]}>
+                  <Text style={[subStyles.featureCell, subStyles.featureCellName, subStyles.featureHeaderText]}>
+                    Tính năng
+                  </Text>
+                  <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featureHeaderText]}>
+                    Pro
+                  </Text>
+                  <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featureHeaderText]}>
+                    Premium
+                  </Text>
+                </View>
+                {PLAN_BENEFITS.map((benefit) => (
+                  <View key={benefit.feature} style={subStyles.featureRow}>
+                    <Text style={[subStyles.featureCell, subStyles.featureCellName]}>
+                      {benefit.feature}
+                    </Text>
+                    <Text style={[subStyles.featureCell, subStyles.featurePlanCell]}>
+                      {benefit.core}
+                    </Text>
+                    <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featurePremiumValue]}>
+                      {benefit.premium}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Pay button */}
+            {upgradePaymentStatus === "success" ? (
+              <View style={subStyles.successBanner}>
+                <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                <Text style={subStyles.successText}>Nâng cấp thành công!</Text>
+              </View>
+            ) : upgradePaymentStatus === "paying" || upgradePaymentStatus === "checking" ? (
+              <View style={subStyles.checkingBanner}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={subStyles.checkingText}>
+                  {upgradePaymentStatus === "checking" ? "Đang kiểm tra thanh toán..." : "Đang chờ thanh toán qua PayOS..."}
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  subStyles.payBtn,
+                  (selectedPlan === currentPlan || isUpgradePaying) && subStyles.payBtnDisabled,
+                ]}
+                onPress={handleUpgrade}
+                disabled={isUpgradePaying || selectedPlan === currentPlan}
+              >
+                {isUpgradePaying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="card-outline" size={17} color="#fff" />
+                    <Text style={subStyles.payBtnText}>
+                      {selectedPlan === currentPlan
+                        ? "Đang sử dụng gói này"
+                        : "Thanh toán 699k/tháng"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1094,4 +1374,147 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
   accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 }
+});
+
+// ── Subscription modal styles ──
+const subStyles = StyleSheet.create({
+  planCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: "#F9FAFB",
+    gap: 10,
+  },
+  planCardActive: {
+    borderColor: PRIMARY,
+    backgroundColor: "#FFF7ED",
+  },
+  planCardPremium: {
+    borderColor: "#FBBF24",
+    backgroundColor: "#FFFBEB",
+  },
+  planHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  planTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
+  planSubtitle: { fontSize: 11, color: "#6B7280", marginTop: 2, lineHeight: 16 },
+  planRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planRadioActive: {
+    borderColor: PRIMARY,
+    backgroundColor: PRIMARY,
+  },
+  planRadioPremium: {
+    borderColor: "#FBBF24",
+    backgroundColor: "#F59E0B",
+  },
+  planPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  planPrice: { fontSize: 18, fontWeight: "900", color: "#1A1A1A" },
+  planPricePremium: { color: "#B45309" },
+  currentPlanPill: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#059669",
+    backgroundColor: "#D1FAE5",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  planSetup: { fontSize: 11, color: "#9CA3AF", fontWeight: "600" },
+  featureTable: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  featureRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  featureHeaderRow: {
+    backgroundColor: "#F9FAFB",
+  },
+  featureCell: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    fontSize: 12,
+    color: "#374151",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  featureCellName: {
+    flex: 2,
+    textAlign: "left",
+  },
+  featurePlanCell: {
+    flex: 1,
+  },
+  featureHeaderText: {
+    fontWeight: "800",
+    color: "#111827",
+    fontSize: 11,
+  },
+  featurePremiumValue: {
+    color: "#B45309",
+    fontWeight: "800",
+  },
+  payBtn: {
+    marginTop: 8,
+    backgroundColor: PRIMARY,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  payBtnDisabled: {
+    backgroundColor: "#D1D5DB",
+  },
+  payBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  successBanner: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  successText: { fontSize: 14, fontWeight: "700", color: "#16A34A" },
+  checkingBanner: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+  },
+  checkingText: { fontSize: 13, fontWeight: "600", color: PRIMARY },
 });

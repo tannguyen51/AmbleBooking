@@ -30,6 +30,7 @@ const paymentRoutes = require("./routes/payment");
 const analyticsRoutes = require("./routes/analytics");
 const adminAnalyticsRoutes = require("./routes/adminAnalytics");
 const { startBookingCleanupJob } = require("./services/bookingCleanupService");
+const { startSubscriptionExpiryJob } = require("./services/subscriptionExpiryJob");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ mongoose
   .then(() => {
     console.log("MongoDB connected");
     startBookingCleanupJob();
+    startSubscriptionExpiryJob();
 
     // Tự động đăng ký webhook PayOS
     try {

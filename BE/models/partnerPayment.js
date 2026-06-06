@@ -12,6 +12,11 @@ const partnerPaymentSchema = new mongoose.Schema({
     required: true,
   },
   amount: { type: Number, required: true },
+  paymentType: {
+    type: String,
+    enum: ["initial", "upgrade"],
+    default: "initial",
+  },
   status: {
     type: String,
     enum: ["pending", "paid", "cancelled", "expired"],

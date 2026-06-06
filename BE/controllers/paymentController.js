@@ -378,6 +378,62 @@ exports.createPartnerPayosPayment = async (req, res) => {
   }
 };
 
+// ── POST /api/payment/partner/upgrade/create-payos ─────
+exports.createPartnerUpgradePayosPayment = async (req, res) => {
+  try {
+    const { partnerId, fromPackage, toPackage, returnUrl, cancelUrl } = req.body;
+    if (!partnerId || !fromPackage || !toPackage || !returnUrl || !cancelUrl) {
+      return res.status(400).json({ success: false, message: "Thiếu thông tin" });
+    }
+
+    if (fromPackage !== "pro" || toPackage !== "premium") {
+      return res.status(400).json({ success: false, message: "Chỉ hỗ trợ nâng cấp từ Pro lên Premium" });
+    }
+
+    const partner = await Partner.findById(partnerId);
+    if (!partner) {
+      return res.status(404).json({ success: false, message: "Partner không tồn tại" });
+    }
+
+    if (partner.subscriptionPackage !== "pro") {
+      return res.status(400).json({ success: false, message: "Partner hiện không ở gói Pro" });
+    }
+
+    const amount = 699000; // Phí tháng gói Premium
+
+    const orderCode = Number(String(partner._id).replace(/\D/g, "").slice(-8) + String(Date.now()).slice(-4));
+    const description = `Nang cap Premium`;
+
+    const paymentData = {
+      orderCode,
+      amount,
+      description: description.slice(0, 25),
+      items: [{ name: "Nang cap goi Premium", quantity: 1, price: amount }],
+      returnUrl,
+      cancelUrl,
+      signature: "",
+    };
+
+    const paymentLink = await payos.paymentRequests.create(paymentData);
+
+    await PartnerPayment.create({
+      partnerId,
+      subscriptionPackage: toPackage,
+      amount,
+      paymentType: "upgrade",
+      status: "pending",
+      payosOrderCode: orderCode,
+      payosPaymentLinkId: paymentLink.id,
+      payosStatus: paymentLink.status,
+    });
+
+    return res.json({ success: true, checkoutUrl: paymentLink.checkoutUrl, paymentLinkId: paymentLink.id });
+  } catch (err) {
+    console.error("[createPartnerUpgradePayosPayment]", err);
+    return res.status(500).json({ success: false, message: err.message || "Lỗi tạo thanh toán nâng cấp" });
+  }
+};
+
 // ── POST /api/payment/partner/webhook ─────────────────
 exports.partnerPayosWebhook = async (req, res) => {
   try {
@@ -399,17 +455,35 @@ exports.partnerPayosWebhook = async (req, res) => {
       payment.paidAt = new Date();
       await payment.save();
 
-      // Đánh dấu partner đã thanh toán, chờ admin duyệt
-      await Partner.findByIdAndUpdate(payment.partnerId, {
-        subscriptionStatus: "paid_pending",
-        subscriptionPackage: payment.subscriptionPackage,
-      });
+      if (payment.paymentType === "upgrade") {
+        // Nâng cấp gói: set Premium, gia hạn 1 tháng
+        const nextExpiry = new Date();
+        nextExpiry.setMonth(nextExpiry.getMonth() + 1);
 
-      const partnerData = await Partner.findById(payment.partnerId);
-      if (partnerData?.restaurantId) {
-        await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
+        await Partner.findByIdAndUpdate(payment.partnerId, {
+          subscriptionPackage: "premium",
+          subscriptionExpiry: nextExpiry,
+        });
+
+        const partnerData = await Partner.findById(payment.partnerId);
+        if (partnerData?.restaurantId) {
+          await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
+            subscriptionPackage: "premium",
+          });
+        }
+      } else {
+        // Thanh toán khởi tạo: chờ admin duyệt
+        await Partner.findByIdAndUpdate(payment.partnerId, {
+          subscriptionStatus: "paid_pending",
           subscriptionPackage: payment.subscriptionPackage,
         });
+
+        const partnerData = await Partner.findById(payment.partnerId);
+        if (partnerData?.restaurantId) {
+          await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
+            subscriptionPackage: payment.subscriptionPackage,
+          });
+        }
       }
     } else if (webhookData.data?.status === "CANCELLED") {
       payment.status = "cancelled";
@@ -443,6 +517,7 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       return res.json({
         success: true,
         subscriptionStatus: partner?.subscriptionStatus || "pending",
+        subscriptionPackage: partner?.subscriptionPackage || "pro",
       });
     }
 
@@ -471,6 +546,26 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       payment.paidAt = new Date();
       await payment.save();
 
+      if (payment.paymentType === "upgrade") {
+        // Nâng cấp gói: set Premium, gia hạn 1 tháng
+        const nextExpiry = new Date();
+        nextExpiry.setMonth(nextExpiry.getMonth() + 1);
+
+        await Partner.findByIdAndUpdate(partnerId, {
+          subscriptionPackage: "premium",
+          subscriptionExpiry: nextExpiry,
+        });
+
+        const partnerData = await Partner.findById(partnerId);
+        if (partnerData?.restaurantId) {
+          await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
+            subscriptionPackage: "premium",
+          });
+        }
+
+        return res.json({ success: true, subscriptionStatus: "active", subscriptionPackage: "premium", paymentType: "upgrade" });
+      }
+
       await Partner.findByIdAndUpdate(partnerId, {
         subscriptionStatus: "paid_pending",
         subscriptionPackage: payment.subscriptionPackage,
@@ -483,7 +578,7 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
         });
       }
 
-      return res.json({ success: true, subscriptionStatus: "active" });
+      return res.json({ success: true, subscriptionStatus: "paid_pending", subscriptionPackage: payment.subscriptionPackage });
     }
 
     if (payosResult?.status === "CANCELLED") {

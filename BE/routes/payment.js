@@ -13,6 +13,7 @@ router.post("/payos-cancel/:bookingId", paymentController.cancelPayosPayment);
 
 // Partner subscription payment
 router.post("/partner/create-payos", paymentController.createPartnerPayosPayment);
+router.post("/partner/upgrade/create-payos", paymentController.createPartnerUpgradePayosPayment);
 router.post("/partner/webhook", paymentController.partnerPayosWebhook);
 router.post("/partner/check-status", paymentController.checkPartnerPaymentStatus);
 
