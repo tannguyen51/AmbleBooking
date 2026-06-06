@@ -119,7 +119,7 @@ ${isAndroid ? `<div class="manual"><strong>Thủ công:</strong> Vào app <stron
   function tryAll() {
     if (opened) return;
     opened = true;
-    ${jsRedirect}
+    ${jsCode}
   }
   setTimeout(tryAll, 300);
   setTimeout(function(){
