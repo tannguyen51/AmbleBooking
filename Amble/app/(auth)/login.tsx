@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   AppState,
   AppStateStatus,
+  Image,
 } from "react-native";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
@@ -290,7 +291,10 @@ export default function LoginScreen() {
             style={[styles.googleBtn, isLoading && { opacity: 0.75 }]}
           >
             <View style={styles.googleBtnInner}>
-              <Ionicons name="logo-google" size={18} color="#DB4437" />
+              <Image
+                source={{ uri: "https://developers.google.com/identity/images/g-logo.png" }}
+                style={styles.googleLogo}
+              />
               <Text style={styles.googleBtnText}>{t("auth.login.googleSignIn")}</Text>
             </View>
           </TouchableOpacity>
@@ -462,6 +466,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+  googleLogo: { width: 20, height: 20 },
 
   googleBtnText: {
     fontSize: 15,

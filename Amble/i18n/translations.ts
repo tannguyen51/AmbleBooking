@@ -981,7 +981,7 @@ const translations: Translations = {
     "explore.title": "Khám phá",
     "explore.searchPlaceholder": "Tìm nhà hàng, món ăn...",
     "explore.favoritesPage": "Trang yêu thích",
-    "explore.resultCount": "nhà hàng",
+    "explore.resultCount": "Nhà hàng",
     "explore.clearFilter": "Xóa bộ lọc",
     "explore.emptyTitle": "Không tìm thấy nhà hàng",
     "explore.emptyText": "Thử từ khóa hoặc bộ lọc khác",

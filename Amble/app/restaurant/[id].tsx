@@ -87,8 +87,6 @@ interface ReviewItem {
 }
 
 // ─── Helpers ──────────────────────────────────────────────
-const FALLBACK =
-  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80";
 const MAX_REVIEW_IMAGES = 6;
 
 const isOpenNow = (openTime: string, closeTime: string): boolean => {
@@ -406,7 +404,8 @@ export default function DetailScreen() {
     );
   }
 
-  const images = restaurant.images?.length > 0 ? restaurant.images : [FALLBACK];
+  const images = restaurant.images || [];
+  const hasImages = images.length > 0;
   const open = isOpenNow(restaurant.openTime, restaurant.closeTime);
   const stars = Math.round(restaurant.rating);
 
@@ -427,34 +426,42 @@ export default function DetailScreen() {
       >
         {/* ════════════ HERO IMAGE SLIDER ════════════ */}
         <View style={s.heroWrap}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) =>
-              setActiveImg(Math.round(e.nativeEvent.contentOffset.x / SW))
-            }
-          >
-            {images.map((uri, i) => (
-              <Image
-                key={i}
-                source={{ uri }}
-                style={s.heroImg}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
+          {hasImages ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) =>
+                setActiveImg(Math.round(e.nativeEvent.contentOffset.x / SW))
+              }
+            >
+              {images.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={s.heroImg}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={s.heroPlaceholder}>
+              <Ionicons name="restaurant-outline" size={56} color="#D1D5DB" />
+            </View>
+          )}
 
           {/* Gradient overlay - KHÔNG chặn touch */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.42)", "transparent", "rgba(0,0,0,0.52)"]}
-            style={StyleSheet.absoluteFillObject}
-            locations={[0, 0.38, 1]}
-            pointerEvents="none"
-          />
+          {hasImages && (
+            <LinearGradient
+              colors={["rgba(0,0,0,0.42)", "transparent", "rgba(0,0,0,0.52)"]}
+              style={StyleSheet.absoluteFillObject}
+              locations={[0, 0.38, 1]}
+              pointerEvents="none"
+            />
+          )}
 
-          {/* Image dots - KHÔNG chặn touch */}
-          {images.length > 1 && (
+          {/* Image dots */}
+          {hasImages && images.length > 1 && (
             <View style={s.dotRow} pointerEvents="none">
               {images.map((_, i) => (
                 <View key={i} style={[s.dot, i === activeImg && s.dotActive]} />
@@ -462,7 +469,7 @@ export default function DetailScreen() {
             </View>
           )}
 
-          {/* Nút Back/Share/Fav - nằm SAU overlay, NHẬN touch */}
+          {/* Nút Back/Share/Fav */}
           <SafeAreaView style={s.heroTop} pointerEvents="box-none">
             <TouchableOpacity
               style={s.heroBtn}
@@ -470,34 +477,36 @@ export default function DetailScreen() {
               activeOpacity={0.85}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="arrow-back" size={22} color="#fff" />
+              <Ionicons name={hasImages ? "arrow-back" : "arrow-back"} size={22} color={hasImages ? "#fff" : "#1A1A1A"} />
             </TouchableOpacity>
 
-            <View style={s.heroTopRight}>
-              <TouchableOpacity
-                style={s.heroBtn}
-                onPress={handleShare}
-                activeOpacity={0.85}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Ionicons name="share-social-outline" size={22} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.heroBtn, isFav && s.heroBtnFav]}
-                onPress={() => setIsFav((v) => !v)}
-                activeOpacity={0.85}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Ionicons
-                  name={isFav ? "heart" : "heart-outline"}
-                  size={22}
-                  color={isFav ? "#EF4444" : "#fff"}
-                />
-              </TouchableOpacity>
-            </View>
+            {hasImages && (
+              <View style={s.heroTopRight}>
+                <TouchableOpacity
+                  style={s.heroBtn}
+                  onPress={handleShare}
+                  activeOpacity={0.85}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="share-social-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.heroBtn, isFav && s.heroBtnFav]}
+                  onPress={() => setIsFav((v) => !v)}
+                  activeOpacity={0.85}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons
+                    name={isFav ? "heart" : "heart-outline"}
+                    size={22}
+                    color={isFav ? "#EF4444" : "#fff"}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
           </SafeAreaView>
 
-          {/* Featured badge - không chặn touch */}
+          {/* Featured badge */}
           {restaurant.isFeatured && (
             <LinearGradient
               colors={GRAD}
@@ -510,8 +519,8 @@ export default function DetailScreen() {
             </LinearGradient>
           )}
 
-          {/* Image counter - không chặn touch */}
-          {images.length > 1 && (
+          {/* Image counter */}
+          {hasImages && images.length > 1 && (
             <View style={s.imgCounter} pointerEvents="none">
               <Text style={s.imgCounterText}>
                 {activeImg + 1} / {images.length}
@@ -1004,6 +1013,7 @@ const s = StyleSheet.create({
   // ── Hero
   heroWrap: { width: SW, height: 320, position: "relative" },
   heroImg: { width: SW, height: 320 },
+  heroPlaceholder: { ...StyleSheet.absoluteFillObject, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
   heroTop: {
     flex: 1,
     position: "absolute",

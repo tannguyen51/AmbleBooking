@@ -51,7 +51,7 @@ exports.getFeatured = async (req, res) => {
   try {
     const restaurants = await Restaurant.find({
       isActive: true,
-      $or: [{ isFeatured: true }, { subscriptionPackage: 'premium' }],
+      isFeatured: true,
     })
       .sort({ isFeatured: -1, rating: -1 })
       .lean();

@@ -107,10 +107,16 @@ const RestaurantCard = ({
       onPress={() => router.push(`/restaurant/${item._id}`)}
     >
       <View style={styles.imageWrap}>
-        <Image
-          source={{ uri: item.images?.[0] || FALLBACK }}
-          style={styles.image}
-        />
+        {item.images?.[0] ? (
+          <Image
+            source={{ uri: item.images[0] }}
+            style={styles.image}
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="restaurant-outline" size={36} color="#D1D5DB" />
+          </View>
+        )}
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.6)"]}
           style={StyleSheet.absoluteFillObject}
@@ -345,126 +351,7 @@ export default function ExploreScreen() {
               <Ionicons name="close" size={18} color={TEXT_MUTED} />
             </TouchableOpacity>
           )}
-          {/* Nút filter */}
-          <TouchableOpacity
-            onPress={() => setShowFilters((v) => !v)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={hasActiveFilter ? GRAD : ["#E5E7EB", "#E5E7EB"]}
-              style={styles.filterBtn}
-            >
-              <Ionicons
-                name="options-outline"
-                size={18}
-                color={hasActiveFilter ? "#fff" : TEXT_SEC}
-              />
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
-
-        {/* Quick tags */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tagsRow}
-        >
-          {QUICK_TAGS.map((tag) => {
-            const active = activeTag === tag;
-            return (
-              <TouchableOpacity
-                key={tag}
-                style={[styles.tagChip, active && styles.tagChipActive]}
-                onPress={() => setActiveTag(active ? null : tag)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tagText, active && styles.tagTextActive]}>
-                  {tag}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Filter panel (mở khi bấm nút options) */}
-        {showFilters && (
-          <View style={styles.filterPanel}>
-            {/* Price */}
-            <Text style={styles.filterLabel}>{t("home.filterPrice")}</Text>
-            <View style={styles.filterRow}>
-              {PRICE_OPTIONS.map((p) => {
-                const active = activePrice === p;
-                return (
-                  <TouchableOpacity
-                    key={p}
-                    style={[
-                      styles.filterChip,
-                      active && styles.filterChipActive,
-                    ]}
-                    onPress={() => setActivePrice(active ? null : p)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        active && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {p}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Sort */}
-            <Text style={styles.filterLabel}>{t("home.filterSort")}</Text>
-            <View style={styles.filterRow}>
-              {SORT_OPTIONS.map((s) => {
-                const active = activeSort === s.key;
-                return (
-                  <TouchableOpacity
-                    key={s.key}
-                    style={[
-                      styles.filterChip,
-                      active && styles.filterChipActive,
-                    ]}
-                    onPress={() => setActiveSort(active ? null : s.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        active && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {t(s.labelKey)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Clear */}
-            <TouchableOpacity
-              style={styles.favoritePageBtn}
-              onPress={() => {
-                setShowFilters(false);
-                router.push("/favorites" as any);
-              }}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="heart" size={16} color="#fff" />
-              <Text style={styles.favoritePageBtnText}>
-                {t("explore.favoritesPage")} ({favoriteIds.length})
-              </Text>
-            </TouchableOpacity>
-
-            {hasActiveFilter && (
-              <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
-                <Text style={styles.clearBtnText}>{t("explore.clearFilter")}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </View>
 
       {/* ── Result count ────────────────────────── */}
@@ -648,6 +535,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: { height: 190 },
   image: { width: "100%", height: "100%" },
+  imagePlaceholder: { flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
   favBtn: {
     position: "absolute",
     right: 10,

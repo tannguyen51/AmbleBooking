@@ -186,11 +186,17 @@ const RestaurantCardFull = React.memo(
         onPress={() => router.push(`/restaurant/${item._id}`)}
       >
         <View style={cardFull.imageWrap}>
-          <Image
-            source={{ uri: item.images?.[0] || FALLBACK }}
-            style={cardFull.image}
-            resizeMode="cover"
-          />
+          {item.images?.[0] ? (
+            <Image
+              source={{ uri: item.images[0] }}
+              style={cardFull.image}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={cardFull.imagePlaceholder}>
+              <Ionicons name="restaurant-outline" size={40} color="#D1D5DB" />
+            </View>
+          )}
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.62)"]}
             style={StyleSheet.absoluteFillObject}
@@ -310,11 +316,17 @@ const RestaurantCardCompact = React.memo(
         onPress={() => router.push(`/restaurant/${item._id}`)}
       >
         <View style={cardCompact.imageWrap}>
-          <Image
-            source={{ uri: item.images?.[0] || FALLBACK }}
-            style={cardCompact.image}
-            resizeMode="cover"
-          />
+          {item.images?.[0] ? (
+            <Image
+              source={{ uri: item.images[0] }}
+              style={cardCompact.image}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={cardCompact.imagePlaceholder}>
+              <Ionicons name="restaurant-outline" size={28} color="#D1D5DB" />
+            </View>
+          )}
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.5)"]}
             style={StyleSheet.absoluteFillObject}
@@ -1622,6 +1634,7 @@ const cardFull = StyleSheet.create({
   },
   imageWrap: { height: 192, position: "relative" },
   image: { width: "100%", height: "100%" },
+  imagePlaceholder: { flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
   badgeFeatured: {
     position: "absolute",
     top: 12,
@@ -1708,6 +1721,7 @@ const cardCompact = StyleSheet.create({
   },
   imageWrap: { height: 112, position: "relative" },
   image: { width: "100%", height: "100%" },
+  imagePlaceholder: { flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
   cuisineBadge: {
     position: "absolute",
     bottom: 8,

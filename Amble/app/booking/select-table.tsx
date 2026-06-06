@@ -183,6 +183,8 @@ export default function SelectTableScreen() {
   // Multi-step flow state
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedGroup, setSelectedGroup] = useState<TableGroup | null>(null);
+  const [imgIndex, setImgIndex] = useState(0);
+  const imgScrollRef = useRef<ScrollView>(null);
   // ── Ngày ──────────────────────────────────────────────
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -593,108 +595,109 @@ const next7Days = getNext7Days();
     );
   };
 
-  // ── Step 3: Chi tiết bàn & Chọn bàn cụ thể ──────────────────
+  // ── Step 3: Chi tiết bàn ──────────────────────────────────
   const renderStep3 = () => {
     if (!selectedGroup) return null;
     const table = selectedGroup.tables[0];
     const cfg = TABLE_TYPE_CONFIG[selectedGroup.type] ?? TABLE_TYPE_CONFIG.regular;
-    const isVip = selectedGroup.type === "vip";
+
+    // Tags từ features + capacity
+    const tags: string[] = [
+      `${selectedGroup.capacity.min}–${selectedGroup.capacity.max} người`,
+      ...(selectedGroup.features || []).slice(0, 2),
+    ];
 
     return (
-      <View style={{ flex: 1, backgroundColor: "#fff" }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          {/* Hero Image */}
-          <View style={prem.heroWrap}>
-            <Image source={{ uri: selectedGroup.images[0] }} style={prem.heroImg} resizeMode="cover" />
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.75)"]}
-              style={prem.heroGradient}
-            />
-            <TouchableOpacity onPress={() => setStep(2)} style={prem.heroBack}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            {/* Tag loại bàn */}
-            <View style={[prem.heroTag, { backgroundColor: cfg.color }]}>
-              <Text style={prem.heroTagText}>{t(cfg.label)}</Text>
-            </View>
-            <View style={prem.heroTextWrap}>
-              <Text style={prem.heroTitle}>{selectedGroup.name}</Text>
-              <Text style={prem.heroSub}>
-                {selectedGroup.capacity.min}–{selectedGroup.capacity.max} người
-              </Text>
-            </View>
+      <View style={{ flex: 1, backgroundColor: "#F8F9FA" }}>
+        {/* ── Header ── */}
+        <View style={dt.header}>
+          <TouchableOpacity onPress={() => setStep(2)} style={dt.backBtn}>
+            <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={dt.headerTitle} numberOfLines={1}>{selectedGroup.name}</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          {/* ── Image Carousel ── */}
+          <View style={dt.imageWrap}>
+            <ScrollView
+              ref={imgScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_W - 32));
+                setImgIndex(idx);
+              }}
+            >
+              {selectedGroup.images.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={[dt.image, { width: SCREEN_W - 32 }]}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+            {/* Carousel dots */}
+            {selectedGroup.images.length > 1 && (
+              <View style={dt.dotsRow}>
+                {selectedGroup.images.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[dt.dot, i === imgIndex && dt.dotActive]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
 
-          {/* Thông tin chi tiết */}
-          <View style={prem.detailSection}>
-            {/* Giá */}
-            <View style={prem.priceRow}>
-              <Ionicons name="wallet-outline" size={18} color="#FF6B35" />
-              <Text style={prem.priceLabel}>Tiền cọc</Text>
-              <Text style={prem.priceValue}>{table.pricing.baseDeposit.toLocaleString("vi-VN")}đ</Text>
+          {/* ── Info Card ── */}
+          <View style={dt.card}>
+            {/* Table name */}
+            <Text style={dt.name}>{selectedGroup.name}</Text>
+
+            {/* Tags */}
+            <View style={dt.tagsRow}>
+              {tags.map((tag, i) => (
+                <View key={i} style={dt.tag}>
+                  <Text style={dt.tagText}>{tag}</Text>
+                </View>
+              ))}
             </View>
 
-            {/* Mô tả */}
-            {selectedGroup.description && (
-              <View style={prem.descBlock}>
-                <Text style={prem.descTitle}>Mô tả</Text>
-                <Text style={prem.descText}>{selectedGroup.description}</Text>
-              </View>
-            )}
+            {/* Description */}
+            {selectedGroup.description ? (
+              <Text style={dt.desc}>{selectedGroup.description}</Text>
+            ) : null}
 
-            {/* Tiện ích */}
-            {selectedGroup.features && selectedGroup.features.length > 0 && (
-              <View style={prem.descBlock}>
-                <Text style={prem.descTitle}>Tiện ích</Text>
-                <View style={prem.featureRowDetail}>
-                  {selectedGroup.features.map((f, i) => (
-                    <View key={i} style={prem.featureChipDetail}>
-                      <Ionicons name="checkmark-circle" size={12} color="#16A34A" />
-                      <Text style={prem.featureChipDetailText}>{f}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+            {/* Price */}
+            <Text style={dt.price}>
+              {table.pricing.baseDeposit.toLocaleString("vi-VN")}đ
+            </Text>
 
-            {/* Thông tin bổ sung */}
-            <View style={prem.descBlock}>
-              <Text style={prem.descTitle}>Thông tin bàn</Text>
-              <View style={prem.infoRow}>
-                <Ionicons name="people-outline" size={16} color="#6B7280" />
-                <Text style={prem.infoText}>Sức chứa: {selectedGroup.capacity.min}–{selectedGroup.capacity.max} người</Text>
-              </View>
-              <View style={prem.infoRow}>
-                <Ionicons name="restaurant-outline" size={16} color="#6B7280" />
-                <Text style={prem.infoText}>Loại: {t(cfg.label)}</Text>
-              </View>
-              {isVip && (
-                <View style={prem.infoRow}>
-                  <Ionicons name="diamond" size={16} color="#D4AF37" />
-                  <Text style={[prem.infoText, { color: "#D4AF37", fontWeight: "700" }]}>Bàn VIP — Ưu tiên phục vụ</Text>
-                </View>
-              )}
-            </View>
+            {/* Spacer */}
+            <View style={{ flex: 1 }} />
           </View>
         </ScrollView>
 
-        {/* Bottom button */}
-        <View style={prem.bottomBar}>
+        {/* ── Bottom CTA ── */}
+        <View style={dt.bottomWrap}>
+          {/* Time display */}
+          <View style={dt.timeRow}>
+            <Ionicons name="time-outline" size={16} color="#6B7280" />
+            <Text style={dt.timeText}>{time}</Text>
+            <Text style={dt.holdText}> · Chúng tôi đang giữ bàn cho bạn</Text>
+          </View>
+
+          {/* Book button */}
           <TouchableOpacity
-            style={prem.bookBtnOuter}
+            style={dt.bookBtn}
             onPress={handleContinue}
-            disabled={!selectedTableId}
-            activeOpacity={0.85}
+            activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={["#FF8A4D", "#FF6B35"]}
-              style={[prem.bookBtnInner, !selectedTableId && { opacity: 0.5 }]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={prem.bookBtnTxt}>Đặt bàn</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
-            </LinearGradient>
+            <Text style={dt.bookBtnText}>Đặt bàn</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -703,7 +706,7 @@ const next7Days = getNext7Days();
 
   return (
     <SafeAreaView style={s.container}>
-      {renderHeader()}
+      {step !== 3 && renderHeader()}
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
@@ -1076,182 +1079,150 @@ const s = StyleSheet.create({
 
 });
 
-// ── Premium Step 3 styles ─────────────────────────────
-const prem = StyleSheet.create({
-  heroWrap: {
-    width: SCREEN_W,
-    height: 300,
+// Step 3 detail styles
+const dt = StyleSheet.create({
+  // Header
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === "ios" ? 8 : 40,
+    paddingBottom: 12,
+    backgroundColor: "#F8F9FA",
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    textAlign: "center",
+  },
+
+  // Image
+  imageWrap: {
+    marginHorizontal: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
+    height: 260,
+    backgroundColor: "#E5E7EB",
     position: "relative",
   },
-  heroImg: {
+  image: {
     width: "100%",
     height: "100%",
   },
-  heroGradient: {
+  dotsRow: {
     position: "absolute",
-    bottom: 0,
+    bottom: 12,
     left: 0,
     right: 0,
-    height: 180,
-  },
-  heroBack: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 40,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    alignItems: "center",
+    flexDirection: "row",
     justifyContent: "center",
+    gap: 6,
   },
-  heroTextWrap: {
-    position: "absolute",
-    bottom: 24,
-    left: 20,
-    right: 20,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.5)",
   },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#fff",
-    letterSpacing: 0.5,
+  dotActive: {
+    backgroundColor: "#fff",
+    width: 20,
   },
-  heroSub: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 4,
+
+  // Info Card
+  card: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: -20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 20,
+    minHeight: 220,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+  name: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9CA3AF",
-    letterSpacing: 1,
-    marginBottom: 16,
-  },
-  grid: {
+  tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-  },
-  tableBox: {
-    width: ITEM_W,
-    aspectRatio: 1,
-    backgroundColor: "#FFF5EB",
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "#FFE0CC",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tableBoxActive: {
-    borderColor: "#FF8A4D",
-    backgroundColor: "#FFF0E6",
-  },
-  tableBoxInner: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    gap: 4,
-  },
-  tableBoxTxt: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#C4956A",
-  },
-  tableBoxTxtActive: {
-    color: "#FF8A4D",
-  },
-  availRow: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 8,
-    marginTop: 20,
+    marginBottom: 16,
   },
-  availText: {
-    fontSize: 18,
+  tag: {
+    backgroundColor: "#FEF9E7",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tagText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#92400E",
+  },
+  desc: {
+    fontSize: 15,
+    color: "#6B7280",
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  price: {
+    fontSize: 24,
     fontWeight: "900",
     color: "#1A1A1A",
   },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+
+  // Bottom
+  bottomWrap: {
     backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
+    gap: 10,
   },
-  bookBtnOuter: {
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#FF6B35",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  bookBtnInner: {
+  timeRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 18,
   },
-  bookBtnTxt: {
+  timeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6B7280",
+    marginLeft: 6,
+  },
+  holdText: {
+    fontSize: 13,
+    color: "#9CA3AF",
+  },
+  bookBtn: {
+    backgroundColor: "#FF6B35",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookBtnText: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 16,
+    fontWeight: "800",
   },
-
-  // Step 3 detail styles
-  heroTag: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 100 : 90,
-    left: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  heroTagText: { fontSize: 12, fontWeight: "800", color: "#fff" },
-  detailSection: { padding: 20, gap: 16 },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF7ED",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#FED7AA",
-  },
-  priceLabel: { fontSize: 14, fontWeight: "600", color: "#6B7280", flex: 1 },
-  priceValue: { fontSize: 20, fontWeight: "900", color: "#FF6B35" },
-  descBlock: { gap: 8 },
-  descTitle: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
-  descText: { fontSize: 13, color: "#6B7280", lineHeight: 20 },
-  featureRowDetail: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  featureChipDetail: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  featureChipDetailText: { fontSize: 12, fontWeight: "600", color: "#16A34A" },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoText: { fontSize: 13, color: "#6B7280" },
 });
