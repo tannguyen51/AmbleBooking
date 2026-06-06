@@ -18,7 +18,9 @@ export default function PartnerPaymentScreen() {
   const [isCheckingDirect, setIsCheckingDirect] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const onPaid = (subStatus: string) => {
+  const onPaid = async (subStatus: string) => {
+    // Cập nhật store để _layout.tsx đọc được subscriptionStatus mới
+    await usePartnerAuthStore.getState().loadPartner();
     setStatus("paid");
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeout(() => {
