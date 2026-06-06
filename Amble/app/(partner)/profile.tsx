@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  AppState,
+  AppStateStatus,
   Image,
+  Linking,
   SafeAreaView,
   Modal,
   ScrollView,
@@ -17,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
-import { partnerDashboardAPI } from "../../services/api";
+import { partnerDashboardAPI, paymentAPI } from "../../services/api";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -139,6 +142,13 @@ export default function PartnerProfileScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Upgrade payment state
+  const [isUpgradePaying, setIsUpgradePaying] = useState(false);
+  const [upgradePaymentStatus, setUpgradePaymentStatus] = useState<"idle" | "paying" | "checking" | "success" | "failed">("idle");
+  const upgradeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const PRIMARY = "#FF6B35";
 
   const [coverImage, setCoverImage] = useState("");
   const [name, setName] = useState("");
@@ -324,10 +334,11 @@ export default function PartnerProfileScreen() {
 
   const openSubscription = () => {
     setSelectedPlan(currentPlan);
+    setUpgradePaymentStatus("idle");
     setShowSubscriptionModal(true);
   };
 
-  const handlePaySubscription = () => {
+  const handlePaySubscription = async () => {
     const plan = SUBSCRIPTION_PLANS.find((item) => item.key === selectedPlan);
     if (!plan) return;
 
@@ -336,38 +347,77 @@ export default function PartnerProfileScreen() {
       return;
     }
 
-    Alert.alert(
-      "Thanh toán gói",
-      `Xác nhận thanh toán ${plan.monthlyFee} để nâng cấp lên ${plan.title}?`,
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: "Thanh toán",
-          onPress: async () => {
-            try {
-              setIsSaving(true);
-              await partnerDashboardAPI.upgradeSubscription({
-                package: selectedPlan,
-                paymentMethod: "in_app",
-              });
-              await loadPartner();
-              setShowSubscriptionModal(false);
-              Alert.alert(
-                t("common.success"),
-                "Thanh toán thành công. Nhà hàng đã được ưu tiên hiển thị trên trang chủ.",
-              );
-            } catch (error: any) {
-              const message =
-                error?.response?.data?.message || "Không thể nâng cấp gói.";
-              Alert.alert(t("common.error"), message);
-            } finally {
-              setIsSaving(false);
-            }
-          },
-        },
-      ],
-    );
+    if (!partner?._id) return;
+
+    try {
+      setIsUpgradePaying(true);
+      setUpgradePaymentStatus("paying");
+      setShowSubscriptionModal(false);
+
+      const returnUrl = `${process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app"}/api/payment/partner/webhook`;
+      const cancelUrl = returnUrl;
+
+      const res = await paymentAPI.createPartnerUpgradePayosPayment({
+        partnerId: partner._id,
+        fromPackage: currentPlan,
+        toPackage: "premium",
+        returnUrl,
+        cancelUrl,
+      });
+
+      const checkoutUrl = res.data?.checkoutUrl;
+      if (checkoutUrl) {
+        // Reopen modal with paying status so user sees "Đang chờ thanh toán"
+        setShowSubscriptionModal(true);
+        Linking.openURL(checkoutUrl).catch(() => {});
+      }
+    } catch (error: any) {
+      setUpgradePaymentStatus("failed");
+      setShowSubscriptionModal(true);
+      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể tạo thanh toán nâng cấp.");
+    } finally {
+      setIsUpgradePaying(false);
+    }
   };
+
+  const checkUpgradePayment = useCallback(async () => {
+    if (!partner?._id) return;
+    try {
+      const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
+      const pkg = res.data?.subscriptionPackage;
+      if (pkg === "premium" || res.data?.paymentType === "upgrade") {
+        setUpgradePaymentStatus("success");
+        if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+        await usePartnerAuthStore.getState().loadPartner();
+      }
+    } catch {}
+  }, [partner?._id]);
+
+  // Poll khi user quay lại từ PayOS
+  useEffect(() => {
+    if (upgradePaymentStatus !== "paying") return;
+
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        setUpgradePaymentStatus("checking");
+        checkUpgradePayment();
+      }
+    };
+
+    const sub = AppState.addEventListener("change", onAppStateChange);
+    upgradeTimerRef.current = setInterval(checkUpgradePayment, 5000);
+
+    return () => {
+      sub.remove();
+      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+    };
+  }, [upgradePaymentStatus, checkUpgradePayment]);
+
+  useEffect(() => {
+    return () => {
+      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+    };
+  }, []);
   const openVoucher = () => {
     Alert.alert(t("partner.profile.voucher"), t("partner.profile.voucherComingSoon"));
   };
@@ -495,7 +545,12 @@ export default function PartnerProfileScreen() {
               <Ionicons name="diamond-outline" size={18} color="#374151" />
               <Text style={styles.menuItemText}>Chọn gói & thanh toán</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: currentPlan === "premium" ? "#B45309" : "#059669" }}>
+                {currentPlan === "premium" ? "Premium" : "Pro"}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
@@ -1046,29 +1101,52 @@ export default function PartnerProfileScreen() {
               </View>
             </ScrollView>
 
-            <TouchableOpacity
-              style={[
-                styles.payBtn,
-                selectedPlan === currentPlan && styles.payBtnDisabled,
-              ]}
-              onPress={handlePaySubscription}
-              disabled={isSaving || selectedPlan === currentPlan}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="card-outline" size={17} color="#fff" />
-                  <Text style={styles.payBtnText}>
-                    {selectedPlan === currentPlan
-                      ? "Đang sử dụng gói này"
-                      : selectedPlan === "premium"
-                        ? "Thanh toán 699k/tháng"
-                        : "Chọn gói cơ bản"}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Pay button */}
+            {upgradePaymentStatus === "success" ? (
+              <View style={styles.successBanner}>
+                <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                <Text style={styles.successText}>Nâng cấp thành công!</Text>
+              </View>
+            ) : upgradePaymentStatus === "paying" || upgradePaymentStatus === "checking" ? (
+              <View style={styles.checkingBanner}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={styles.checkingText}>
+                  {upgradePaymentStatus === "checking" ? "Đang kiểm tra thanh toán..." : "Đang chờ thanh toán qua PayOS..."}
+                </Text>
+              </View>
+            ) : upgradePaymentStatus === "failed" ? (
+              <TouchableOpacity
+                style={styles.payBtn}
+                onPress={handlePaySubscription}
+              >
+                <Ionicons name="refresh-outline" size={17} color="#fff" />
+                <Text style={styles.payBtnText}>Thử lại thanh toán</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.payBtn,
+                  selectedPlan === currentPlan && styles.payBtnDisabled,
+                ]}
+                onPress={handlePaySubscription}
+                disabled={isUpgradePaying || selectedPlan === currentPlan}
+              >
+                {isUpgradePaying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="card-outline" size={17} color="#fff" />
+                    <Text style={styles.payBtnText}>
+                      {selectedPlan === currentPlan
+                        ? "Đang sử dụng gói này"
+                        : selectedPlan === "premium"
+                          ? "Thanh toán 699k/tháng"
+                          : "Chọn gói cơ bản"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -1588,5 +1666,31 @@ const styles = StyleSheet.create({
     gap: 10
   },
   dropdownItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
-  accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 }
+  accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 },
+  successBanner: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  successText: { fontSize: 14, fontWeight: "700", color: "#16A34A" },
+  checkingBanner: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+  },
+  checkingText: { fontSize: 13, fontWeight: "600", color: "#FF6B35" },
 });

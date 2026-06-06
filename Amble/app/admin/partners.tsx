@@ -29,6 +29,7 @@ interface PartnerItem {
   restaurantName: string;
   subscriptionPackage: string;
   subscriptionStatus: "pending" | "paid_pending" | "active" | "expired" | "cancelled";
+  subscriptionExpiry?: string | null;
   isActive: boolean;
   rejectionReason?: string;
   approvalNote?: string;
@@ -39,6 +40,19 @@ const toLabelCase = (value: string) =>
   String(value || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getExpiryCountdown = (expiry: string | null | undefined): { label: string; tone: "info" | "warning" | "danger" } | null => {
+  if (!expiry) return null;
+  const now = Date.now();
+  const end = new Date(expiry).getTime();
+  const diff = end - now;
+  if (diff <= 0) return { label: "Đã hết hạn", tone: "danger" };
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return { label: `Còn ${days} ngày`, tone: days <= 3 ? "warning" : "info" };
+  if (hours > 0) return { label: `Còn ${hours} giờ`, tone: "warning" };
+  return { label: "Sắp hết hạn", tone: "danger" };
+};
 
 export default function AdminPartnersScreen() {
   const { t } = useTranslation();
@@ -192,7 +206,9 @@ export default function AdminPartnersScreen() {
           data={partners}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const countdown = item.subscriptionPackage === "premium" ? getExpiryCountdown(item.subscriptionExpiry) : null;
+            return (
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push(`/admin/partners/${item._id}` as any)}
@@ -239,6 +255,9 @@ export default function AdminPartnersScreen() {
                     }
                   />
                   <Badge label={toLabelCase(item.subscriptionPackage)} tone="info" />
+                  {countdown ? (
+                    <Badge label={countdown.label} tone={countdown.tone} />
+                  ) : null}
                   <Badge
                     label={item.isActive ? t("admin.partners.active") : t("admin.partners.locked")}
                     tone={item.isActive ? "success" : "danger"}
@@ -274,7 +293,8 @@ export default function AdminPartnersScreen() {
                 </View>
               </AdminCard>
             </TouchableOpacity>
-          )}
+            );
+          }}
         />
       )}
 

@@ -15,6 +15,19 @@ import { AdminHeader } from "../../../components/admin/AdminHeader";
 import AdminCard from "../../../components/admin/AdminCard";
 import { adminTheme } from "../../../constants/adminTheme";
 
+const getExpiryCountdown = (expiry: string | null | undefined): string | null => {
+  if (!expiry) return null;
+  const now = Date.now();
+  const end = new Date(expiry).getTime();
+  const diff = end - now;
+  if (diff <= 0) return "Đã hết hạn";
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `Còn ${days} ngày`;
+  if (hours > 0) return `Còn ${hours} giờ`;
+  return "Sắp hết hạn";
+};
+
 type PartnerDetail = {
   _id: string;
   ownerName: string;
@@ -26,6 +39,7 @@ type PartnerDetail = {
   cuisine?: string;
   subscriptionPackage: string;
   subscriptionStatus: string;
+  subscriptionExpiry?: string | null;
   isActive: boolean;
   role: string;
   approvalNote?: string;
@@ -150,6 +164,12 @@ export default function AdminPartnerDetailScreen() {
               value={`${partner.subscriptionStatus} • ${partner.isActive ? "Active" : "Locked"}`}
             />
             <InfoRow label="Gói" value={partner.subscriptionPackage} />
+            {partner.subscriptionPackage === "premium" && getExpiryCountdown(partner.subscriptionExpiry) ? (
+              <InfoRow
+                label="Hạn Premium"
+                value={getExpiryCountdown(partner.subscriptionExpiry)!}
+              />
+            ) : null}
             <InfoRow label="Vai trò" value={partner.role} />
             {partner.approvalNote ? (
               <InfoRow label="Ghi chú duyệt" value={partner.approvalNote} />
