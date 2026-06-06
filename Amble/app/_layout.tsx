@@ -75,6 +75,7 @@ function RootLayout() {
       pathname.includes("/notifications") ||
       pathname.includes("/profile") ||
       pathname.startsWith("/(partner)");
+    const inPartnerPending = pathname.includes("/(partner-auth)");
     const inAdminGroup = pathname.startsWith("/admin");
     const onAdminLogin = pathname.startsWith("/admin/login");
     const onWelcome = pathname === "/welcome";
@@ -93,7 +94,7 @@ function RootLayout() {
         router.replace("/dashboard");
         return;
       }
-      if (!inPartnerGroup) router.replace("/dashboard");
+      if (!inPartnerGroup && !inPartnerPending) router.replace("/dashboard");
       return;
     }
 
