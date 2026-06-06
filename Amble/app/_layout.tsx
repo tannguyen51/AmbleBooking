@@ -79,6 +79,7 @@ function RootLayout() {
       pathname.includes("/partner-register") ||
       pathname.includes("/partner-login") ||
       pathname.includes("/partner-forgot-password") ||
+      pathname.includes("/partner-payment") ||
       pathname.includes("/partner-pending");
     const inAdminGroup = pathname.startsWith("/admin");
     const onAdminLogin = pathname.startsWith("/admin/login");
@@ -98,6 +99,25 @@ function RootLayout() {
         router.replace("/dashboard");
         return;
       }
+
+      const subStatus = partner?.subscriptionStatus;
+
+      // Chưa thanh toán → chỉ cho phép ở màn partner-auth, redirect về register
+      if (subStatus === "pending") {
+        if (!inPartnerPending) {
+          router.replace("/(partner-auth)/partner-register");
+        }
+        return;
+      }
+
+      // Đã thanh toán chờ duyệt → chỉ cho phép ở pending/auth, redirect về pending
+      if (subStatus === "paid_pending") {
+        if (!inPartnerPending) {
+          router.replace("/(partner-auth)/partner-pending");
+        }
+        return;
+      }
+
       if (!inPartnerGroup && !inPartnerPending) router.replace("/dashboard");
       return;
     }
@@ -134,7 +154,7 @@ function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user, fontsLoaded, partner?.role]);
+  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user, fontsLoaded, partner?.role, partner?.subscriptionStatus]);
 
   if (!fontsLoaded || !isReady) {
     return (
