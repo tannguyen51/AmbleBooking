@@ -81,7 +81,7 @@ export const DEFAULT_SESSION: AISession = {
 
 // ─── Gọi Gemini qua BE proxy (key bảo mật trong BE/.env) ───────────────────
 
-const BE_URL = "https://amblebooking-production.up.railway.app/api";
+const BE_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api";
 
 async function callClaude(
   systemPrompt: string,

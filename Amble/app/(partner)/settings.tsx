@@ -313,8 +313,9 @@ export default function PartnerProfileScreen() {
       setIsUpgradePaying(true);
       setUpgradePaymentStatus("paying");
 
-      const returnUrl = `${process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app"}/api/payment/partner/webhook`;
-      const cancelUrl = returnUrl;
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+      const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
+      const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
 
       const res = await paymentAPI.createPartnerUpgradePayosPayment({
         partnerId: partner._id,

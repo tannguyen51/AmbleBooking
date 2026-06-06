@@ -1,4 +1,4 @@
-const BASE_URL = "https://amblebooking-production.up.railway.app/api";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api";
 
 export const restaurantApi = {
   async searchRestaurants(params: {

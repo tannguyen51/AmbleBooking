@@ -329,7 +329,10 @@ export default function PartnerProfileScreen() {
 
     try {
       setIsSaving(true);
-      // TODO: Gọi API đổi mật khẩu
+      await partnerAuthAPI.changePassword({
+        currentPassword: oldPassword,
+        newPassword,
+      });
       Alert.alert(t("common.success"), t("partner.profile.changePasswordSuccess"));
       setOldPassword("");
       setNewPassword("");
@@ -368,8 +371,9 @@ export default function PartnerProfileScreen() {
       setUpgradePaymentStatus("paying");
       setShowSubscriptionModal(false);
 
-      const returnUrl = `${process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app"}/api/payment/partner/webhook`;
-      const cancelUrl = returnUrl;
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+      const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
+      const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
 
       const res = await paymentAPI.createPartnerUpgradePayosPayment({
         partnerId: partner._id,

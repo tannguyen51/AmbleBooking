@@ -151,6 +151,61 @@ p{color:#666;margin:0 0 24px;line-height:1.5}
 </html>`);
 };
 
+// ── GET /api/payment/partner/payos-return ─────────────
+exports.partnerPayosReturn = async (req, res) => {
+  const { partnerId } = req.query;
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thanh toán thành công</title>
+<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px}
+.icon{font-size:64px;margin-bottom:16px}
+h1{color:#16a34a;margin:0 0 8px;font-size:24px}
+p{color:#666;margin:0 0 24px;line-height:1.5}
+.btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+.btn:hover{background:#e55a2b}</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">&#10004;&#65039;</div>
+<h1>Thanh toán thành công!</h1>
+<p>Cảm ơn bạn đã thanh toán. Vui lòng quay lại ứng dụng để tiếp tục.</p>
+<a class="btn" href="munchmap://" id="backBtn">Quay lại ứng dụng</a>
+<script>
+try { window.location.href = "munchmap://"; } catch(e) {}
+setTimeout(function(){ document.getElementById('backBtn').textContent = 'Quay lại ứng dụng (Mở lại app nếu chưa tự chuyển)'; }, 2000);
+</script>
+</div>
+</body>
+</html>`);
+};
+
+// ── GET /api/payment/partner/payos-cancel ──────────────
+exports.partnerPayosCancel = async (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đã hủy thanh toán</title>
+<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
+.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px}
+.icon{font-size:64px;margin-bottom:16px}
+h1{color:#dc2626;margin:0 0 8px;font-size:24px}
+p{color:#666;margin:0 0 24px;line-height:1.5}
+.btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">&#10060;</div>
+<h1>Đã hủy thanh toán</h1>
+<p>Vui lòng quay lại ứng dụng để thử lại.</p>
+<a class="btn" href="munchmap://">Quay lại ứng dụng</a>
+</div>
+</body>
+</html>`);
+};
+
 // ── GET/POST /api/payment/payos-webhook ────────────────
 exports.handlePayosWebhook = async (req, res) => {
   // GET: PayOS test webhook URL (xác thực endpoint)

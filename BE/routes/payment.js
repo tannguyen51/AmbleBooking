@@ -16,5 +16,7 @@ router.post("/partner/create-payos", paymentController.createPartnerPayosPayment
 router.post("/partner/upgrade/create-payos", paymentController.createPartnerUpgradePayosPayment);
 router.post("/partner/webhook", paymentController.partnerPayosWebhook);
 router.post("/partner/check-status", paymentController.checkPartnerPaymentStatus);
+router.get("/partner/payos-return", paymentController.partnerPayosReturn);
+router.get("/partner/payos-cancel", paymentController.partnerPayosCancel);
 
 module.exports = router;
