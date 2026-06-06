@@ -36,7 +36,26 @@ exports.getTablesByRestaurant = async (req, res) => {
       restaurantId: req.params.restaurantId,
       isActive: true,
     }).lean();
-    return res.json({ success: true, tables });
+
+    // Lấy danh sách booking đang active (pending/confirmed/occupied)
+    const activeBookings = await Booking.find({
+      restaurantId: req.params.restaurantId,
+      status: { $in: ["pending", "confirmed", "occupied"] },
+    })
+      .select("tableId")
+      .lean();
+
+    const bookedTableIds = new Set(
+      activeBookings.map((b) => b.tableId?.toString()).filter(Boolean)
+    );
+
+    // Đánh dấu bàn đang có booking active là không available
+    const updatedTables = tables.map((t) => ({
+      ...t,
+      isAvailable: t.isAvailable && !bookedTableIds.has(t._id.toString()),
+    }));
+
+    return res.json({ success: true, tables: updatedTables });
   } catch (err) {
     console.error("[getTablesByRestaurant]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });
@@ -516,7 +535,7 @@ exports.cancelBooking = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking không tồn tại" });
 
-    if (["cancelled", "completed", "occupied"].includes(booking.status)) {
+    if (["cancelled", "completed", "occupied", "declined", "no_show"].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể hủy booking ở trạng thái: ${booking.status}`,
@@ -586,7 +605,7 @@ exports.releaseBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
     }
 
-    if (['cancelled', 'completed', 'occupied', 'no_show'].includes(booking.status)) {
+    if (['cancelled', 'completed', 'occupied', 'no_show', 'declined'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Không thể release booking ở trạng thái: ${booking.status}`,

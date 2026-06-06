@@ -196,7 +196,7 @@ export default function PartnerDashboard() {
         onPress: async () => {
           try {
             setIsActionLoading(true);
-            await bookingAPI.cancel(id, "Partner từ chối đơn");
+            await partnerDashboardAPI.declineBooking(id);
             await loadDashboard();
           } catch (error: any) {
             setIsActionLoading(false);

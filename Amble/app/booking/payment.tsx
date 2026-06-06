@@ -60,8 +60,6 @@ export default function BookingPaymentScreen() {
   const [qrData, setQrData] = useState<QrData | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [paymentExpiresAt, setPaymentExpiresAt] = useState<string | null>(null);
 
   const amountLabel = useMemo(() => {
     const amount = qrData?.amount ?? Number(deposit || 0);
@@ -140,52 +138,6 @@ export default function BookingPaymentScreen() {
     return () => clearInterval(timer);
   }, [bookingId]);
 
-  useEffect(() => {
-    if (!bookingId) return;
-    
-    // Fallback: mặc định 10 phút (600 giây) nếu API không trả về
-    setTimeRemaining(600);
-    
-    const fetchTime = async () => {
-      try {
-        const res = await bookingAPI.getById(bookingId);
-        if (res.data?.booking?.paymentTimeRemainingSeconds !== undefined) {
-          setTimeRemaining(res.data.booking.paymentTimeRemainingSeconds);
-            setPaymentExpiresAt(res.data.booking.paymentExpiresAt || null);
-        }
-      } catch (e) {
-        if (__DEV__) console.error("[payment] Error fetching time:", e);
-      }
-    };
-    fetchTime();
-  }, [bookingId]);
-
-  useEffect(() => {
-    if (!bookingId) return;
-
-    const timer = setInterval(() => {
-      if (paymentExpiresAt) {
-        setTimeRemaining(
-          Math.max(
-            0,
-            Math.floor((new Date(paymentExpiresAt).getTime() - Date.now()) / 1000),
-          ),
-        );
-        return;
-      }
-
-      setTimeRemaining((p) => Math.max(0, p - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [bookingId, paymentExpiresAt]);
-
-  const formatTimeRemaining = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
   return (
     <SafeAreaView style={s.container}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}> 
@@ -204,12 +156,6 @@ export default function BookingPaymentScreen() {
         <View style={s.section}>
           <View style={s.timerContainer}>
             <Text style={s.sectionTitle}>{t("booking.payment.transferInfo")}</Text>
-            {timeRemaining > 0 && (
-              <View style={s.timerBadge}>
-                <Ionicons name="hourglass-outline" size={14} color="#fff" />
-                <Text style={s.timerText}>{formatTimeRemaining(timeRemaining)}</Text>
-              </View>
-            )}
           </View>
           <View style={s.card}>
             <View style={s.rowBetween}>
@@ -434,20 +380,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
-  },
-  timerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FF6B35",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  timerText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 12,
   },
 });
 

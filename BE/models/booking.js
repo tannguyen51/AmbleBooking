@@ -75,7 +75,7 @@ const bookingSchema = new mongoose.Schema(
     // Nguồn đặt
     source: {
       type: String,
-      enum: ['app', 'walkin', 'phone', 'facebook', 'google', 'zalo', 'payos', 'other'],
+      enum: ['app', 'walkin', 'phone', 'facebook', 'google', 'zalo', 'payos', 'bank', 'other'],
       default: 'app',
     },
     // Thông tin khách (cho walk-in)

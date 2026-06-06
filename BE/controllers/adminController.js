@@ -760,6 +760,25 @@ exports.updateBookingStatus = async (req, res) => {
 
     await booking.save();
 
+    // Đồng bộ trạng thái bàn
+    if (["cancelled", "declined", "no_show"].includes(status)) {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        status: "available", isAvailable: true, currentBookingId: null,
+      });
+    } else if (status === "confirmed") {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        status: "reserved", isAvailable: false, currentBookingId: booking._id,
+      });
+    } else if (status === "occupied") {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        status: "occupied", isAvailable: false, currentBookingId: booking._id,
+      });
+    } else if (status === "completed") {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        status: "available", isAvailable: true, currentBookingId: null,
+      });
+    }
+
     await logAudit({
       actorId: req.user._id,
       action: "booking.status.updated",

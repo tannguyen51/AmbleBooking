@@ -14,10 +14,11 @@ const CHECK_INTERVAL_MS = 15 * 60 * 1000;   // 15 phút
 async function cleanupStaleBookings() {
   const cutoff = new Date(Date.now() - PENDING_TIMEOUT_MS);
 
-  // Cancel pending bookings > 60 min
+  // Cancel pending bookings > 60 min (bỏ qua đơn đã thanh toán)
   const staleBookings = await Booking.find({
     status: 'pending',
     createdAt: { $lt: cutoff },
+    "payment.status": { $ne: "paid" },
   }).lean();
 
   if (staleBookings.length === 0) return { cancelled: 0 };
