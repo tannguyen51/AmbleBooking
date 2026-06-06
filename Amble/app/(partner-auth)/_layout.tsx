@@ -6,6 +6,7 @@ export default function PartnerAuthLayout() {
       <Stack.Screen name="partner-login" />
       <Stack.Screen name="partner-register" />
       <Stack.Screen name="partner-forgot-password" />
+      <Stack.Screen name="partner-payment" />
       <Stack.Screen name="partner-pending" />
     </Stack>
   );

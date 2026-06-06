@@ -10,7 +10,6 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-  Linking,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -173,6 +172,7 @@ export default function PartnerRegisterScreen() {
       });
 
       // Tạo PayOS payment cho gói đã chọn (phí khởi tạo)
+      let checkoutUrl = "";
       const p = usePartnerAuthStore.getState().partner;
       if (p?._id) {
         try {
@@ -184,16 +184,17 @@ export default function PartnerRegisterScreen() {
             returnUrl,
             cancelUrl,
           });
-          if (res.data?.checkoutUrl) {
-            await Linking.openURL(res.data.checkoutUrl);
-          }
+          checkoutUrl = res.data?.checkoutUrl || "";
         } catch (e: any) {
           if (__DEV__) console.warn("[register] PayOS:", e?.message);
         }
       }
 
-      // Về màn chờ duyệt (không vào dashboard)
-      router.push("/(partner-auth)/partner-pending" as any);
+      // Mở màn chờ thanh toán
+      router.replace({
+        pathname: "/(partner-auth)/partner-payment" as any,
+        params: { checkoutUrl },
+      });
     } catch (err: any) {
       Alert.alert(t("common.error"), err.message);
     }
