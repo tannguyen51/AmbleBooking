@@ -75,9 +75,10 @@ export default function PayosPaymentScreen() {
   // Gọi kiểm tra không hiển thị loading (cho interval + AppState)
   const silentCheck = useCallback(async () => {
     if (!bookingId || !isMounted.current) return false;
+    let payosStatus = "";
     try {
       const res = await paymentAPI.getPayosStatus(bookingId);
-      const payosStatus = (res.data?.status || "").toUpperCase();
+      payosStatus = (res.data?.status || "").toUpperCase();
 
       if (payosStatus === "PAID" || payosStatus === "COMPLETED") {
         setStatus("PAID");
@@ -96,7 +97,7 @@ export default function PayosPaymentScreen() {
     try {
       const bookingRes = await bookingAPI.getById(bookingId);
       const bookingData = bookingRes.data?.booking;
-      if (bookingData?.payment?.status === "paid" || payosStatus === "PAID" || payosStatus === "COMPLETED") {
+      if (bookingData?.payment?.status === "paid") {
         setStatus("PAID");
         setTimeout(navigateToSuccess, 800);
         return true;

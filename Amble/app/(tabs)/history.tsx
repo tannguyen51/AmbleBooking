@@ -93,11 +93,9 @@ export default function BookingHistoryScreen() {
   const [showBankList, setShowBankList] = useState(false);
   const [, setClockTick] = useState(0);
 
+  // Refresh danh sách định kỳ
   useEffect(() => {
-    const timer = setInterval(() => {
-      setClockTick((value) => value + 1);
-    }, 1000);
-
+    const timer = setInterval(() => setClockTick((v) => v + 1), 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -301,16 +299,6 @@ export default function BookingHistoryScreen() {
               </View>
             )}
           </View>
-
-            {canPay && paymentCountdown !== null ? (
-              <View style={c.countdownRow}>
-                <Ionicons name="time-outline" size={14} color="#B45309" />
-                <Text style={c.countdownText}>
-                  {t("history.countdownPayment", { time: formatCountdown(paymentCountdown) })}
-                </Text>
-              </View>
-            ) : null}
-
           <View style={c.detailRow}>
             <Ionicons name="restaurant-outline" size={13} color="#9CA3AF" />
             <Text style={c.detailTxt}>{table?.name || "Bàn"}</Text>

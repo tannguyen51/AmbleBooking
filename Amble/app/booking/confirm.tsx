@@ -209,8 +209,22 @@ export default function ConfirmBookingScreen() {
             await Linking.openURL(checkoutUrl);
           }
 
-          // Về màn history, user kiểm tra trạng thái sau
-          router.replace("/(tabs)/history" as any);
+          // Mở màn hình chờ thanh toán
+          router.replace({
+            pathname: "/booking/payos-payment" as any,
+            params: {
+              bookingId: booking._id,
+              bookingNumber: booking.bookingNumber,
+              restaurantId,
+              restaurantName,
+              restaurantImage: tableImage,
+              tableName,
+              date,
+              time,
+              partySize,
+              deposit,
+            },
+          });
           return;
         } catch (payosErr: any) {
           if (__DEV__) console.error('[DEBUG] PayOS error:', payosErr);
