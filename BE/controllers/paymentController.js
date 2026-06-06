@@ -532,11 +532,13 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
           payosResult = await payos.paymentRequests.get(String(payment.payosOrderCode));
         } catch (e2) {
           console.error("[checkPartnerPaymentStatus] Cả paymentLinkId và orderCode đều không tìm thấy:", e2?.message);
-          return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "NOT_FOUND" });
+          const partner = await Partner.findById(partnerId);
+          return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "NOT_FOUND" });
         }
       } else {
         console.error("[checkPartnerPaymentStatus] Lỗi tra PayOS:", e?.message);
-        return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "ERROR" });
+        const partner = await Partner.findById(partnerId);
+        return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "ERROR" });
       }
     }
 
@@ -585,16 +587,24 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       payment.status = "cancelled";
       payment.payosStatus = "CANCELLED";
       await payment.save();
-      return res.json({ success: true, subscriptionStatus: "pending", payosStatus: "CANCELLED" });
+      const partner = await Partner.findById(partnerId);
+      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "CANCELLED" });
     }
 
+    const partner = await Partner.findById(partnerId);
     return res.json({
       success: true,
-      subscriptionStatus: "pending",
+      subscriptionStatus: partner?.subscriptionStatus || "pending",
+      subscriptionPackage: partner?.subscriptionPackage || "pro",
       payosStatus: payosResult?.status || "unknown",
     });
   } catch (err) {
     console.error("[checkPartnerPaymentStatus]", err);
-    return res.status(500).json({ success: false, message: err.message || "Lỗi kiểm tra thanh toán" });
+    try {
+      const partner = await Partner.findById(partnerId);
+      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "SERVER_ERROR" });
+    } catch {
+      return res.json({ success: true, subscriptionStatus: "pending", subscriptionPackage: "pro", payosStatus: "SERVER_ERROR" });
+    }
   }
 };

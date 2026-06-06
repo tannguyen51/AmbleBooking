@@ -147,6 +147,7 @@ export default function PartnerProfileScreen() {
   const [isUpgradePaying, setIsUpgradePaying] = useState(false);
   const [upgradePaymentStatus, setUpgradePaymentStatus] = useState<"idle" | "paying" | "checking" | "success" | "failed">("idle");
   const upgradeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const PRIMARY = "#FF6B35";
 
@@ -385,12 +386,16 @@ export default function PartnerProfileScreen() {
     try {
       const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
       const pkg = res.data?.subscriptionPackage;
-      if (pkg === "premium" || res.data?.paymentType === "upgrade") {
+      const payType = res.data?.paymentType;
+      if (pkg === "premium" || payType === "upgrade") {
         setUpgradePaymentStatus("success");
         if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
         await usePartnerAuthStore.getState().loadPartner();
       }
-    } catch {}
+    } catch {
+      // Sẽ retry ở lần poll tiếp theo
+    }
   }, [partner?._id]);
 
   // Poll khi user quay lại từ PayOS
@@ -407,9 +412,16 @@ export default function PartnerProfileScreen() {
     const sub = AppState.addEventListener("change", onAppStateChange);
     upgradeTimerRef.current = setInterval(checkUpgradePayment, 5000);
 
+    // Timeout sau 3 phút — nếu vẫn chưa xác nhận thì cho thử lại
+    pollTimeoutRef.current = setTimeout(() => {
+      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+      setUpgradePaymentStatus("failed");
+    }, 3 * 60 * 1000);
+
     return () => {
       sub.remove();
       if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     };
   }, [upgradePaymentStatus, checkUpgradePayment]);
 
