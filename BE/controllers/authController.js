@@ -28,7 +28,6 @@ const getGoogleAppRedirect = (req) => {
 
 const buildRedirectUrl = (baseUrl, params) => {
   // Dùng cách thủ công thay vì new URL() để tránh lỗi với custom scheme (munchmap://)
-  // new URL() có thể throw TypeError ở Node.js cũ với scheme không chuẩn
   const queryEntries = Object.entries(params).filter(([, v]) => v);
   if (queryEntries.length === 0) return baseUrl;
   const qs = queryEntries
@@ -36,6 +35,54 @@ const buildRedirectUrl = (baseUrl, params) => {
     .join("&");
   const sep = baseUrl.includes("?") ? "&" : "?";
   return baseUrl + sep + qs;
+};
+
+// Trả về HTML page với deep link về app (thay vì 302 redirect — iOS chặn redirect custom scheme)
+const sendAppRedirect = (req, res, deepLink, isError = false) => {
+  const ua = (req.headers["user-agent"] || "").toLowerCase();
+  // iOS Safari chặn 302 redirect tới custom scheme → cần HTML page có user click
+  // Android Chrome xử lý 302 redirect tốt hơn
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+
+  if (!isIOS) {
+    // Android / desktop: dùng 302 redirect
+    return res.redirect(302, deepLink);
+  }
+
+  // iOS: HTML page với nút bấm
+  const escapedLink = String(deepLink).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const rawLink = String(deepLink);
+  const title = isError ? "Đăng nhập thất bại" : "Đăng nhập thành công";
+  const msg = isError
+    ? "Có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ hỗ trợ."
+    : "Bạn có thể quay lại ứng dụng để tiếp tục.";
+  const icon = isError ? "&#10060;" : "&#9989;";
+
+  res.send(`<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} - MunchMap</title>
+<style>
+  body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;text-align:center;padding:20px}
+  .card{background:#fff;border-radius:16px;padding:40px 24px;box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:400px;width:100%}
+  .icon{font-size:64px;margin-bottom:16px}
+  h1{font-size:20px;color:#1a1a1a;margin:0 0 8px}
+  p{font-size:14px;color:#6b7280;margin:0 0 24px}
+  .btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+  .btn:hover{background:#e55a2b}
+  .btn:active{background:#cc5522}
+  .hint{font-size:12px;color:#9ca3af;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">${icon}</div>
+<h1>${title}</h1>
+<p>${msg}</p>
+<a class="btn" href="${escapedLink}" id="backBtn">Quay lại ứng dụng</a>
+<p class="hint">Bấm nút trên để mở ứng dụng</p>
+</body>
+</html>`);
 };
 
 const buildResetToken = () => {
@@ -283,10 +330,13 @@ exports.googleAuthCallback = async (req, res) => {
   try {
     const { code, state, error } = req.query;
 
-    // Luôn redirect về app khi có lỗi (không trả JSON)
+    // UA detection: iOS → HTML page, Android → 302 redirect
     const redirectWithError = (msg) =>
-      res.redirect(
+      sendAppRedirect(
+        req,
+        res,
         buildRedirectUrl(getGoogleAppRedirect(req), { error: msg }),
+        true,
       );
 
     if (error) {
@@ -400,13 +450,19 @@ exports.googleAuthCallback = async (req, res) => {
 
     const token = signToken(user._id);
 
-    return res.redirect(
+    return sendAppRedirect(
+      req,
+      res,
       buildRedirectUrl(redirectUri, { token, provider: "google" }),
+      false,
     );
   } catch (error) {
     console.error("[googleAuthCallback]", error?.message || error);
-    return res.redirect(
+    return sendAppRedirect(
+      req,
+      res,
       buildRedirectUrl(getGoogleAppRedirect(req), { error: "google_login_failed" }),
+      true,
     );
   }
 };
