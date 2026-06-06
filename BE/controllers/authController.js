@@ -27,11 +27,15 @@ const getGoogleAppRedirect = (req) => {
 };
 
 const buildRedirectUrl = (baseUrl, params) => {
-  const url = new URL(baseUrl);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) url.searchParams.set(key, String(value));
-  });
-  return url.toString();
+  // Dùng cách thủ công thay vì new URL() để tránh lỗi với custom scheme (munchmap://)
+  // new URL() có thể throw TypeError ở Node.js cũ với scheme không chuẩn
+  const queryEntries = Object.entries(params).filter(([, v]) => v);
+  if (queryEntries.length === 0) return baseUrl;
+  const qs = queryEntries
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join("&");
+  const sep = baseUrl.includes("?") ? "&" : "?";
+  return baseUrl + sep + qs;
 };
 
 const buildResetToken = () => {
