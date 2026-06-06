@@ -18,12 +18,12 @@ const buildGoogleStateToken = (redirectUri) => {
 };
 
 const getGoogleAppRedirect = (req) => {
-  const configured = process.env.GOOGLE_APP_REDIRECT; // không fallback cứng
+  // Luôn ưu tiên dùng redirect từ app (Linking.createURL) —
+  // đảm bảo đúng scheme: exp:// cho Expo Go, munchmap:// cho production build
   const requested = req.query.redirect;
-  // Nếu không có env cấu hình, dùng redirect từ app (hỗ trợ Expo Go dev scheme)
-  if (!configured) return requested || "munchmap://auth/google";
-  // Nếu có cấu hình rõ ràng, ưu tiên dùng nó (bảo mật)
-  return configured;
+  if (requested) return requested;
+  // Fallback: env config hoặc default
+  return process.env.GOOGLE_APP_REDIRECT || "munchmap://auth/google";
 };
 
 const buildRedirectUrl = (baseUrl, params) => {
