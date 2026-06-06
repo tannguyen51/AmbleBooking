@@ -37,24 +37,14 @@ const buildRedirectUrl = (baseUrl, params) => {
   return baseUrl + sep + qs;
 };
 
-// Trả về HTML page với deep link về app (thay vì 302 redirect — iOS chặn redirect custom scheme)
+// Trả về HTML page với deep link về app cho mọi nền tảng
+// 302 redirect bị chặn trên iOS Safari & một số Android ROM (MIUI, ColorOS)
 const sendAppRedirect = (req, res, deepLink, isError = false) => {
-  const ua = (req.headers["user-agent"] || "").toLowerCase();
-  // iOS Safari chặn 302 redirect tới custom scheme → cần HTML page có user click
-  // Android Chrome xử lý 302 redirect tốt hơn
-  const isIOS = /iphone|ipad|ipod/.test(ua);
-
-  if (!isIOS) {
-    // Android / desktop: dùng 302 redirect
-    return res.redirect(302, deepLink);
-  }
-
-  // iOS: HTML page với nút bấm
   const escapedLink = String(deepLink).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   const rawLink = String(deepLink);
   const title = isError ? "Đăng nhập thất bại" : "Đăng nhập thành công";
   const msg = isError
-    ? "Có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ hỗ trợ."
+    ? "Có lỗi xảy ra. Vui lòng thử lại."
     : "Bạn có thể quay lại ứng dụng để tiếp tục.";
   const icon = isError ? "&#10060;" : "&#9989;";
 
@@ -69,7 +59,6 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
   h1{font-size:20px;color:#1a1a1a;margin:0 0 8px}
   p{font-size:14px;color:#6b7280;margin:0 0 24px}
   .btn{display:inline-block;background:#ff6b35;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
-  .btn:hover{background:#e55a2b}
   .btn:active{background:#cc5522}
   .hint{font-size:12px;color:#9ca3af;margin-top:12px}
 </style>
@@ -79,8 +68,25 @@ const sendAppRedirect = (req, res, deepLink, isError = false) => {
 <div class="icon">${icon}</div>
 <h1>${title}</h1>
 <p>${msg}</p>
-<a class="btn" href="${escapedLink}" id="backBtn">Quay lại ứng dụng</a>
-<p class="hint">Bấm nút trên để mở ứng dụng</p>
+<a class="btn" href="${escapedLink}" id="backBtn">Mở ứng dụng</a>
+<p class="hint" id="hint">Ứng dụng sẽ tự động mở sau giây lát...</p>
+<script>
+  var url = "${rawLink.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}";
+  var opened = false;
+  function openApp() {
+    if (opened) return;
+    opened = true;
+    try { window.location.href = url; } catch(e) {}
+    setTimeout(function(){ try { window.location.replace(url); } catch(e) {} }, 300);
+    setTimeout(function(){ try { window.location.assign(url); } catch(e) {} }, 800);
+  }
+  setTimeout(openApp, 300);
+  setTimeout(function(){
+    var hint = document.getElementById('hint');
+    if (hint) hint.textContent = 'Nếu ứng dụng chưa mở, vui lòng bấm nút trên.';
+  }, 3000);
+</script>
+</div>
 </body>
 </html>`);
 };
@@ -327,10 +333,24 @@ exports.googleAuthStart = async (req, res) => {
 };
 
 exports.googleAuthCallback = async (req, res) => {
+  // Safety timeout: đảm bảo response trong 25s, không để browser treo vĩnh viễn
+  const safetyTimer = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error("[googleAuthCallback] SAFETY TIMEOUT — forcing response");
+      try {
+        const fb = buildRedirectUrl(getGoogleAppRedirect(req), { error: "timeout" });
+        sendAppRedirect(req, res, fb, true);
+      } catch {
+        res.status(500).send("Timeout");
+      }
+    }
+  }, 25000);
+  res.on("finish", () => clearTimeout(safetyTimer));
+  res.on("close", () => clearTimeout(safetyTimer));
+
   try {
     const { code, state, error } = req.query;
 
-    // UA detection: iOS → HTML page, Android → 302 redirect
     const redirectWithError = (msg) =>
       sendAppRedirect(
         req,
@@ -458,11 +478,11 @@ exports.googleAuthCallback = async (req, res) => {
     );
   } catch (error) {
     console.error("[googleAuthCallback]", error?.message || error);
-    return sendAppRedirect(
-      req,
-      res,
-      buildRedirectUrl(getGoogleAppRedirect(req), { error: "google_login_failed" }),
-      true,
-    );
+    try {
+      const fb = buildRedirectUrl(getGoogleAppRedirect(req), { error: "google_login_failed" });
+      sendAppRedirect(req, res, fb, true);
+    } catch {
+      res.status(500).send("Login failed. Please try again.");
+    }
   }
 };
