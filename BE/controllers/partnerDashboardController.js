@@ -6,6 +6,27 @@ const Restaurant = require("../models/restaurant");
 
 const VALID_TABLE_TYPES = ["vip", "view", "regular", "standard"];
 const VALID_OPEN_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+// Geocode địa chỉ → lat/lng dùng OpenStreetMap Nominatim (miễn phí)
+async function geocodeAddress(address, city, restaurantId) {
+  try {
+    const query = [address, city, "Vietnam"].filter(Boolean).join(", ");
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "MunchMap/1.0" },
+    });
+    const data = await res.json();
+    if (data.length > 0) {
+      await Restaurant.findByIdAndUpdate(restaurantId, {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+      });
+      console.log(`[geocode] ${restaurantId} → ${data[0].lat}, ${data[0].lon}`);
+    }
+  } catch (e) {
+    console.warn("[geocode] Failed:", e.message);
+  }
+}
 const SUBSCRIPTION_PLANS = {
   pro: {
     label: "Gói cơ bản",
@@ -822,6 +843,13 @@ exports.updateRestaurantProfile = async (req, res) => {
       { $set: updateData },
       { new: true },
     ).lean();
+
+    // Tự động geocode khi địa chỉ thay đổi
+    if (address !== undefined || city !== undefined) {
+      const addr = address !== undefined ? String(address || "").trim() : restaurant.address;
+      const cty = city !== undefined ? String(city || "").trim() : restaurant.city;
+      geocodeAddress(addr, cty, restaurantId).catch(() => {});
+    }
 
     return res.json({
       success: true,

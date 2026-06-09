@@ -4,6 +4,26 @@ const Partner = require("../models/partner");
 const Restaurant = require("../models/restaurant");
 const { sendMail } = require("../utils/mailer");
 
+// Geocode địa chỉ → lat/lng dùng OpenStreetMap (miễn phí)
+async function geocodeAddress(address, city, restaurantId) {
+  try {
+    const query = [address, city, "Vietnam"].filter(Boolean).join(", ");
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "MunchMap/1.0" },
+    });
+    const data = await res.json();
+    if (data.length > 0) {
+      await Restaurant.findByIdAndUpdate(restaurantId, {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+      });
+    }
+  } catch (e) {
+    // Geocode thất bại không ảnh hưởng đến đăng ký
+  }
+}
+
 const signToken = (id, type = "partner") => {
   return jwt.sign({ id, type }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
@@ -62,8 +82,11 @@ exports.register = async (req, res) => {
       address: restaurantAddress || "",
       city: restaurantCity || "",
       subscriptionPackage: partner.subscriptionPackage,
-      isActive: false, // Chờ admin duyệt mới active
+      isActive: false,
     });
+
+    // Tự động geocode địa chỉ (chạy background, không block response)
+    geocodeAddress(restaurantAddress, restaurantCity, restaurant._id).catch(() => {});
 
     partner.restaurantId = restaurant._id;
     await partner.save();

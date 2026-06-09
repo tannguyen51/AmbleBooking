@@ -76,7 +76,7 @@ interface Restaurant {
   isFeatured: boolean;
   lat?: number;
   lng?: number;
-  distance?: number;
+  distance?: number | null;
 }
 
 const FALLBACK =
