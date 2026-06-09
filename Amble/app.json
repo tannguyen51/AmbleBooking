@@ -1,32 +1,33 @@
 {
   "expo": {
     "name": "munchmap",
-    "slug": "munchmap",
+    "slug": "Amble",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "munchmap",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#E6F4FE"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Chúng tôi cần vị trí của bạn để hiển thị nhà hàng gần đây."
+      }
     },
     "android": {
       "package": "com.amble.app",
       "versionCode": 1,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      }
     },
     "web": {
       "output": "static",
@@ -34,15 +35,14 @@
     },
     "plugins": [
       [
-        "@react-native-google-signin/google-signin",
+        "expo-location",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.456818206627-adg8depnb92f714l7fat8qdrg0nt78qg"
+          "locationAlwaysAndWhenInUsePermission": "Cho phép MunchMap sử dụng vị trí của bạn để tìm nhà hàng gần đây."
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {

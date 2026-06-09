@@ -46,6 +46,50 @@ function prioritizePremium(restaurants) {
   });
 }
 
+// GET /api/restaurants/nearby?lat=10.77&lng=106.70&maxDistance=5000
+exports.getNearby = async (req, res) => {
+  try {
+    const { lat, lng, maxDistance } = req.query;
+    if (!lat || !lng) {
+      return res.status(400).json({ success: false, message: "Thiếu lat/lng" });
+    }
+
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    const dist = parseInt(maxDistance) || 5000; // mặc định 5km
+
+    // Tính bounding box đơn giản (rough filtering trước khi sort)
+    const kmPerDeg = 111.32;
+    const latDelta = dist / 1000 / kmPerDeg;
+    const lngDelta = dist / 1000 / (kmPerDeg * Math.cos(latNum * Math.PI / 180));
+
+    const restaurants = await Restaurant.find({
+      isActive: true,
+      lat: { $gte: latNum - latDelta, $lte: latNum + latDelta },
+      lng: { $gte: lngNum - lngDelta, $lte: lngNum + lngDelta },
+    })
+      .sort({ isFeatured: -1, rating: -1 })
+      .lean();
+
+    // Sort theo khoảng cách thực tế
+    const withDistance = restaurants.map((r) => {
+      const dLat = (r.lat - latNum) * kmPerDeg;
+      const dLng = (r.lng - lngNum) * kmPerDeg * Math.cos(latNum * Math.PI / 180);
+      const km = Math.sqrt(dLat * dLat + dLng * dLng);
+      return { ...r, distance: Math.round(km * 10) / 10 };
+    });
+
+    const nearby = withDistance
+      .filter((r) => r.distance <= dist / 1000)
+      .sort((a, b) => a.distance - b.distance);
+
+    return res.json({ success: true, restaurants: nearby });
+  } catch (err) {
+    console.error("[getNearby]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
 // GET /api/restaurants/featured
 exports.getFeatured = async (req, res) => {
   try {

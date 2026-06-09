@@ -29,6 +29,7 @@ import {
 import { useAuthStore } from "../../store/authStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
 import { restaurantAPI, bookingAPI } from "../../services/api";
+import { useLocation } from "../../hooks/useLocation";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../../components/AmbleLogo";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -70,6 +71,7 @@ interface Restaurant {
   hasParking: boolean;
   isFeatured: boolean;
   subscriptionPackage: "basic" | "pro" | "premium";
+  distance?: number;
 }
 
 interface Category {
@@ -201,6 +203,14 @@ const RestaurantCardFull = React.memo(
             colors={["transparent", "rgba(0,0,0,0.62)"]}
             style={StyleSheet.absoluteFillObject}
           />
+
+          {/* Distance badge */}
+          {item.distance != null && (
+            <View style={cardFull.distanceBadge}>
+              <Ionicons name="navigate" size={10} color="#fff" />
+              <Text style={cardFull.distanceText}>{item.distance} km</Text>
+            </View>
+          )}
 
           {item.isFeatured && (
             <LinearGradient
@@ -474,6 +484,8 @@ export default function HomeScreen() {
 
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
   const [featured, setFeatured] = useState<Restaurant[]>([]);
+  const [nearby, setNearby] = useState<Restaurant[]>([]);
+  const { location, requestLocation } = useLocation();
   const [forDate, setForDate] = useState<Restaurant[]>([]);
   const [budgetList, setBudgetList] = useState<Restaurant[]>([]);
 
@@ -556,7 +568,16 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user?._id) return;
     syncFavoritesFromServer();
+    requestLocation(); // Tự động lấy GPS
   }, [user?._id, syncFavoritesFromServer]);
+
+  // Tự động fetch nhà hàng gần đây khi có GPS
+  useEffect(() => {
+    if (!location) return;
+    restaurantAPI.getNearby({ lat: location.lat, lng: location.lng, maxDistance: 5000 })
+      .then((res) => setNearby(res.data.restaurants || []))
+      .catch(() => {});
+  }, [location]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -1510,6 +1531,23 @@ export default function HomeScreen() {
           </Section>
         ) : (
           <>
+            {/* ════ NEARBY ════ */}
+            {nearby.length > 0 && (
+              <Section title="Nhà hàng gần đây" onViewAll={() => router.push({ pathname: "/(tabs)/explore", params: { preset: "local" } } as any)} viewAllLabel={t("common.viewAll")}>
+                <View style={styles.px20}>
+                  {nearby.slice(0, 3).map((r) => (
+                    <RestaurantCardFull
+                      key={r._id}
+                      item={r}
+                      favoriteIds={favoriteIds}
+                      onToggleFav={toggleFav}
+                      {...cardTranslations}
+                    />
+                  ))}
+                </View>
+              </Section>
+            )}
+
             {/* ════ FEATURED ════ */}
             {featured.length > 0 && (
               <Section title={t("home.sectionFeatured")} onViewAll={() => {}} viewAllLabel={t("common.viewAll")}>
@@ -1625,6 +1663,7 @@ const cardFull = StyleSheet.create({
     backgroundColor: SURFACE,
     borderRadius: 20,
     overflow: "hidden",
+    position: "relative",
     marginBottom: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
@@ -1635,6 +1674,20 @@ const cardFull = StyleSheet.create({
   imageWrap: { height: 192, position: "relative" },
   image: { width: "100%", height: "100%" },
   imagePlaceholder: { flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
+  distanceBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FF6B35",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    zIndex: 10,
+  },
+  distanceText: { fontSize: 11, fontWeight: "700", color: "#fff" },
   badgeFeatured: {
     position: "absolute",
     top: 12,

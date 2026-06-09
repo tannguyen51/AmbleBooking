@@ -305,6 +305,14 @@ const next7Days = getNext7Days();
         date.getFullYear() === item.date.getFullYear(),
     );
 
+    const isTimePast = (timeStr: string) => {
+      const now = new Date();
+      const [h, m] = timeStr.split(":").map(Number);
+      const slotDate = new Date(date);
+      slotDate.setHours(h, m, 0, 0);
+      return slotDate.getTime() < now.getTime();
+    };
+
     const guestOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     const filteredTimes = ALL_TIMES;
 
@@ -444,14 +452,16 @@ const next7Days = getNext7Days();
             <View style={s.timeGrid}>
               {filteredTimes.map((t) => {
                 const isSelected = time === t;
+                const isPast = isTimePast(t);
                 return (
                   <TouchableOpacity
                     key={t}
-                    style={[s.timeBox, isSelected && s.boxActive]}
-                    onPress={() => setTime(t)}
-                    activeOpacity={0.7}
+                    style={[s.timeBox, isSelected && s.boxActive, isPast && s.timeBoxDisabled]}
+                    onPress={() => !isPast && setTime(t)}
+                    activeOpacity={isPast ? 1 : 0.7}
+                    disabled={isPast}
                   >
-                    <Text style={[s.timeTxt, isSelected && s.textActive]}>{t}</Text>
+                    <Text style={[s.timeTxt, isSelected && s.textActive, isPast && s.timeTxtDisabled]}>{t}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -912,6 +922,13 @@ const s = StyleSheet.create({
     color: "#4B5563",
     textAlign: "center",
     textAlignVertical: "center",
+  },
+  timeBoxDisabled: {
+    backgroundColor: "#F3F4F6",
+    borderColor: "#E5E7EB",
+  },
+  timeTxtDisabled: {
+    color: "#D1D5DB",
   },
 
   // Bottom Fixed Bar

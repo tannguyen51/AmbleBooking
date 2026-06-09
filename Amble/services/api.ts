@@ -96,6 +96,8 @@ export const restaurantAPI = {
     search?: string;
     priceRange?: string;
   }) => api.get("/restaurants", { params }),
+  getNearby: (params: { lat: number; lng: number; maxDistance?: number }) =>
+    api.get("/restaurants/nearby", { params }),
   getFeatured: () => api.get("/restaurants/featured"),
   getById: (id: string) => api.get(`/restaurants/${id}`),
   getReviews: (id: string) => api.get(`/restaurants/${id}/reviews`),

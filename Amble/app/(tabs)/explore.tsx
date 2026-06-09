@@ -22,6 +22,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useFavoritesStore } from "../../store/favoritesStore";
 import { restaurantAPI } from "../../services/api";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useLocation } from "../../hooks/useLocation";
 
 // ─── Design tokens ────────────────────────────────────────
 const PRIMARY = "#FF6B35";
@@ -73,6 +74,9 @@ interface Restaurant {
   closeTime: string;
   hasParking: boolean;
   isFeatured: boolean;
+  lat?: number;
+  lng?: number;
+  distance?: number;
 }
 
 const FALLBACK =
@@ -115,6 +119,14 @@ const RestaurantCard = ({
         ) : (
           <View style={styles.imagePlaceholder}>
             <Ionicons name="restaurant-outline" size={36} color="#D1D5DB" />
+          </View>
+        )}
+
+        {/* Distance badge */}
+        {item.distance != null && (
+          <View style={styles.distanceBadge}>
+            <Ionicons name="navigate" size={10} color="#fff" />
+            <Text style={styles.distanceText}>{item.distance} km</Text>
           </View>
         )}
         <LinearGradient
@@ -214,6 +226,11 @@ export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // GPS
+  const { location, requestLocation } = useLocation();
+  const [nearbyRestaurants, setNearbyRestaurants] = useState<Restaurant[]>([]);
+  const [showNearby, setShowNearby] = useState(false);
+
   // ── Fetch ────────────────────────────────────
   const fetchRestaurants = useCallback(async () => {
     try {
@@ -228,7 +245,10 @@ export default function ExploreScreen() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) fetchRestaurants();
+    if (isAuthenticated) {
+      fetchRestaurants();
+      requestLocation(); // Tự động lấy GPS khi vào trang
+    }
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -328,6 +348,17 @@ export default function ExploreScreen() {
     setActiveSort(null);
   };
 
+  // ── GPS Nearby ──────────────────────────────
+  useEffect(() => {
+    if (!location) return;
+    restaurantAPI.getNearby({ lat: location.lat, lng: location.lng, maxDistance: 5000 })
+      .then((res) => {
+        setNearbyRestaurants(res.data.restaurants || []);
+        setShowNearby(true);
+      })
+      .catch(() => {});
+  }, [location]);
+
   // ── Render ───────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
@@ -354,9 +385,26 @@ export default function ExploreScreen() {
         </View>
       </View>
 
+      {/* Nearby badge khi có GPS */}
+      {showNearby && nearbyRestaurants.length > 0 && (
+        <View style={styles.nearbyBanner}>
+          <Ionicons name="location" size={14} color={PRIMARY} />
+          <Text style={styles.nearbyBannerText}>
+            {nearbyRestaurants.length} nhà hàng gần bạn (trong 5km)
+          </Text>
+          <TouchableOpacity onPress={() => setShowNearby(false)}>
+            <Ionicons name="close" size={14} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── Result count ────────────────────────── */}
       <View style={styles.resultRow}>
-        <Text style={styles.resultText}>{t("explore.resultCount", { count: filtered.length })}</Text>
+        <Text style={styles.resultText}>
+          {showNearby
+            ? `${nearbyRestaurants.length} nhà hàng gần đây`
+            : t("explore.resultCount", { count: filtered.length })}
+        </Text>
         {hasActiveFilter && (
           <TouchableOpacity onPress={clearFilters}>
             <Text style={styles.clearInline}>{t("explore.clearFilter")} ✕</Text>
@@ -366,7 +414,7 @@ export default function ExploreScreen() {
 
       {/* ── LIST ────────────────────────────────── */}
       <FlatList
-        data={filtered}
+        data={showNearby ? nearbyRestaurants : filtered}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -425,6 +473,42 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchInput: { flex: 1, fontSize: 14, color: TEXT },
+  gpsBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  nearbyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    marginBottom: 8,
+  },
+  nearbyBannerText: { flex: 1, fontSize: 13, fontWeight: "600", color: "#C2410C" },
+  distanceBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  distanceText: { fontSize: 11, fontWeight: "700", color: "#fff" },
   filterBtn: {
     width: 36,
     height: 36,
@@ -526,6 +610,7 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
     borderRadius: 20,
     overflow: "hidden",
+    position: "relative",
     marginBottom: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

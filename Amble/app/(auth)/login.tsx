@@ -138,6 +138,8 @@ export default function LoginScreen() {
         const token = parsed.queryParams?.token;
         if (typeof token === "string") {
           await loginWithToken(token);
+          // Chủ động điều hướng sau khi login thành công
+          router.replace("/(tabs)");
         } else {
           const error = parsed.queryParams?.error;
           if (error) Alert.alert("Lỗi đăng nhập", String(error));

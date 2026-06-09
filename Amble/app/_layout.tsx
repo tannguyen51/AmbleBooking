@@ -1,27 +1,11 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Font from "expo-font";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
 import { useLanguageStore } from "../store/languageStore";
-
-// Lazy init Google Sign-in – tránh crash nếu native module chưa link
-try {
-  const { GoogleSignin } = require("@react-native-google-signin/google-signin");
-  GoogleSignin.configure({
-    iosClientId:
-      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
-      "456818206627-adg8depnb92f714l7fat8qdrg0nt78qg.apps.googleusercontent.com",
-    webClientId:
-      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-      "456818206627-tkq130qes9a9qafjf8ver989j7hv50ur.apps.googleusercontent.com",
-    profileImageSize: 120,
-  });
-} catch (e) {
-  // Google Sign-in chưa sẵn sàng – bỏ qua, sẽ init khi có native module
-}
 
 function RootLayout() {
   const { isAuthenticated, loadUser, user } = useAuthStore();
@@ -32,6 +16,13 @@ function RootLayout() {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [initTimeout, setInitTimeout] = useState(false);
+
+  // Safety: nếu 15s không init xong → hiện thông báo
+  useEffect(() => {
+    const t = setTimeout(() => setInitTimeout(true), 15000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,10 +137,8 @@ function RootLayout() {
       return;
     }
 
-    if (!language) {
-      if (!onLanguage) router.replace("/language");
-      return;
-    }
+    // Ngôn ngữ mặc định là tiếng Việt — không redirect /language nữa
+    // (người dùng có thể đổi ngôn ngữ từ settings sau này)
 
     if (onLanguage || onIntro || onWelcome) {
       return;
@@ -158,9 +147,17 @@ function RootLayout() {
     if (!inAuthGroup && !inPartnerAuthGroup) {
       router.replace("/intro");
     }
-  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, language, user, fontsLoaded, partner?.role, partner?.subscriptionStatus]);
+  }, [isReady, isAuthenticated, isPartnerAuthenticated, pathname, user, fontsLoaded, partner?.role, partner?.subscriptionStatus]);
 
   if (!fontsLoaded || !isReady) {
+    if (initTimeout) {
+      return (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: "#fff" }}>
+          <Text style={{ fontSize: 20, fontWeight: "800", marginBottom: 12 }}>Đang tải...</Text>
+          <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center" }}>Ứng dụng đang mất nhiều thời gian khởi động.{"\n"}Vui lòng kiểm tra kết nối mạng và thử lại.</Text>
+        </View>
+      );
+    }
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
         <StatusBar style="auto" />

@@ -47,4 +47,7 @@ const restaurantSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Geospatial index cho tìm nhà hàng gần đây
+restaurantSchema.index({ lat: 1, lng: 1 });
+
 module.exports = mongoose.model("Restaurant", restaurantSchema);

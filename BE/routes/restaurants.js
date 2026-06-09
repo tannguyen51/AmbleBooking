@@ -4,16 +4,19 @@ const { protect } = require('../middleware/auth');
 const {
   getAll,
   getFeatured,
+  getNearby,
   getById,
   getReviews,
   createReview,
 } = require('../controllers/restaurantController');
 
-// QUAN TRỌNG: /featured phải đặt TRƯỚC /:id
-// nếu không Express sẽ hiểu "featured" là một :id
+// QUAN TRỌNG: /featured, /nearby phải đặt TRƯỚC /:id
 
 // GET /api/restaurants/featured
 router.get('/featured', getFeatured);
+
+// GET /api/restaurants/nearby?lat=&lng=&maxDistance=
+router.get('/nearby', getNearby);
 
 // GET /api/restaurants?city=&cuisine=&category=&search=
 router.get('/', getAll);

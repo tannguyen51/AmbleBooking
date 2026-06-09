@@ -30,9 +30,10 @@ export const useLanguageStore = create<LanguageState>((set) => ({
         set({ language: saved, isLanguageReady: true });
         return;
       }
-      set({ language: null, isLanguageReady: true });
+      // Không có ngôn ngữ lưu → mặc định tiếng Việt
+      set({ language: "vi", isLanguageReady: true });
     } catch {
-      set({ language: null, isLanguageReady: true });
+      set({ language: "vi", isLanguageReady: true });
     }
   },
 
