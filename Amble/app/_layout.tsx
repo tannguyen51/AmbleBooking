@@ -55,6 +55,10 @@ function RootLayout() {
     const inPartnerAuthGroup =
       pathname.startsWith("/partner-login") ||
       pathname.startsWith("/partner-register") ||
+      pathname.startsWith("/partner-forgot") ||
+      pathname.startsWith("/partner-reset") ||
+      pathname.startsWith("/partner-payment") ||
+      pathname.startsWith("/partner-pending") ||
       pathname.startsWith("/(partner-auth)");
     const inPartnerGroup =
       pathname.includes("/dashboard") ||
@@ -69,7 +73,8 @@ function RootLayout() {
     const inPartnerPending =
       pathname.includes("/partner-register") ||
       pathname.includes("/partner-login") ||
-      pathname.includes("/partner-forgot-password") ||
+      pathname.includes("/partner-forgot") ||
+      pathname.includes("/partner-reset") ||
       pathname.includes("/partner-payment") ||
       pathname.includes("/partner-pending");
     const inAdminGroup = pathname.startsWith("/admin");
@@ -93,21 +98,27 @@ function RootLayout() {
 
       const subStatus = partner?.subscriptionStatus;
 
-      // Chưa thanh toán → chỉ cho phép ở register hoặc payment
+      // Chưa thanh toán → chỉ cho phép ở register, payment, login, forgot
       if (subStatus === "pending") {
         const isRegister = pathname.includes("/partner-register");
         const isPayment = pathname.includes("/partner-payment");
-        if (!isRegister && !isPayment) {
+        const isLogin = pathname.includes("/partner-login");
+        const isForgot = pathname.includes("/partner-forgot");
+        const isReset = pathname.includes("/partner-reset");
+        if (!isRegister && !isPayment && !isLogin && !isForgot && !isReset) {
           router.replace("/(partner-auth)/partner-register");
         }
         return;
       }
 
-      // Đã thanh toán chờ duyệt → chỉ cho phép ở pending hoặc payment
+      // Đã thanh toán chờ duyệt → chỉ cho phép ở pending, payment, login, forgot
       if (subStatus === "paid_pending") {
         const isPending = pathname.includes("/partner-pending");
         const isPayment = pathname.includes("/partner-payment");
-        if (!isPending && !isPayment) {
+        const isLogin = pathname.includes("/partner-login");
+        const isForgot = pathname.includes("/partner-forgot");
+        const isReset = pathname.includes("/partner-reset");
+        if (!isPending && !isPayment && !isLogin && !isForgot && !isReset) {
           router.replace("/(partner-auth)/partner-pending");
         }
         return;
