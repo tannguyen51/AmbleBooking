@@ -488,15 +488,12 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {/* Header */}
-        <LinearGradient
-          colors={["#ffd109", "#ff8b25"]}
+        <View
           style={[s.header, { paddingTop: 12 + insets.top }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
         >
           <View style={s.headerLeft}>
             <View style={s.headerAvatar}>
-              <Ionicons name="chatbubble-ellipses" size={20} color={PRIMARY} />
+              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
             </View>
             <View>
               <Text style={s.headerTitle}>{t("chat.headerTitle")}</Text>
@@ -522,7 +519,7 @@ export default function ChatScreen() {
           >
             <Ionicons name="refresh" size={20} color="#fff" />
           </TouchableOpacity>
-        </LinearGradient>
+        </View>
 
         {/* Messages */}
         <FlatList
@@ -610,13 +607,14 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 14,
+    backgroundColor: PRIMARY,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerAvatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -626,7 +624,7 @@ const s = StyleSheet.create({
     height: 24,
     resizeMode: "contain",
   },
-  headerTitle: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  headerTitle: { fontSize: 16, color: "#fff", fontFamily: "TAN-NIMBUS" },
   headerOnline: {
     flexDirection: "row",
     alignItems: "center",

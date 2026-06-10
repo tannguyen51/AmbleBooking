@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AdminAIChat from "../../components/admin/AdminAIChat";
 import { useRouter } from "expo-router";
 import { adminAPI } from "../../services/api";
 import { AdminBottomNav } from "../../components/admin/AdminBottomNav";
@@ -121,6 +127,7 @@ export default function AdminDashboard() {
           <Text style={styles.logoutText}>{t("admin.dashboard.logout")}</Text>
         </TouchableOpacity>
       </ScrollView>
+      <AdminAIChat />
       <AdminBottomNav />
     </View>
   );

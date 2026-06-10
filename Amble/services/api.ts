@@ -386,6 +386,8 @@ export const adminAPI = {
   getDashboard: () => api.get("/admin/dashboard"),
   getAuditLogs: (params?: { action?: string; targetType?: string; targetId?: string; limit?: number }) =>
     api.get("/admin/audit", { params }),
+  aiChat: (messages: { role: "user" | "assistant"; content: string }[]) =>
+    api.post("/ai/admin-chat", { messages }),
 
   getUsers: (params?: {
     search?: string;

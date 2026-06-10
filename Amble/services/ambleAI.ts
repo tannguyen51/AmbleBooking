@@ -1,5 +1,6 @@
 import { restaurantApi } from "./restaurantApi";
 import { bookingAPI } from "./api";
+import type { QuickReply, TableCard } from "../types/chat";
 
 const devLog = {
   log: (...args: any[]) => { if (__DEV__) console.log(...args); },
@@ -31,31 +32,6 @@ export interface BookingDraft {
   deposit?: number;
 }
 
-export interface QuickReply {
-  id: string;
-  text: string;
-  value: string;
-}
-
-export interface TableCard {
-  tableId: string;
-  tableName: string;
-  tableType: string;
-  tableImage: string;
-  tableImages: string[];
-  features: string[];
-  description: string;
-  capacity: { min: number; max: number };
-  deposit: number;
-  isAvailable: boolean;
-  restaurantId: string;
-  restaurantName: string;
-  restaurantImage: string;
-  restaurantCity: string;
-  restaurantCuisine: string;
-  restaurantRating: number;
-  restaurantAddress: string;
-}
 
 export interface AIResponse {
   text: string;
@@ -136,10 +112,13 @@ async function callClaude(
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Bạn là Amble AI — trợ lý đặt bàn thông minh của Amble.
-Hôm nay: 2026-06-02
+function getSystemPrompt() {
+  const today = new Date().toISOString().slice(0, 10);
+  return `Bạn là Amble AI — trợ lý đặt bàn thông minh của Amble.
+Hôm nay: ${today}
 
 ## QUY TẮC VÀNG
+- NGUYÊN TẮC NGÔN NGỮ: User hỏi tiếng Việt → trả lời tiếng Việt. User hỏi tiếng Anh → trả lời tiếng Anh. Luôn giữ nguyên ngôn ngữ user dùng.
 - Luôn thân thiện, tự nhiên, ngắn gọn (tối đa 2-3 câu)
 - Nói chuyện như một trợ lý thật: có thể gợi ý trước, rồi hỏi thêm để tinh chỉnh
 - KHÔNG biến cuộc trò chuyện thành form bắt buộc; chỉ hỏi thêm khi thông tin thiếu làm kết quả dễ sai
@@ -189,6 +168,13 @@ VD: {"action":"search","deposit":300000,"location":"Quan 1"}
 - Nếu dùng mặc định, đừng nói như đã chắc chắn; hãy hỏi nhẹ để user chỉnh lại nếu cần
 - Không cần hỏi dồn tất cả thông tin trong một lượt
 
+## QUAN TRỌNG - HỎI THEO THỨ TỰ:
+- Hỏi NGÀY trước. Nếu đang sau 21h (giờ đóng cửa nhà hàng) → gợi ý ngày hôm sau thay vì hôm nay.
+- Sau khi user chọn ngày → hỏi GIỜ, CHỈ đưa gợi ý giờ. KHÔNG hỏi lại ngày.
+- Sau khi user chọn ngày → mới hỏi GIỜ, CHỈ đưa gợi ý giờ (12:00, 18:00, 19:00...). KHÔNG hỏi lại ngày.
+- Sau khi user chọn giờ → hỏi SỐ NGƯỜI, chỉ đưa gợi ý số người. KHÔNG hỏi lại ngày/giờ.
+- Hỏi từng thứ một, không gộp chung.
+
 ## QUAN TRỌNG - XỬ LÝ ĐỊA ĐIỂM:
 - Đặt location là địa điểm user yêu cầu (VD: "Quận 1", "Thủ Đức", "Hồ Chí Minh", "Hà Nội")
 - Hệ thống sẽ tìm kiếm trong cả city và address, nên có thể dùng tên quận/huyện hoặc thành phố
@@ -212,6 +198,7 @@ AI: {"action":"search","purpose":"date","date":"2026-06-03","time":"19:00","part
 
 User: "Hello"
 AI: Chào bạn! Mình là Amble AI, trợ lý đặt bàn thông minh. Bạn muốn đặt bàn hẹn hò, gia đình hay tìm nhà hàng ngon?`;
+}
 
 // ─── Quick replies theo step ──────────────────────────────────────────────────
 
@@ -271,25 +258,29 @@ function detectStepFromResponse(
   const t = text.toLowerCase();
   if (t.includes("dịp") || t.includes("mục đích") || t.includes("occasion"))
     return "purpose";
-  if (t.includes("ngày") || t.includes("date") || t.includes("hôm nay"))
-    return "date";
-  if (t.includes("giờ") || t.includes("mấy giờ") || t.includes("time"))
+  // Bàn/view KIỂM TRA TRƯỚC — "view đẹp" không bị "ngày mai" đè
+  if (t.includes("loại bàn") || t.includes("vip") || t.includes("view") || t.includes("bàn nào") || t.includes("kiểu bàn"))
+    return "tableType";
+  // Giờ KIỂM TRA TRƯỚC ngày
+  if (t.includes("giờ") || t.includes("mấy giờ") || t.includes("time") || t.includes("thời gian") || t.includes("lúc nào"))
     return "time";
+  if (t.includes("ngày") || t.includes("date") || t.includes("hôm nay") || t.includes("ngày mai"))
+    return "date";
   if (
     t.includes("bao nhiêu người") ||
-    t.includes("người") ||
-    t.includes("người đi")
+    t.includes("mấy người") ||
+    t.includes("người")
   )
     return "partySize";
   if (
     t.includes("khu vực") ||
     t.includes("quận") ||
     t.includes("địa điểm") ||
-    t.includes("ở đâu")
+    t.includes("ở đâu") ||
+    t.includes("thành phố")
   )
     return "location";
-  if (t.includes("loại bàn") || t.includes("vip") || t.includes("view"))
-    return "tableType";
+  // Nếu không detect được gì mới → giữ nguyên step hiện tại
   return currentStep;
 }
 
@@ -501,7 +492,7 @@ export const ambleAI = {
 
     try {
       // Gọi Claude với toàn bộ lịch sử hội thoại
-      const rawResponse = await callClaude(SYSTEM_PROMPT, history, msg);
+      const rawResponse = await callClaude(getSystemPrompt(), history, msg);
 
       // Cập nhật history
       const newHistory = [

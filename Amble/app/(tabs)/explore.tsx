@@ -126,7 +126,9 @@ const RestaurantCard = ({
         {item.distance != null && (
           <View style={styles.distanceBadge}>
             <Ionicons name="navigate" size={10} color="#fff" />
-            <Text style={styles.distanceText}>{item.distance} km</Text>
+            <Text style={styles.distanceText}>
+              {item.distance > 999 ? "Rất xa" : `${item.distance} km`}
+            </Text>
           </View>
         )}
         <LinearGradient
@@ -228,28 +230,46 @@ export default function ExploreScreen() {
 
   // GPS
   const { location, requestLocation } = useLocation();
-  const [nearbyRestaurants, setNearbyRestaurants] = useState<Restaurant[]>([]);
-  const [showNearby, setShowNearby] = useState(false);
+
+  // Hàm tính khoảng cách cho tất cả nhà hàng
+  const addDistances = useCallback((list: Restaurant[]) => {
+    if (!location || list.length === 0) return list;
+    const kmPerDeg = 111.32;
+    return list.map((r) => {
+      if (!r.lat || !r.lng || (r.lat === 0 && r.lng === 0)) return r;
+      const dLat = (r.lat - location.lat) * kmPerDeg;
+      const dLng = (r.lng - location.lng) * kmPerDeg * Math.cos(location.lat * Math.PI / 180);
+      const km = Math.sqrt(dLat * dLat + dLng * dLng);
+      return { ...r, distance: Math.round(km * 10) / 10 };
+    });
+  }, [location]);
 
   // ── Fetch ────────────────────────────────────
   const fetchRestaurants = useCallback(async () => {
     try {
       const res = await restaurantAPI.getAll();
-      setRestaurants(res.data.restaurants || []);
+      setRestaurants(addDistances(res.data.restaurants || []));
     } catch (err) {
       if (__DEV__) console.log(err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [addDistances]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchRestaurants();
-      requestLocation(); // Tự động lấy GPS khi vào trang
+      requestLocation();
     }
   }, [isAuthenticated]);
+
+  // Re-fetch khi có GPS để thêm khoảng cách
+  useEffect(() => {
+    if (location && restaurants.length > 0) {
+      setRestaurants((prev) => addDistances(prev));
+    }
+  }, [location]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -349,15 +369,6 @@ export default function ExploreScreen() {
   };
 
   // ── GPS Nearby ──────────────────────────────
-  useEffect(() => {
-    if (!location) return;
-    restaurantAPI.getNearby({ lat: location.lat, lng: location.lng, maxDistance: 5000 })
-      .then((res) => {
-        setNearbyRestaurants(res.data.restaurants || []);
-        setShowNearby(true);
-      })
-      .catch(() => {});
-  }, [location]);
 
   // ── Render ───────────────────────────────────
   return (
@@ -385,26 +396,10 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      {/* Nearby badge khi có GPS */}
-      {showNearby && nearbyRestaurants.length > 0 && (
-        <View style={styles.nearbyBanner}>
-          <Ionicons name="location" size={14} color={PRIMARY} />
-          <Text style={styles.nearbyBannerText}>
-            {nearbyRestaurants.length} nhà hàng gần bạn (trong 5km)
-          </Text>
-          <TouchableOpacity onPress={() => setShowNearby(false)}>
-            <Ionicons name="close" size={14} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* ── Result count ────────────────────────── */}
       <View style={styles.resultRow}>
-        <Text style={styles.resultText}>
-          {showNearby
-            ? `${nearbyRestaurants.length} nhà hàng gần đây`
-            : t("explore.resultCount", { count: filtered.length })}
-        </Text>
+        <Text style={styles.resultText}>{t("explore.resultCount", { count: filtered.length })}</Text>
         {hasActiveFilter && (
           <TouchableOpacity onPress={clearFilters}>
             <Text style={styles.clearInline}>{t("explore.clearFilter")} ✕</Text>
@@ -414,7 +409,7 @@ export default function ExploreScreen() {
 
       {/* ── LIST ────────────────────────────────── */}
       <FlatList
-        data={showNearby ? nearbyRestaurants : filtered}
+        data={filtered}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -499,7 +494,7 @@ const styles = StyleSheet.create({
   distanceBadge: {
     position: "absolute",
     top: 10,
-    right: 10,
+    left: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,

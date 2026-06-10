@@ -192,4 +192,103 @@ router.post("/chat", async (req, res) => {
   }
 });
 
+// ── POST /api/ai/admin-chat ─────────────────────────────────
+// Admin AI: phân tích dữ liệu, doanh thu, đối tác...
+router.post("/admin-chat", async (req, res) => {
+  try {
+    const apiKey = getAIKey();
+    if (!apiKey) {
+      return res.json({ success: false, message: "AI key chưa cấu hình" });
+    }
+
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ success: false, message: "Thiếu messages" });
+    }
+
+    // Lấy dữ liệu thực từ DB để đưa vào context
+    const User = require("../models/user");
+    const Partner = require("../models/partner");
+    const Restaurant = require("../models/restaurant");
+    const Booking = require("../models/booking");
+
+    const [totalUsers, activeUsers, totalPartners, pendingPartners, activePartners,
+      totalRestaurants, activeRestaurants, totalBookings, todayBookings] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isActive: true }),
+      Partner.countDocuments(),
+      Partner.countDocuments({ subscriptionStatus: "pending" }),
+      Partner.countDocuments({ subscriptionStatus: "active" }),
+      Restaurant.countDocuments(),
+      Restaurant.countDocuments({ isActive: true }),
+      Booking.countDocuments(),
+      Booking.countDocuments({ createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) } }),
+    ]);
+
+    // Top nhà hàng theo booking
+    const topRestaurants = await Booking.aggregate([
+      { $group: { _id: "$restaurantId", bookings: { $sum: 1 } } },
+      { $sort: { bookings: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: "restaurants", localField: "_id", foreignField: "_id", as: "restaurant" } },
+      { $unwind: "$restaurant" },
+      { $project: { name: "$restaurant.name", bookings: 1 } },
+    ]);
+
+    // Doanh thu tổng
+    const revenueResult = await Booking.aggregate([
+      { $match: { status: { $in: ["completed", "confirmed", "occupied"] } } },
+      { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } },
+    ]);
+    const revenue = revenueResult[0] || { total: 0, count: 0 };
+
+    // Doanh thu hôm nay
+    const todayRevenue = await Booking.aggregate([
+      { $match: {
+        status: { $in: ["completed", "confirmed", "occupied"] },
+        createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) },
+      }},
+      { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } },
+    ]);
+    const todayRev = todayRevenue[0] || { total: 0, count: 0 };
+
+    const dataContext = `
+## DỮ LIỆU THỰC TẾ (Real-time từ database)
+
+### Tổng quan
+- Tổng users: ${totalUsers} (active: ${activeUsers})
+- Tổng partners: ${totalPartners} (pending: ${pendingPartners}, active: ${activePartners})
+- Tổng nhà hàng: ${totalRestaurants} (active: ${activeRestaurants})
+- Tổng bookings: ${totalBookings} (hôm nay: ${todayBookings})
+
+### Doanh thu
+- Tổng doanh thu (đã hoàn thành/xác nhận): ${revenue.total.toLocaleString("vi-VN")}đ (${revenue.count} bookings)
+- Doanh thu hôm nay: ${todayRev.total.toLocaleString("vi-VN")}đ (${todayRev.count} bookings)
+
+### Top 5 nhà hàng (theo số booking)
+${topRestaurants.map((r, i) => `${i + 1}. ${r.name} - ${r.bookings} bookings`).join("\n")}
+
+### Tỉ lệ
+- Tỉ lệ chuyển đổi partner: ${totalPartners > 0 ? Math.round((activePartners / totalPartners) * 100) : 0}%
+- Booking trung bình/nhà hàng: ${activeRestaurants > 0 ? Math.round(totalBookings / activeRestaurants) : 0}
+`;
+
+    const systemPrompt = `Bạn là trợ lý AI phân tích dữ liệu cho admin của MunchMap — nền tảng đặt bàn nhà hàng.
+Trả lời bằng tiếng Việt, ngắn gọn, chuyên nghiệp.
+Có thể đưa ra nhận xét, xu hướng, và gợi ý cải thiện dựa trên dữ liệu.
+${dataContext}`;
+
+    const result = await callAI(apiKey, messages, systemPrompt);
+
+    if (!result.ok) {
+      return res.json({ success: false, message: result.error?.message || "AI error" });
+    }
+
+    return res.json({ success: true, text: result.text });
+  } catch (err) {
+    console.error("[AI/admin-chat]", err.message);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+});
+
 module.exports = router;

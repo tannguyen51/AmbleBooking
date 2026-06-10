@@ -1,6 +1,31 @@
 import { Restaurant } from "./restaurant";
-import { BookingContext, QuickReply } from "./booking";
-import { TableCard } from "@/services/ambleAI";
+import { BookingContext } from "./booking";
+
+export interface QuickReply {
+  id?: string;
+  text: string;
+  value: string;
+}
+
+export interface TableCard {
+  tableId: string;
+  tableName: string;
+  tableType: string;
+  tableImage: string;
+  tableImages: string[];
+  features: string[];
+  description: string;
+  capacity: { min: number; max: number };
+  deposit: number;
+  isAvailable: boolean;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantImage: string;
+  restaurantCity: string;
+  restaurantCuisine: string;
+  restaurantRating: number;
+  restaurantAddress: string;
+}
 
 export interface ChatMessage {
   id: string;

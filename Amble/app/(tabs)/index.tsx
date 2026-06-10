@@ -72,6 +72,8 @@ interface Restaurant {
   isFeatured: boolean;
   subscriptionPackage: "basic" | "pro" | "premium";
   distance?: number;
+  lat?: number;
+  lng?: number;
 }
 
 interface Category {
@@ -496,6 +498,7 @@ export default function HomeScreen() {
   const [notifVisible, setNotifVisible] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
 
   // Search & filter
   const [search, setSearch] = useState("");
@@ -541,6 +544,18 @@ export default function HomeScreen() {
   const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch ─────────────────────────────────────────────────
+  const addDistances = useCallback((list: Restaurant[]) => {
+    if (!location || list.length === 0) return list;
+    const kmPerDeg = 111.32;
+    return list.map((r) => {
+      if (!r.lat || !r.lng || (r.lat === 0 && r.lng === 0)) return r;
+      const dLat = (r.lat - location.lat) * kmPerDeg;
+      const dLng = (r.lng - location.lng) * kmPerDeg * Math.cos(location.lat * Math.PI / 180);
+      const km = Math.sqrt(dLat * dLat + dLng * dLng);
+      return { ...r, distance: Math.round(km * 10) / 10 };
+    });
+  }, [location]);
+
   const fetchData = useCallback(async () => {
     try {
       const [featRes, allRes, dateRes, budgetRes] = await Promise.all([
@@ -549,17 +564,17 @@ export default function HomeScreen() {
         restaurantAPI.getAll({ category: "date" }),
         restaurantAPI.getAll({ priceRange: "$" } as any),
       ]);
-      setFeatured(featRes.data.restaurants ?? []);
-      setAllRestaurants(allRes.data.restaurants ?? []);
-      setForDate(dateRes.data.restaurants ?? []);
-      setBudgetList(budgetRes.data.restaurants ?? []);
+      setFeatured(addDistances(featRes.data.restaurants ?? []));
+      setAllRestaurants(addDistances(allRes.data.restaurants ?? []));
+      setForDate(addDistances(dateRes.data.restaurants ?? []));
+      setBudgetList(addDistances(budgetRes.data.restaurants ?? []));
     } catch (err) {
       if (__DEV__) console.warn("[HomeScreen] fetchData error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [location]);
 
   useEffect(() => {
     fetchData();
@@ -602,10 +617,14 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  const unreadCount = notifications.length;
+  const unreadCount = notifications.filter((n) => !readNotifIds.has(n._id || n.id)).length;
 
   const handleBellPress = () => {
     fetchNotifications();
+    // Đánh dấu tất cả đã đọc
+    const ids = new Set(readNotifIds);
+    notifications.forEach((n) => ids.add(n._id || n.id));
+    setReadNotifIds(ids);
     setNotifVisible(true);
   };
 
@@ -1458,19 +1477,20 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={cat.key}
                 style={styles.catItem}
-                onPress={() =>
+                onPress={() => {
+                  setActiveCategory(activeCategory === cat.key ? null : cat.key);
                   router.push({
                     pathname: "/explore",
                     params: {
                       preset: cat.key,
                       presetLabel: catLabelMap[cat.key] || cat.label,
                     },
-                  })
-                }
+                  });
+                }}
                 activeOpacity={0.75}
               >
-                <View style={[styles.catIcon, { backgroundColor: cat.bg }]}>
-                  <Ionicons name={cat.icon} size={22} color={cat.iconColor} />
+                <View style={[styles.catIcon, activeCategory === cat.key && styles.catIconActive]}>
+                  <Ionicons name={cat.icon} size={22} color="#fff" />
                 </View>
                 <Text style={styles.catLabel}>{catLabelMap[cat.key] || cat.label}</Text>
               </TouchableOpacity>
@@ -1677,7 +1697,7 @@ const cardFull = StyleSheet.create({
   distanceBadge: {
     position: "absolute",
     top: 10,
-    right: 10,
+    right: 60,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -2259,6 +2279,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: LOGO_TEXT,
+  },
+  catIconActive: {
+    borderWidth: 2.5,
+    borderColor: "#FFD700",
   },
   catLabel: {
     fontSize: 9,

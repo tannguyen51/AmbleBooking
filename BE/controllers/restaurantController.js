@@ -84,26 +84,9 @@ exports.getNearby = async (req, res) => {
       return { ...r, distance: Math.round(km * 10) / 10 };
     });
 
-    let nearby = withDistance
+    const nearby = withDistance
       .filter((r) => r.distance <= dist / 1000)
       .sort((a, b) => a.distance - b.distance);
-
-    // Fallback: nếu không có nhà hàng nào trong bán kính, trả về tất cả nhà hàng đang hoạt động
-    // (kèm khoảng cách nếu có tọa độ, hoặc null nếu chưa set)
-    if (nearby.length === 0) {
-      const all = await Restaurant.find({ isActive: true })
-        .sort({ isFeatured: -1, rating: -1 })
-        .lean();
-      nearby = all.map((r) => {
-        if (r.lat && r.lng && (r.lat !== 0 || r.lng !== 0)) {
-          const dLat = (r.lat - latNum) * kmPerDeg;
-          const dLng = (r.lng - lngNum) * kmPerDeg * Math.cos(latNum * Math.PI / 180);
-          const km = Math.sqrt(dLat * dLat + dLng * dLng);
-          return { ...r, distance: Math.round(km * 10) / 10 };
-        }
-        return { ...r, distance: null };
-      });
-    }
 
     return res.json({ success: true, restaurants: nearby });
   } catch (err) {
