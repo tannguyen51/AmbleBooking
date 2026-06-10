@@ -11,6 +11,12 @@ const MODEL_CANDIDATES = (
   .map((m) => m.trim())
   .filter(Boolean);
 
+// Fallback models miễn phí khi hết credits
+const FREE_FALLBACKS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+];
+
 function getAIKey() {
   return (
     process.env.OPENROUTER_API_KEY ||
@@ -26,10 +32,11 @@ async function callAI(apiKey, messages, systemPrompt, retries = 2) {
     error: { message: "Unknown upstream error" },
   };
 
-  for (const model of MODEL_CANDIDATES) {
+  const allModels = [...MODEL_CANDIDATES, ...FREE_FALLBACKS];
+  for (const model of allModels) {
     const body = {
       model,
-      max_tokens: 1000,
+      max_tokens: 500,
       temperature: 0.3,
       messages: [
         ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
