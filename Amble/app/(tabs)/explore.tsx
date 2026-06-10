@@ -502,6 +502,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
+    zIndex: 10,
   },
   distanceText: { fontSize: 11, fontWeight: "700", color: "#fff" },
   filterBtn: {

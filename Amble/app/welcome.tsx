@@ -45,12 +45,6 @@ export default function WelcomeScreen() {
           language === "ja" ? "食事だけではない。\nあなたの体験。" :
           t("welcome.headlineVi")
         }</Text>
-        <Text style={styles.tagline}>{
-          language === "zh" ? "越南最智能的餐厅预订应用" :
-          language === "ko" ? "베트남 스마트 레스토랑 예약 앱" :
-          language === "ja" ? "ベトナムのスマートレストラン予約アプリ" :
-          isEnglish ? t("welcome.taglineEn") : t("welcome.taglineVi")
-        }</Text>
       </View>
 
       <View style={styles.sheet}>

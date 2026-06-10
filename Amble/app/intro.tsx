@@ -41,7 +41,6 @@ export default function IntroScreen() {
           language === "ja" ? "食事だけではない。\nあなたの体験。" :
           isEnglish ? t("intro.headlineEn") : t("intro.headlineVi")
         }</Text>
-        <Text style={styles.tagline}>{t("intro.tagline")}</Text>
 
         <View style={styles.buttonStack}>
           <TouchableOpacity

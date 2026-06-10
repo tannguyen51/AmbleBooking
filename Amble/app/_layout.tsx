@@ -123,7 +123,14 @@ function RootLayout() {
     }
 
     if (isAuthenticated) {
-      if (inAuthGroup || inPartnerAuthGroup || inAdminGroup)
+      // Chỉ redirect khi đang ở trang login/register/forgot/reset của customer
+      // Không redirect partner auth pages (có thể user muốn đăng nhập partner khi đã có customer account)
+      const isPartnerPublicPage =
+        pathname.includes("/partner-forgot") ||
+        pathname.includes("/partner-reset") ||
+        pathname.includes("/partner-payment") ||
+        pathname.includes("/partner-pending");
+      if (inAuthGroup || (inPartnerAuthGroup && !isPartnerPublicPage) || inAdminGroup)
         router.replace("/(tabs)");
       return;
     }

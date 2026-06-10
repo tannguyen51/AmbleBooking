@@ -487,6 +487,16 @@ export default function HomeScreen() {
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
   const [featured, setFeatured] = useState<Restaurant[]>([]);
   const [nearby, setNearby] = useState<Restaurant[]>([]);
+
+  // 3 nhà hàng gần nhất (từ danh sách chính, có distance)
+  const nearbyFromAll = useMemo(() => {
+    return allRestaurants
+      .filter((r) => r.distance != null && r.distance > 0)
+      .sort((a, b) => (a.distance || 0) - (b.distance || 0))
+      .slice(0, 3);
+  }, [allRestaurants]);
+
+  const displayNearby = nearby.length > 0 ? nearby.slice(0, 3) : nearbyFromAll;
   const { location, requestLocation } = useLocation();
   const [forDate, setForDate] = useState<Restaurant[]>([]);
   const [budgetList, setBudgetList] = useState<Restaurant[]>([]);
@@ -1552,10 +1562,10 @@ export default function HomeScreen() {
         ) : (
           <>
             {/* ════ NEARBY ════ */}
-            {nearby.length > 0 && (
+            {displayNearby.length > 0 && (
               <Section title="Nhà hàng gần đây" onViewAll={() => router.push({ pathname: "/(tabs)/explore", params: { preset: "local" } } as any)} viewAllLabel={t("common.viewAll")}>
                 <View style={styles.px20}>
-                  {nearby.slice(0, 3).map((r) => (
+                  {displayNearby.map((r) => (
                     <RestaurantCardFull
                       key={r._id}
                       item={r}
