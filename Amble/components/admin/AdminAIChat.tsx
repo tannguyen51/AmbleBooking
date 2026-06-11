@@ -16,7 +16,7 @@ interface Message {
 export default function AdminAIChat() {
   const [visible, setVisible] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Chào bạn! Tôi là trợ lý AI. Hỏi tôi về:\n• Doanh thu & booking\n• Đối tác & nhà hàng\n• Xu hướng & phân tích" },
+    { role: "assistant", content: "Chào bạn! Tôi là trợ lý AI phân tích dữ liệu. Hỏi tôi về:\n• Doanh thu hôm nay, tháng này\n• Top nhà hàng, booking, đối tác\n• Tính toán tỉ lệ, trung bình, xu hướng\n• Gợi ý cải thiện kinh doanh" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

@@ -65,9 +65,12 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data?.choices?.[0]?.message?.content) {
+        const text = data?.choices?.[0]?.message?.content
+          || data?.choices?.[0]?.message?.reasoning_content
+          || "";
+        if (text) {
           console.log("[AI/Foundry] success!");
-          return { ok: true, text: data.choices[0].message.content, model };
+          return { ok: true, text, model };
         }
         console.log("[AI/Foundry] bad response:", JSON.stringify(data).slice(0, 200));
       } else {
@@ -314,39 +317,113 @@ router.post("/admin-chat", async (req, res) => {
     const revenue = revenueResult[0] || { total: 0, count: 0 };
 
     // Doanh thu hôm nay
+    const todayStart = new Date(new Date().setHours(0,0,0,0));
     const todayRevenue = await Booking.aggregate([
       { $match: {
         status: { $in: ["completed", "confirmed", "occupied"] },
-        createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) },
+        createdAt: { $gte: todayStart },
       }},
       { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } },
     ]);
     const todayRev = todayRevenue[0] || { total: 0, count: 0 };
 
+    // Doanh thu tháng này
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthRevenue = await Booking.aggregate([
+      { $match: {
+        status: { $in: ["completed", "confirmed", "occupied"] },
+        createdAt: { $gte: monthStart },
+      }},
+      { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } },
+    ]);
+    const monthRev = monthRevenue[0] || { total: 0, count: 0 };
+
+    // Booking theo trạng thái
+    const bookingStatus = await Booking.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+    const statusMap: Record<string, number> = {};
+    bookingStatus.forEach((s: any) => { statusMap[s._id] = s.count; });
+
+    // Partner theo gói
+    const partnerByPackage = await Partner.aggregate([
+      { $group: { _id: "$subscriptionPackage", count: { $sum: 1 } } },
+    ]);
+    const pkgMap: Record<string, number> = {};
+    partnerByPackage.forEach((p: any) => { pkgMap[p._id] = p.count; });
+
+    // User đăng ký 7 ngày gần đây
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const newUsersWeek = await User.countDocuments({ createdAt: { $gte: weekAgo } });
+
+    // Top 5 nhà hàng theo doanh thu
+    const topByRevenue = await Booking.aggregate([
+      { $match: { status: { $in: ["completed", "confirmed", "occupied"] } } },
+      { $group: { _id: "$restaurantId", revenue: { $sum: "$pricing.depositAmount" }, bookings: { $sum: 1 } } },
+      { $sort: { revenue: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: "restaurants", localField: "_id", foreignField: "_id", as: "r" } },
+      { $unwind: "$r" },
+      { $project: { name: "$r.name", revenue: 1, bookings: 1 } },
+    ]);
+
+    // Giờ cao điểm (top booking hours)
+    const peakHours = await Booking.aggregate([
+      { $group: { _id: "$bookingDetails.time", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+    ]);
+
+    const avgDeposit = revenue.count > 0 ? Math.round(revenue.total / revenue.count) : 0;
+    const cancelRate = totalBookings > 0 ? Math.round(((statusMap["cancelled"] || 0) / totalBookings) * 100) : 0;
+    const completionRate = totalBookings > 0 ? Math.round(((statusMap["completed"] || 0) / totalBookings) * 100) : 0;
+
     const dataContext = `
-## DỮ LIỆU THỰC TẾ (Real-time từ database)
+## DỮ LIỆU THỜI GIAN THỰC
 
 ### Tổng quan
-- Tổng users: ${totalUsers} (active: ${activeUsers})
-- Tổng partners: ${totalPartners} (pending: ${pendingPartners}, active: ${activePartners})
-- Tổng nhà hàng: ${totalRestaurants} (active: ${activeRestaurants})
-- Tổng bookings: ${totalBookings} (hôm nay: ${todayBookings})
+- Users: ${totalUsers} tổng (${activeUsers} active, +${newUsersWeek} mới 7 ngày qua)
+- Partners: ${totalPartners} tổng (${pendingPartners} chờ duyệt, ${activePartners} active)
+- Nhà hàng: ${totalRestaurants} tổng (${activeRestaurants} đang hoạt động)
+- Bookings: ${totalBookings} tổng (${todayBookings} hôm nay)
 
 ### Doanh thu
-- Tổng doanh thu (đã hoàn thành/xác nhận): ${revenue.total.toLocaleString("vi-VN")}đ (${revenue.count} bookings)
-- Doanh thu hôm nay: ${todayRev.total.toLocaleString("vi-VN")}đ (${todayRev.count} bookings)
+- Tổng: ${revenue.total.toLocaleString("vi-VN")}đ (${revenue.count} bookings, TB ${avgDeposit.toLocaleString("vi-VN")}đ/booking)
+- Hôm nay: ${todayRev.total.toLocaleString("vi-VN")}đ (${todayRev.count} bookings)
+- Tháng này: ${monthRev.total.toLocaleString("vi-VN")}đ (${monthRev.count} bookings)
 
-### Top 5 nhà hàng (theo số booking)
-${topRestaurants.map((r, i) => `${i + 1}. ${r.name} - ${r.bookings} bookings`).join("\n")}
+### Booking theo trạng thái
+- Completed: ${statusMap["completed"] || 0} | Confirmed: ${statusMap["confirmed"] || 0}
+- Pending: ${statusMap["pending"] || 0} | Cancelled: ${statusMap["cancelled"] || 0}
+- Occupied: ${statusMap["occupied"] || 0} | No-show: ${statusMap["no_show"] || 0}
+- Tỉ lệ hoàn thành: ${completionRate}% | Tỉ lệ hủy: ${cancelRate}%
 
-### Tỉ lệ
-- Tỉ lệ chuyển đổi partner: ${totalPartners > 0 ? Math.round((activePartners / totalPartners) * 100) : 0}%
-- Booking trung bình/nhà hàng: ${activeRestaurants > 0 ? Math.round(totalBookings / activeRestaurants) : 0}
+### Partners theo gói
+- Pro: ${pkgMap["pro"] || 0} | Premium: ${pkgMap["premium"] || 0} | Basic: ${pkgMap["basic"] || 0}
+- Tỉ lệ chuyển đổi (pending→active): ${totalPartners > 0 ? Math.round((activePartners / totalPartners) * 100) : 0}%
+
+### Top 5 nhà hàng theo doanh thu
+${topByRevenue.map((r, i) => `${i + 1}. ${r.name} — ${r.revenue.toLocaleString("vi-VN")}đ (${r.bookings} bookings)`).join("\n")}
+
+### Giờ đặt bàn cao điểm
+${peakHours.map((h, i) => `${i + 1}. ${h._id} — ${h.count} bookings`).join("\n")}
 `;
 
-    const systemPrompt = `Bạn là trợ lý AI phân tích dữ liệu cho admin của MunchMap — nền tảng đặt bàn nhà hàng.
-Trả lời bằng tiếng Việt, ngắn gọn, chuyên nghiệp.
-Có thể đưa ra nhận xét, xu hướng, và gợi ý cải thiện dựa trên dữ liệu.
+    const systemPrompt = `Bạn là trợ lý AI phân tích dữ liệu cho admin của MunchMap — nền tảng đặt bàn nhà hàng tại Việt Nam.
+
+## VAI TRÒ CỦA BẠN
+- Phân tích dữ liệu kinh doanh, trả lời câu hỏi của admin
+- Tính toán các chỉ số (tỉ lệ, trung bình, tăng trưởng...) khi được hỏi
+- Đưa ra nhận xét, xu hướng, cảnh báo và gợi ý cải thiện
+- Trả lời ngắn gọn, súc tích, dễ hiểu. Dùng tiếng Việt.
+- Nếu admin hỏi về dữ liệu không có trong context → nói rõ là chưa có dữ liệu đó
+
+## CÁCH TÍNH TOÁN BẠN CÓ THỂ LÀM
+- Tỉ lệ phần trăm, trung bình, tăng trưởng
+- So sánh giữa các khoảng thời gian
+- Dự đoán xu hướng dựa trên dữ liệu hiện có
+- Gợi ý cải thiện dựa trên số liệu (VD: tỉ lệ hủy cao → gợi ý giảm)
+
 ${dataContext}`;
 
     // Ưu tiên Anthropic nếu có key
