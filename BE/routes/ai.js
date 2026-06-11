@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
 const MODEL_CANDIDATES = (
   process.env.AI_MODELS ||
@@ -23,6 +24,42 @@ function getAIKey() {
     process.env.AI_API_KEY ||
     ""
   );
+}
+
+function getAnthropicKey() {
+  return process.env.ANTHROPIC_FOUNDRY_API_KEY || "";
+}
+
+async function callAnthropic(apiKey, messages, systemPrompt) {
+  try {
+    // Chuyển messages sang format Anthropic
+    const anthropicMessages = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    const body = {
+      model: process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-sonnet-4-6",
+      max_tokens: 2000,
+      messages: anthropicMessages,
+      ...(systemPrompt ? { system: systemPrompt } : {}),
+    };
+    const response = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    if (response.ok && data?.content?.[0]?.text) {
+      return { ok: true, text: data.content[0].text, model: "claude-sonnet-4-6" };
+    }
+    return { ok: false, status: response.status, error: data };
+  } catch (e) {
+    return { ok: false, status: 503, error: { message: e.message } };
+  }
 }
 
 async function callAI(apiKey, messages, systemPrompt, retries = 2) {
@@ -154,7 +191,16 @@ router.post("/chat", async (req, res) => {
         .json({ success: false, message: "messages required" });
     }
 
+    const anthropicKey = getAnthropicKey();
     const apiKey = getAIKey();
+
+    // Ưu tiên Anthropic nếu có key (có credit)
+    if (anthropicKey) {
+      const result = await callAnthropic(anthropicKey, messages, system || null);
+      if (result.ok) return res.json({ success: true, text: result.text });
+      console.log("[AI/chat] Anthropic failed, fallback to OpenRouter");
+    }
+
     if (!apiKey) {
       return res
         .status(500)
@@ -203,10 +249,8 @@ router.post("/chat", async (req, res) => {
 // Admin AI: phân tích dữ liệu, doanh thu, đối tác...
 router.post("/admin-chat", async (req, res) => {
   try {
+    const anthropicKey = getAnthropicKey();
     const apiKey = getAIKey();
-    if (!apiKey) {
-      return res.json({ success: false, message: "AI key chưa cấu hình" });
-    }
 
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages)) {
@@ -285,7 +329,19 @@ Trả lời bằng tiếng Việt, ngắn gọn, chuyên nghiệp.
 Có thể đưa ra nhận xét, xu hướng, và gợi ý cải thiện dựa trên dữ liệu.
 ${dataContext}`;
 
-    const result = await callAI(apiKey, messages, systemPrompt);
+    // Ưu tiên Anthropic nếu có key
+    let result;
+    if (anthropicKey) {
+      result = await callAnthropic(anthropicKey, messages, systemPrompt);
+      if (result.ok) return res.json({ success: true, text: result.text });
+      console.log("[AI/admin-chat] Anthropic failed, fallback to OpenRouter");
+    }
+
+    if (!apiKey) {
+      return res.json({ success: false, message: "AI key chưa cấu hình" });
+    }
+
+    result = await callAI(apiKey, messages, systemPrompt);
 
     if (!result.ok) {
       return res.json({ success: false, message: result.error?.message || "AI error" });
