@@ -361,9 +361,11 @@ async function fetchTableCards(
 
           // Filter bàn phù hợp — BỎ filter isAvailable vì field này có thể chưa có trong DB cũ
           const matched = allTables.filter((t) => {
-            // Loại bàn: nếu chọn regular hoặc không chọn → lấy tất cả
+            // Loại bàn: chỉ filter nếu type hợp lệ, không thì bỏ qua (dùng tablePreference thay)
+            const validTypes = ["vip", "view", "regular", "standard"];
             const typeOk =
               !draft.tableType ||
+              !validTypes.includes(draft.tableType) ||
               draft.tableType === "regular" ||
               t.type === draft.tableType;
 
@@ -429,13 +431,15 @@ export const ambleAI = {
   async chat(
     message: string,
     session: AISession = DEFAULT_SESSION,
+    userContext = "",
   ): Promise<{ response: AIResponse; session: AISession }> {
     const msg = message.trim();
     const { step, draft, history } = session;
 
     try {
-      // Gọi Claude với toàn bộ lịch sử hội thoại
-      const rawResponse = await callClaude(getSystemPrompt(), history, msg);
+      // Gọi Claude với toàn bộ lịch sử hội thoại + context cá nhân
+      const systemPrompt = userContext ? `${getSystemPrompt()}\n\n## THÔNG TIN NGƯỜI DÙNG\n${userContext}` : getSystemPrompt();
+      const rawResponse = await callClaude(systemPrompt, history, msg);
 
       // Cập nhật history
       const newHistory = [

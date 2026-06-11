@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ambleAI,
@@ -30,6 +31,8 @@ import {
 } from "@/services/ambleAI";
 import { ChatMessage } from "@/types/chat";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useAuthStore } from "../../store/authStore";
+import { bookingAPI } from "../../services/api";
 
 const PRIMARY = "#ff8b25";
 const { width: SW } = Dimensions.get("window");
@@ -281,6 +284,50 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<AISession>(DEFAULT_SESSION);
+  const [userContext, setUserContext] = useState("");
+  const { user } = useAuthStore();
+
+  // Lấy lịch sử đặt bàn để AI cá nhân hóa
+  useEffect(() => {
+    if (!user?._id) return;
+    bookingAPI.getUserBookings(user._id)
+      .then((res) => {
+        const bookings = (res.data?.bookings || []).slice(0, 20);
+        if (bookings.length === 0) return;
+        const names = [...new Set(bookings.map((b: any) => b.restaurantId?.name).filter(Boolean))];
+        const cuisines = [...new Set(bookings.map((b: any) => b.restaurantId?.cuisine).filter(Boolean))];
+        const ctx = `Người dùng này đã đặt bàn ${bookings.length} lần. ${
+          names.length > 0 ? `Nhà hàng từng ghé: ${names.join(", ")}. ` : ""
+        }${
+          cuisines.length > 0 ? `Ẩm thực ưa thích: ${cuisines.join(", ")}. ` : ""
+        }Hãy dùng thông tin này để gợi ý phù hợp với sở thích và thói quen của họ.`;
+        setUserContext(ctx);
+      })
+      .catch(() => {});
+  }, [user?._id]);
+
+  // Khôi phục lịch sử chat khi mở app
+  useEffect(() => {
+    AsyncStorage.getItem("amble_chat_history").then((saved) => {
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.messages?.length > 0) {
+            setMessages(data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+            if (data.session) setSession(data.session);
+          }
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Lưu lịch sử chat mỗi khi có tin nhắn mới
+  useEffect(() => {
+    if (messages.length > 1) {
+      const save = messages.slice(-50); // Giới hạn 50 tin nhắn gần nhất
+      AsyncStorage.setItem("amble_chat_history", JSON.stringify({ messages: save, session })).catch(() => {});
+    }
+  }, [messages, session]);
 
   const scrollToBottom = () => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
@@ -306,6 +353,7 @@ export default function ChatScreen() {
       const { response, session: newSession } = await ambleAI.chat(
         text,
         session,
+        userContext,
       );
       setSession(newSession);
 
@@ -505,6 +553,7 @@ export default function ChatScreen() {
           </View>
           <TouchableOpacity
             onPress={() => {
+              AsyncStorage.removeItem("amble_chat_history").catch(() => {});
               setSession(DEFAULT_SESSION);
               setMessages([
                 {
