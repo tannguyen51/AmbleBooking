@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
 const MODEL_CANDIDATES = (
   process.env.AI_MODELS ||
@@ -32,33 +31,38 @@ function getAnthropicKey() {
 
 async function callAnthropic(apiKey, messages, systemPrompt) {
   try {
-    // Chuyển messages sang format Anthropic
+    // Gọi OpenRouter với key Anthropic (có credit)
     const anthropicMessages = messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
     const body = {
-      model: process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-sonnet-4-6",
+      model: process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "anthropic/claude-sonnet-4-6",
       max_tokens: 4096,
       temperature: 0.7,
-      messages: anthropicMessages,
-      ...(systemPrompt ? { system: systemPrompt } : {}),
+      messages: [
+        ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+        ...anthropicMessages,
+      ],
     };
-    const response = await fetch(ANTHROPIC_URL, {
+    const response = await fetch(OR_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://munchmap.app",
+        "X-Title": "munchmap",
       },
       body: JSON.stringify(body),
     });
     const data = await response.json();
-    if (response.ok && data?.content?.[0]?.text) {
-      return { ok: true, text: data.content[0].text, model: "claude-sonnet-4-6" };
+    if (response.ok && data?.choices?.[0]?.message?.content) {
+      return { ok: true, text: data.choices[0].message.content, model: "claude-sonnet-4-6" };
     }
+    console.log("[Anthropic/OR] failed:", response.status, JSON.stringify(data).slice(0, 200));
     return { ok: false, status: response.status, error: data };
   } catch (e) {
+    console.log("[Anthropic/OR] network error:", e.message);
     return { ok: false, status: 503, error: { message: e.message } };
   }
 }
