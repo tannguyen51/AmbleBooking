@@ -34,12 +34,10 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
   const model = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "deepseek-v4-pro[1m]";
   const key = (apiKey || "").trim();
 
-  const endpoints = [
-    `${baseUrl}/v1/chat/completions`,
-    `${baseUrl}/v1`,
-  ];
-
-  for (const endpoint of endpoints) {
+  const endpoint = `${baseUrl}/v1/chat/completions`;
+  // Retry tối đa 3 lần nếu thất bại
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
     try {
       const body = {
         model,
@@ -49,7 +47,7 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ],
       };
-      console.log(`[AI/Foundry] trying ${endpoint} model=${model}...`);
+      console.log(`[AI/Foundry] trying model=${model}...`);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
       const response = await fetch(endpoint, {
@@ -75,10 +73,10 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
         console.log("[AI/Foundry] bad response:", JSON.stringify(data).slice(0, 200));
       } else {
         const errText = await response.text().catch(() => "");
-        console.log(`[AI/Foundry] ${endpoint} returned ${response.status}:`, errText.slice(0, 300));
+        console.log(`[AI/Foundry] returned ${response.status}:`, errText.slice(0, 300));
       }
     } catch (e) {
-      console.log(`[AI/Foundry] ${endpoint} error:`, e.message);
+      console.log(`[AI/Foundry] error:`, e.message);
     }
   }
 

@@ -207,17 +207,14 @@ function detectStepFromResponse(
   // Bàn/view KIỂM TRA TRƯỚC — "view đẹp" không bị "ngày mai" đè
   if (t.includes("loại bàn") || t.includes("vip") || t.includes("view") || t.includes("bàn nào") || t.includes("kiểu bàn"))
     return "tableType";
+  // Số người KIỂM TRA TRƯỚC giờ — "mấy người" không bị "Giờ 19:00" đè
+  if (t.includes("bao nhiêu người") || t.includes("mấy người") || t.includes("bao người"))
+    return "partySize";
   // Giờ KIỂM TRA TRƯỚC ngày
-  if (t.includes("giờ") || t.includes("mấy giờ") || t.includes("time") || t.includes("thời gian") || t.includes("lúc nào"))
+  if (t.includes("giờ nào") || t.includes("mấy giờ") || t.includes("time") || t.includes("thời gian") || t.includes("lúc nào"))
     return "time";
   if (t.includes("ngày") || t.includes("date") || t.includes("hôm nay") || t.includes("ngày mai"))
     return "date";
-  if (
-    t.includes("bao nhiêu người") ||
-    t.includes("mấy người") ||
-    t.includes("người")
-  )
-    return "partySize";
   if (
     t.includes("khu vực") ||
     t.includes("quận") ||
