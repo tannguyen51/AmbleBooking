@@ -33,6 +33,7 @@ import { ChatMessage } from "@/types/chat";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAuthStore } from "../../store/authStore";
 import { bookingAPI } from "../../services/api";
+import { useLocation } from "../../hooks/useLocation";
 
 const PRIMARY = "#ff8b25";
 const { width: SW } = Dimensions.get("window");
@@ -286,25 +287,38 @@ export default function ChatScreen() {
   const [session, setSession] = useState<AISession>(DEFAULT_SESSION);
   const [userContext, setUserContext] = useState("");
   const { user } = useAuthStore();
+  const { location } = useLocation();
 
-  // Lấy lịch sử đặt bàn để AI cá nhân hóa
+  // Tạo context cho AI: vị trí GPS + lịch sử đặt bàn
   useEffect(() => {
-    if (!user?._id) return;
+    const parts: string[] = [];
+
+    // GPS location
+    if (location) {
+      parts.push(`Vị trí GPS hiện tại: lat=${location.lat}, lng=${location.lng}. Khi người dùng nói "gần đây", "quanh đây", "gần tôi" → dùng vị trí này, KHÔNG hỏi lại khu vực.`);
+    }
+
+    if (!user?._id) {
+      setUserContext(parts.join("\n"));
+      return;
+    }
+
     bookingAPI.getUserBookings(user._id)
       .then((res) => {
         const bookings = (res.data?.bookings || []).slice(0, 20);
-        if (bookings.length === 0) return;
-        const names = [...new Set(bookings.map((b: any) => b.restaurantId?.name).filter(Boolean))];
-        const cuisines = [...new Set(bookings.map((b: any) => b.restaurantId?.cuisine).filter(Boolean))];
-        const ctx = `Người dùng này đã đặt bàn ${bookings.length} lần. ${
-          names.length > 0 ? `Nhà hàng từng ghé: ${names.join(", ")}. ` : ""
-        }${
-          cuisines.length > 0 ? `Ẩm thực ưa thích: ${cuisines.join(", ")}. ` : ""
-        }Hãy dùng thông tin này để gợi ý phù hợp với sở thích và thói quen của họ.`;
-        setUserContext(ctx);
+        if (bookings.length > 0) {
+          const names = [...new Set(bookings.map((b: any) => b.restaurantId?.name).filter(Boolean))];
+          const cuisines = [...new Set(bookings.map((b: any) => b.restaurantId?.cuisine).filter(Boolean))];
+          parts.push(`Người dùng này đã đặt bàn ${bookings.length} lần.${
+            names.length > 0 ? ` Nhà hàng từng ghé: ${names.join(", ")}.` : ""
+          }${
+            cuisines.length > 0 ? ` Ẩm thực ưa thích: ${cuisines.join(", ")}.` : ""
+          }`);
+        }
+        setUserContext(parts.join("\n"));
       })
-      .catch(() => {});
-  }, [user?._id]);
+      .catch(() => setUserContext(parts.join("\n")));
+  }, [user?._id, location]);
 
   // Khôi phục lịch sử chat khi mở app
   useEffect(() => {
