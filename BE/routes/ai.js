@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
 
 const MODEL_CANDIDATES = (
   process.env.AI_MODELS ||
@@ -32,18 +30,20 @@ function getAnthropicKey() {
 }
 
 async function callAnthropic(apiKey, messages, systemPrompt) {
-  // Thử DeepSeek API trước (OpenAI-compatible)
+  // Gọi qua AI-Box proxy (OpenAI-compatible: https://api.ai-box.vn)
+  const baseUrl = process.env.ANTHROPIC_FOUNDRY_BASE_URL || "https://api.ai-box.vn";
+  const model = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "deepseek-v4-pro[1m]";
   try {
     const body = {
-      model: "deepseek-chat",
+      model,
       max_tokens: 4096,
       messages: [
         ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
         ...messages.map((m) => ({ role: m.role, content: m.content })),
       ],
     };
-    console.log("[AI/DeepSeek] trying...");
-    const response = await fetch(DEEPSEEK_URL, {
+    console.log(`[AI/Foundry] trying ${baseUrl} model=${model}...`);
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -54,99 +54,15 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
     if (response.ok) {
       const data = await response.json();
       if (data?.choices?.[0]?.message?.content) {
-        console.log("[AI/DeepSeek] success!");
-        return { ok: true, text: data.choices[0].message.content, model: "deepseek-chat" };
+        console.log("[AI/Foundry] success!");
+        return { ok: true, text: data.choices[0].message.content, model };
       }
     }
-    console.log("[AI/DeepSeek] failed:", response.status);
+    console.log("[AI/Foundry] failed:", response.status);
   } catch (e) {
-    console.log("[AI/DeepSeek] error:", e.message);
+    console.log("[AI/Foundry] error:", e.message);
   }
 
-  // Fallback: Anthropic API
-  try {
-    const body = {
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      ...(systemPrompt ? { system: systemPrompt } : {}),
-    };
-    console.log("[AI/Anthropic] trying native API with key:", apiKey.slice(0, 10) + "...");
-    const response = await fetch(ANTHROPIC_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey.trim(),
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(body),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.content?.[0]?.text) {
-        console.log("[AI/Anthropic] native success!");
-        return { ok: true, text: data.content[0].text, model: "claude-sonnet-4" };
-      }
-    }
-    // Thử lại với Authorization: Bearer
-    if (response.status === 401) {
-      console.log("[AI/Anthropic] retrying with Bearer auth...");
-      const r2 = await fetch(ANTHROPIC_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey.trim()}`,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify(body),
-      });
-      if (r2.ok) {
-        const d2 = await r2.json();
-        if (d2?.content?.[0]?.text) {
-          console.log("[AI/Anthropic] Bearer auth success!");
-          return { ok: true, text: d2.content[0].text, model: "claude-sonnet-4" };
-        }
-      }
-    }
-    console.log("[AI/Anthropic] native failed:", response.status);
-  } catch (e) {
-    console.log("[AI/Anthropic] native error:", e.message);
-  }
-
-  // Fallback: thử qua OpenRouter với key này
-  try {
-    const body = {
-      model: "anthropic/claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [
-        ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-    };
-    console.log("[AI/Anthropic] trying via OpenRouter...");
-    const response = await fetch(OR_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://munchmap.app",
-        "X-Title": "munchmap",
-      },
-      body: JSON.stringify(body),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.choices?.[0]?.message?.content) {
-        console.log("[AI/Anthropic] OpenRouter success!");
-        return { ok: true, text: data.choices[0].message.content, model: "claude-sonnet-4-6" };
-      }
-    }
-    console.log("[AI/Anthropic] OpenRouter failed:", response.status);
-  } catch (e) {
-    console.log("[AI/Anthropic] OpenRouter error:", e.message);
-  }
-
-  return { ok: false, status: 401, error: { message: "Key không hợp lệ với cả Anthropic lẫn OpenRouter" } };
 }
 
 async function callAI(apiKey, messages, systemPrompt, retries = 2) {
