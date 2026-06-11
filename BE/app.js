@@ -1,5 +1,7 @@
 ﻿require("dotenv").config();
 
+const path = require("path");
+
 // Init Sentry BEFORE importing express (required for @sentry/node v8)
 const Sentry = require("@sentry/node");
 const sentryDsn = process.env.SENTRY_DSN;
@@ -27,6 +29,7 @@ const bookingRoutes = require("./routes/booking");
 const aiRoutes = require("./routes/ai");
 const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
+const uploadRoutes = require("./routes/upload");
 const analyticsRoutes = require("./routes/analytics");
 const adminAnalyticsRoutes = require("./routes/adminAnalytics");
 const { startBookingCleanupJob } = require("./services/bookingCleanupService");
@@ -88,6 +91,8 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api/partner/analytics", analyticsRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
 // Health check

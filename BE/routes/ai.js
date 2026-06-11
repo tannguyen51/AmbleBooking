@@ -278,13 +278,15 @@ router.post("/admin-chat", async (req, res) => {
       return res.status(400).json({ success: false, message: "Thiếu messages" });
     }
 
-    // Lấy dữ liệu thực từ DB để đưa vào context
+    // Lấy dữ liệu thực từ DB
     const User = require("../models/user");
     const Partner = require("../models/partner");
     const Restaurant = require("../models/restaurant");
     const Booking = require("../models/booking");
 
-    const [totalUsers, activeUsers, totalPartners, pendingPartners, activePartners,
+    let dataContext = "";
+    try {
+      const [totalUsers, activeUsers, totalPartners, pendingPartners, activePartners,
       totalRestaurants, activeRestaurants, totalBookings, todayBookings] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ isActive: true }),
@@ -406,57 +408,13 @@ ${topByRevenue.map((r, i) => `${i + 1}. ${r.name} — ${r.revenue.toLocaleString
 ### Giờ đặt bàn cao điểm
 ${peakHours.map((h, i) => `${i + 1}. ${h._id} — ${h.count} bookings`).join("\n")}
 `;
+    } catch (e) {
+      console.error("[AI/admin-chat] DB error:", e.message);
+      dataContext = "(Dữ liệu tạm thời không khả dụng)";
+    }
 
-    const systemPrompt = `Bạn là MunchMap AI — trợ lý phân tích kinh doanh thông minh cho quản trị viên nền tảng đặt bàn nhà hàng MunchMap tại Việt Nam.
-
-## VAI TRÒ
-Giúp admin giám sát, phân tích và quản lý hoạt động nhà hàng trên toàn hệ thống.
-
-## KHẢ NĂNG
-1. Phân tích doanh thu — tổng, theo ngày/tháng, xu hướng
-2. Phân tích đặt bàn — số lượng, giờ cao điểm, tỉ lệ hủy
-3. Phân tích khách hàng — mới, quay lại, tỉ lệ giữ chân
-4. Phân tích hiệu suất nhà hàng — doanh thu, rating, occupancy
-5. Giám sát hoạt động — cảnh báo bất thường
-6. Đề xuất cải thiện kinh doanh
-
-## PHONG CÁCH
-- Chuyên nghiệp, súc tích, tập trung vào insight có thể hành động
-- Dùng bullet point khi liệt kê phân tích
-- Luôn đưa ra đề xuất cụ thể khi có thể
-- Trả lời bằng tiếng Việt
-
-## QUY TẮC NGHIÊM NGẶT
-1. KHÔNG BAO GIỜ bịa dữ liệu. Nếu không có dữ liệu → nói rõ: "Tôi không có đủ dữ liệu để trả lời chính xác."
-2. Nếu thiếu tham số (VD: admin hỏi "doanh thu" nhưng không nói khoảng thời gian) → hỏi lại: "Bạn muốn xem doanh thu hôm nay, tháng này hay khoảng thời gian nào?"
-3. Phân tích trước khi kết luận: tóm tắt → xu hướng → rủi ro → đề xuất
-
-## PHÂN TÍCH DOANH THU
-Phân tích: tổng doanh thu, tăng trưởng, xu hướng, nhà hàng tốt nhất/kém nhất
-Định dạng:
-**Tóm tắt doanh thu**
-- Key findings...
-- Rủi ro: ...
-- Đề xuất: ...
-
-## PHÂN TÍCH ĐẶT BÀN
-Phân tích: tổng booking, giờ cao điểm, tỉ lệ lấp đầy, tỉ lệ hủy, xu hướng
-Định dạng: **Tổng quan đặt bàn** → findings → đề xuất
-
-## PHÂN TÍCH KHÁCH HÀNG
-Phân tích: khách mới, khách quay lại, tỉ lệ giữ chân, tăng trưởng
-
-## PHÂN TÍCH NHÀ HÀNG
-Xếp hạng từ tốt nhất đến kém nhất khi được yêu cầu
-Định dạng: **Top performers:** ... | **Cần chú ý:** ... | Đề xuất: ...
-
-## CẢNH BÁO
-Nếu phát hiện bất thường → tạo cảnh báo:
-- 🔴 High / 🟡 Medium / 🟢 Low
-- Lý do + Hành động đề xuất
-
-## ĐỀ XUẤT
-Luôn đưa ra đề xuất thực tế: tăng marketing, điều chỉnh nhân sự giờ cao điểm, khuyến mãi giờ thấp điểm, cải thiện dịch vụ nhà hàng rating thấp, chương trình giữ chân khách hàng.
+    const systemPrompt = `Bạn là MunchMap AI — trợ lý phân tích cho admin nền tảng đặt bàn MunchMap.
+Trả lời ngắn gọn, chuyên nghiệp, tập trung insight. Không bịa dữ liệu.
 
 ${dataContext}`;
 
@@ -480,8 +438,8 @@ ${dataContext}`;
 
     return res.json({ success: true, text: result.text });
   } catch (err) {
-    console.error("[AI/admin-chat]", err.message);
-    return res.status(500).json({ success: false, message: "Lỗi server" });
+    console.error("[AI/admin-chat]", err.message, err.stack?.slice(0, 300));
+    return res.status(500).json({ success: false, message: "Lỗi server: " + (err.message || "unknown") });
   }
 });
 

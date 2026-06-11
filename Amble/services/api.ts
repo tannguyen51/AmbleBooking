@@ -180,6 +180,12 @@ export const bookingAPI = {
   getSession: (sessionId: string) => api.get(`/booking/session/${sessionId}`),
 };
 
+// ── Upload ──────────────────────────────────────────────
+export const uploadAPI = {
+  uploadImage: (base64: string, folder: string) =>
+    api.post("/upload/image", { image: base64, folder }),
+};
+
 // ── Payment (PayOS) ────────────────────────────────────
 export const paymentAPI = {
   createPayosPayment: (data: { bookingId: string; returnUrl: string; cancelUrl: string }) =>

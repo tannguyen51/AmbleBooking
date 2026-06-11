@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { partnerDashboardAPI } from "../../services/api";
+import { partnerDashboardAPI, uploadAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
@@ -353,6 +353,28 @@ export default function PartnerTablesScreen() {
 
     try {
       setIsSubmitting(true);
+
+      // Upload ảnh local → server
+      if (payload.images && payload.images.length > 0) {
+        const uploaded: string[] = [];
+        for (const img of payload.images) {
+          if (img.startsWith("file://") || img.startsWith("content://")) {
+            try {
+              const base64 = await fetch(img).then(r => r.blob()).then(b => new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(b);
+              }));
+              const res = await uploadAPI.uploadImage(base64, "tables");
+              if (res.data?.url) uploaded.push(res.data.url);
+            } catch { uploaded.push(img); }
+          } else {
+            uploaded.push(img);
+          }
+        }
+        payload.images = uploaded;
+      }
+
       if (editingTableId) {
         await partnerDashboardAPI.updateTable(editingTableId, payload);
       } else {
