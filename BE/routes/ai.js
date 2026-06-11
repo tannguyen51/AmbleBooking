@@ -30,39 +30,56 @@ function getAnthropicKey() {
 }
 
 async function callAnthropic(apiKey, messages, systemPrompt) {
-  // Gọi qua AI-Box proxy (OpenAI-compatible: https://api.ai-box.vn)
-  const baseUrl = process.env.ANTHROPIC_FOUNDRY_BASE_URL || "https://api.ai-box.vn";
+  const baseUrl = (process.env.ANTHROPIC_FOUNDRY_BASE_URL || "https://api.ai-box.vn").replace(/\/+$/, "");
   const model = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "deepseek-v4-pro[1m]";
-  try {
-    const body = {
-      model,
-      max_tokens: 4096,
-      messages: [
-        ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-    };
-    console.log(`[AI/Foundry] trying ${baseUrl} model=${model}...`);
-    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey.trim()}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.choices?.[0]?.message?.content) {
-        console.log("[AI/Foundry] success!");
-        return { ok: true, text: data.choices[0].message.content, model };
+  const key = (apiKey || "").trim();
+
+  const endpoints = [
+    `${baseUrl}/v1/chat/completions`,
+    `${baseUrl}/v1`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const body = {
+        model,
+        max_tokens: 4096,
+        messages: [
+          ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+          ...messages.map((m) => ({ role: m.role, content: m.content })),
+        ],
+      };
+      console.log(`[AI/Foundry] trying ${endpoint} model=${model}...`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.choices?.[0]?.message?.content) {
+          console.log("[AI/Foundry] success!");
+          return { ok: true, text: data.choices[0].message.content, model };
+        }
+        console.log("[AI/Foundry] bad response:", JSON.stringify(data).slice(0, 200));
+      } else {
+        const errText = await response.text().catch(() => "");
+        console.log(`[AI/Foundry] ${endpoint} returned ${response.status}:`, errText.slice(0, 300));
       }
+    } catch (e) {
+      console.log(`[AI/Foundry] ${endpoint} error:`, e.message);
     }
-    console.log("[AI/Foundry] failed:", response.status);
-  } catch (e) {
-    console.log("[AI/Foundry] error:", e.message);
   }
 
+  return { ok: false, status: 502, error: { message: "AI-Box API failed" } };
 }
 
 async function callAI(apiKey, messages, systemPrompt, retries = 2) {
