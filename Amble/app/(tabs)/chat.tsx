@@ -461,22 +461,7 @@ export default function ChatScreen() {
           )}
         </View>
 
-        {/* Quick replies */}
-        {!isUser && item.quickReplies && item.quickReplies.length > 0 && (
-          <View style={s.qrRow}>
-            {item.quickReplies.map((r) => (
-              <TouchableOpacity
-                key={r.id}
-                style={s.qrChip}
-                onPress={() => handleQuickReply(r)}
-                activeOpacity={0.7}
-              >
-                <Text style={s.qrText}>{r.text}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
+        {/* Quick replies - đã tắt */}
         {/* Table cards */}
         {!isUser && item.tableCards && item.tableCards.length > 0 && (
           <View style={{ marginTop: 8, marginLeft: 36 }}>
@@ -608,25 +593,6 @@ export default function ChatScreen() {
         )}
 
         {/* Input */}
-        <View style={s.inputBar}>
-          {messages.length === 1 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.inputSuggestions}
-            >
-              {suggestions.map((s_, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={s.suggestionChip}
-                  onPress={() => sendMessage(s_)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.suggestionText}>{s_}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
           <View style={s.inputWrap}>
             <TextInput
               style={s.input}
@@ -654,7 +620,6 @@ export default function ChatScreen() {
               />
             </TouchableOpacity>
           </View>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
