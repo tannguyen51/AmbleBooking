@@ -3,6 +3,7 @@ const router = express.Router();
 
 const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
 
 const MODEL_CANDIDATES = (
   process.env.AI_MODELS ||
@@ -31,7 +32,38 @@ function getAnthropicKey() {
 }
 
 async function callAnthropic(apiKey, messages, systemPrompt) {
-  // Thử Anthropic API trước
+  // Thử DeepSeek API trước (OpenAI-compatible)
+  try {
+    const body = {
+      model: "deepseek-chat",
+      max_tokens: 4096,
+      messages: [
+        ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ],
+    };
+    console.log("[AI/DeepSeek] trying...");
+    const response = await fetch(DEEPSEEK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.choices?.[0]?.message?.content) {
+        console.log("[AI/DeepSeek] success!");
+        return { ok: true, text: data.choices[0].message.content, model: "deepseek-chat" };
+      }
+    }
+    console.log("[AI/DeepSeek] failed:", response.status);
+  } catch (e) {
+    console.log("[AI/DeepSeek] error:", e.message);
+  }
+
+  // Fallback: Anthropic API
   try {
     const body = {
       model: "claude-sonnet-4-20250514",
