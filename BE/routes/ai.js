@@ -342,15 +342,15 @@ router.post("/admin-chat", async (req, res) => {
     const bookingStatus = await Booking.aggregate([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
-    const statusMap: Record<string, number> = {};
-    bookingStatus.forEach((s: any) => { statusMap[s._id] = s.count; });
+    const statusMap = {};
+    bookingStatus.forEach((s) => { statusMap[s._id] = s.count; });
 
     // Partner theo gói
     const partnerByPackage = await Partner.aggregate([
       { $group: { _id: "$subscriptionPackage", count: { $sum: 1 } } },
     ]);
-    const pkgMap: Record<string, number> = {};
-    partnerByPackage.forEach((p: any) => { pkgMap[p._id] = p.count; });
+    const pkgMap = {};
+    partnerByPackage.forEach((p) => { pkgMap[p._id] = p.count; });
 
     // User đăng ký 7 ngày gần đây
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
