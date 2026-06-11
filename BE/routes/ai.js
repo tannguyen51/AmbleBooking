@@ -34,17 +34,17 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
   // Thử Anthropic API trước
   try {
     const body = {
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       ...(systemPrompt ? { system: systemPrompt } : {}),
     };
-    console.log("[AI/Anthropic] trying native API...");
+    console.log("[AI/Anthropic] trying native API with key:", apiKey.slice(0, 10) + "...");
     const response = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
+        "x-api-key": apiKey.trim(),
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
@@ -53,7 +53,27 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
       const data = await response.json();
       if (data?.content?.[0]?.text) {
         console.log("[AI/Anthropic] native success!");
-        return { ok: true, text: data.content[0].text, model: "claude-sonnet-4-6" };
+        return { ok: true, text: data.content[0].text, model: "claude-sonnet-4" };
+      }
+    }
+    // Thử lại với Authorization: Bearer
+    if (response.status === 401) {
+      console.log("[AI/Anthropic] retrying with Bearer auth...");
+      const r2 = await fetch(ANTHROPIC_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey.trim()}`,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+      });
+      if (r2.ok) {
+        const d2 = await r2.json();
+        if (d2?.content?.[0]?.text) {
+          console.log("[AI/Anthropic] Bearer auth success!");
+          return { ok: true, text: d2.content[0].text, model: "claude-sonnet-4" };
+        }
       }
     }
     console.log("[AI/Anthropic] native failed:", response.status);
