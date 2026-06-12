@@ -290,59 +290,43 @@ router.post("/admin-chat", async (req, res) => {
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Chạy tất cả queries song song
       const [
         totalUsers, activeUsers, newUsersWeek,
-        totalPartners, pendingPartners, activePartners,
+        totalPartners, activePartners, pendingPartners,
         totalRestaurants, activeRestaurants,
         totalBookings, todayBookings,
-        revenueResult, todayResult, monthResult,
-        bookingStatus, partnerByPackage,
-        topByRevenue,
       ] = await Promise.all([
         User.countDocuments(), User.countDocuments({ isActive: true }), User.countDocuments({ createdAt: { $gte: weekAgo } }),
-        Partner.countDocuments(), Partner.countDocuments({ subscriptionStatus: "pending" }), Partner.countDocuments({ subscriptionStatus: "active" }),
+        Partner.countDocuments(), Partner.countDocuments({ subscriptionStatus: "active" }), Partner.countDocuments({ subscriptionStatus: "pending" }),
         Restaurant.countDocuments(), Restaurant.countDocuments({ isActive: true }),
         Booking.countDocuments(), Booking.countDocuments({ createdAt: { $gte: todayStart } }),
-        // Doanh thu tổng + hôm nay + tháng
-        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
-        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] }, createdAt: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
-        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] }, createdAt: { $gte: monthStart } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
-        Booking.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
-        Partner.aggregate([{ $group: { _id: "$subscriptionPackage", count: { $sum: 1 } } }]),
-        // Top nhà hàng theo doanh thu + booking
-        Booking.aggregate([
-          { $match: { status: { $in: ["completed","confirmed","occupied"] } } },
-          { $group: { _id: "$restaurantId", revenue: { $sum: "$pricing.depositAmount" }, bookings: { $sum: 1 } } },
-          { $sort: { revenue: -1 } }, { $limit: 10 },
-          { $lookup: { from: "restaurants", localField: "_id", foreignField: "_id", as: "r" } },
-          { $unwind: { path: "$r", preserveNullAndEmptyArrays: true } },
-          { $project: { name: { $ifNull: ["$r.name", "Unknown"] }, revenue: 1, bookings: 1 } },
-        ]),
       ]);
 
-      const rev = revenueResult[0] || { total: 0, count: 0 };
-      const todayRev = todayResult[0] || { total: 0, count: 0 };
-      const monthRev = monthResult[0] || { total: 0, count: 0 };
-      const avgDeposit = rev.count > 0 ? Math.round(rev.total / rev.count) : 0;
+      // Doanh thu: dùng find thay vì aggregate để tránh lỗi MongoDB version
+      const completedBookings = await Booking.find(
+        { status: { $in: ["completed", "confirmed", "occupied"] } },
+        { "pricing.depositAmount": 1, createdAt: 1 }
+      ).lean();
+      const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
+      const todayRevenue = completedBookings.filter(b => b.createdAt >= todayStart).reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
+      const monthRevenue = completedBookings.filter(b => b.createdAt >= monthStart).reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
+      const avgDeposit = completedBookings.length > 0 ? Math.round(totalRevenue / completedBookings.length) : 0;
 
-      const statusMap = {}; bookingStatus.forEach((s) => { statusMap[s._id] = s.count; });
-      const pkgMap = {}; partnerByPackage.forEach((p) => { pkgMap[p._id] = p.count; });
-      const cancelRate = totalBookings > 0 ? Math.round(((statusMap["cancelled"] || 0) / totalBookings) * 100) : 0;
-      const completionRate = totalBookings > 0 ? Math.round(((statusMap["completed"] || 0) / totalBookings) * 100) : 0;
+      // Top nhà hàng: đếm booking theo restaurantId
+      const topRestaurants = await Booking.aggregate([
+        { $group: { _id: "$restaurantId", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }, { $limit: 10 },
+      ]);
+      // Lấy tên nhà hàng
+      const restIds = topRestaurants.map(r => r._id);
+      const restaurants = await Restaurant.find({ _id: { $in: restIds } }, { name: 1 }).lean();
+      const nameMap = {}; restaurants.forEach(r => { nameMap[r._id] = r.name; });
+      const topList = topRestaurants.map((r, i) => `${i+1}. ${nameMap[r._id]||"Unknown"} — ${r.count} bookings`).join("\n");
 
-      dataContext = `TỔNG QUAN: ${totalUsers} users (${activeUsers} active, +${newUsersWeek} mới). ${totalPartners} partners (${activePartners} active, ${pendingPartners} pending). ${activeRestaurants}/${totalRestaurants} nhà hàng active. ${totalBookings} bookings (${todayBookings} hôm nay).
-
-DOANH THU: Tổng ${rev.total.toLocaleString("vi-VN")}đ (${rev.count} bookings, TB ${avgDeposit.toLocaleString("vi-VN")}đ). Hôm nay ${todayRev.total.toLocaleString("vi-VN")}đ (${todayRev.count} bk). Tháng này ${monthRev.total.toLocaleString("vi-VN")}đ (${monthRev.count} bk).
-
-BOOKING: Completed ${statusMap["completed"]||0} | Confirmed ${statusMap["confirmed"]||0} | Pending ${statusMap["pending"]||0} | Cancelled ${statusMap["cancelled"]||0}. Tỉ lệ hoàn thành ${completionRate}% | Hủy ${cancelRate}%.
-
-PARTNERS: Pro ${pkgMap["pro"]||0} | Premium ${pkgMap["premium"]||0} | Basic ${pkgMap["basic"]||0}.
-
-TOP NHÀ HÀNG (doanh thu):\n${topByRevenue.map((r, i) => `${i + 1}. ${r.name} — ${r.revenue.toLocaleString("vi-VN")}đ (${r.bookings} bookings)`).join("\n")}`;
+      dataContext = `Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} mới). Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} pending). Nhà hàng: ${activeRestaurants}/${totalRestaurants} active. Bookings: ${totalBookings} (${todayBookings} hôm nay). Doanh thu: ${totalRevenue.toLocaleString("vi-VN")}đ tổng (${completedBookings.length} bk, TB ${avgDeposit.toLocaleString("vi-VN")}đ), ${todayRevenue.toLocaleString("vi-VN")}đ hôm nay, ${monthRevenue.toLocaleString("vi-VN")}đ tháng này.\nTOP NHÀ HÀNG:\n${topList}`;
     } catch (e) {
-      console.error("[AI/admin-chat] DB error:", e.message);
-      dataContext = "Dữ liệu tạm thời không khả dụng.";
+      console.error("[AI/admin-chat] DB error:", e.message, e.stack?.slice(0, 200));
+      dataContext = "Dữ liệu tạm thời không khả dụng: " + e.message;
     }
 
     const systemPrompt = `Bạn là MunchMap AI — trợ lý phân tích cho admin nền tảng đặt bàn MunchMap.

@@ -1,8 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, Modal, TextInput, FlatList,
   TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { adminAPI } from "../../services/api";
 
@@ -11,33 +12,61 @@ const PRIMARY = "#FF6B35";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  timestamp: string;
 }
+
+const DEFAULT_MSG: Message = {
+  role: "assistant",
+  content: "Chào bạn! Tôi là trợ lý AI phân tích dữ liệu. Hỏi tôi về:\n• Doanh thu hôm nay, tháng này\n• Top nhà hàng, booking, đối tác\n• Tính toán tỉ lệ, trung bình, xu hướng\n• Gợi ý cải thiện kinh doanh",
+  timestamp: new Date().toISOString(),
+};
 
 export default function AdminAIChat() {
   const [visible, setVisible] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Chào bạn! Tôi là trợ lý AI phân tích dữ liệu. Hỏi tôi về:\n• Doanh thu hôm nay, tháng này\n• Top nhà hàng, booking, đối tác\n• Tính toán tỉ lệ, trung bình, xu hướng\n• Gợi ý cải thiện kinh doanh" },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([DEFAULT_MSG]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const flatRef = useRef<FlatList>(null);
 
+  // Load lịch sử
+  useEffect(() => {
+    AsyncStorage.getItem("amble_admin_chat").then((saved) => {
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.messages?.length > 0) setMessages(data.messages);
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Save lịch sử
+  useEffect(() => {
+    if (messages.length > 1) {
+      const save = messages.slice(-50);
+      AsyncStorage.setItem("amble_admin_chat", JSON.stringify({ messages: save })).catch(() => {});
+    }
+  }, [messages]);
+
+  const resetChat = () => {
+    setMessages([DEFAULT_MSG]);
+    AsyncStorage.removeItem("amble_admin_chat").catch(() => {});
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const newMessages: Message[] = [...messages, { role: "user", content: text }];
-    setMessages(newMessages);
+    const now = new Date().toISOString();
+    const userMsg: Message = { role: "user", content: text, timestamp: now };
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
     try {
-      const res = await adminAPI.aiChat(newMessages);
-      if (res.data?.success) {
-        setMessages([...newMessages, { role: "assistant", content: res.data.text }]);
-      } else {
-        setMessages([...newMessages, { role: "assistant", content: "Xin lỗi, không thể xử lý yêu cầu." }]);
-      }
+      const res = await adminAPI.aiChat([...messages, userMsg]);
+      const aiMsg: Message = { role: "assistant", content: res.data?.success ? res.data.text : "Lỗi kết nối, thử lại sau.", timestamp: new Date().toISOString() };
+      setMessages(prev => [...prev, aiMsg]);
     } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Lỗi kết nối. Thử lại sau." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Lỗi kết nối. Thử lại sau.", timestamp: new Date().toISOString() }]);
     } finally {
       setLoading(false);
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
@@ -60,7 +89,9 @@ export default function AdminAIChat() {
               <Ionicons name="close" size={24} color="#1A1A1A" />
             </TouchableOpacity>
             <Text style={s.headerTitle}>AI Phân tích</Text>
-            <View style={{ width: 24 }} />
+            <TouchableOpacity onPress={resetChat}>
+              <Ionicons name="refresh" size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
           {/* Messages */}
@@ -75,6 +106,7 @@ export default function AdminAIChat() {
                 <Text style={[s.bubbleText, item.role === "user" ? s.textUser : s.textAI]}>
                   {item.content}
                 </Text>
+                <Text style={s.timestamp}>{new Date(item.timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</Text>
               </View>
             )}
           />
@@ -137,6 +169,7 @@ const s = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 20 },
   textAI: { color: "#1A1A1A" },
   textUser: { color: "#fff" },
+  timestamp: { fontSize: 10, color: "#9CA3AF", marginTop: 4, textAlign: "right" },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
