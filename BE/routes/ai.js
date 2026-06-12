@@ -302,28 +302,52 @@ router.post("/admin-chat", async (req, res) => {
         Booking.countDocuments(), Booking.countDocuments({ createdAt: { $gte: todayStart } }),
       ]);
 
-      // Doanh thu: dùng find thay vì aggregate để tránh lỗi MongoDB version
-      const completedBookings = await Booking.find(
-        { status: { $in: ["completed", "confirmed", "occupied"] } },
-        { "pricing.depositAmount": 1, createdAt: 1 }
-      ).lean();
-      const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
-      const todayRevenue = completedBookings.filter(b => b.createdAt >= todayStart).reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
-      const monthRevenue = completedBookings.filter(b => b.createdAt >= monthStart).reduce((sum, b) => sum + (b.pricing?.depositAmount || 0), 0);
-      const avgDeposit = completedBookings.length > 0 ? Math.round(totalRevenue / completedBookings.length) : 0;
+      // Doanh thu: dùng aggregate $sum (nhanh, không load hết documents)
+      const [revResult, todayResult, monthResult] = await Promise.all([
+        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
+        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] }, createdAt: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
+        Booking.aggregate([{ $match: { status: { $in: ["completed","confirmed","occupied"] }, createdAt: { $gte: monthStart } } }, { $group: { _id: null, total: { $sum: "$pricing.depositAmount" }, count: { $sum: 1 } } }]),
+      ]);
+      const revenue = revResult[0] || { total: 0, count: 0 };
+      const todayRev = todayResult[0] || { total: 0, count: 0 };
+      const monthRev = monthResult[0] || { total: 0, count: 0 };
+      const avgDeposit = revenue.count > 0 ? Math.round(revenue.total / revenue.count) : 0;
 
       // Top nhà hàng: đếm booking theo restaurantId
       const topRestaurants = await Booking.aggregate([
         { $group: { _id: "$restaurantId", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }, { $limit: 10 },
+        { $sort: { count: -1 } }, { $limit: 20 },
       ]);
-      // Lấy tên nhà hàng
       const restIds = topRestaurants.map(r => r._id);
-      const restaurants = await Restaurant.find({ _id: { $in: restIds } }, { name: 1 }).lean();
-      const nameMap = {}; restaurants.forEach(r => { nameMap[r._id] = r.name; });
-      const topList = topRestaurants.map((r, i) => `${i+1}. ${nameMap[r._id]||"Unknown"} — ${r.count} bookings`).join("\n");
+      const restaurants = await Restaurant.find({ _id: { $in: restIds } }, { name: 1, city: 1, cuisine: 1, rating: 1, subscriptionPackage: 1 }).lean();
+      const nameMap = {}; restaurants.forEach(r => { nameMap[r._id] = r; });
+      const topList = topRestaurants.map((r, i) => {
+        const rest = nameMap[r._id];
+        return `${i+1}. ${rest?.name||"Unknown"} (${rest?.city||"?"}, ${rest?.cuisine||"?"}, rating: ${rest?.rating||0}, gói: ${rest?.subscriptionPackage||"?"}) — ${r.count} bookings`;
+      }).join("\n");
 
-      dataContext = `Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} mới). Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} pending). Nhà hàng: ${activeRestaurants}/${totalRestaurants} active. Bookings: ${totalBookings} (${todayBookings} hôm nay). Doanh thu: ${totalRevenue.toLocaleString("vi-VN")}đ tổng (${completedBookings.length} bk, TB ${avgDeposit.toLocaleString("vi-VN")}đ), ${todayRevenue.toLocaleString("vi-VN")}đ hôm nay, ${monthRevenue.toLocaleString("vi-VN")}đ tháng này.\nTOP NHÀ HÀNG:\n${topList}`;
+      // Booking status breakdown
+      const bookingStatus = await Booking.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+      const stMap = {}; bookingStatus.forEach(s => { stMap[s._id] = s.count; });
+      const cancelRate = totalBookings > 0 ? Math.round(((stMap["cancelled"]||0)/totalBookings)*100) : 0;
+
+      // All restaurant names for reference
+      const allRestaurants = await Restaurant.find({ isActive: true }, { name: 1, city: 1, cuisine: 1 }).lean();
+      const allRestList = allRestaurants.map(r => `${r.name} (${r.city}, ${r.cuisine})`).join("; ");
+
+      dataContext = `=== DỮ LIỆU HỆ THỐNG MUNCHMAP ===
+Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} tuần này).
+Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} chờ duyệt).
+Nhà hàng active: ${activeRestaurants}/${totalRestaurants}.
+Bookings: ${totalBookings} tổng, ${todayBookings} hôm nay.
+Doanh thu: ${revenue.total.toLocaleString("vi-VN")}đ tổng (${revenue.count} bk), ${todayRev.total.toLocaleString("vi-VN")}đ hôm nay, ${monthRev.total.toLocaleString("vi-VN")}đ tháng này. TB ${avgDeposit.toLocaleString("vi-VN")}đ/bk.
+Booking status: completed=${stMap["completed"]||0}, confirmed=${stMap["confirmed"]||0}, pending=${stMap["pending"]||0}, cancelled=${stMap["cancelled"]||0}, occupied=${stMap["occupied"]||0}. Hủy: ${cancelRate}%.
+
+=== TOP 20 NHÀ HÀNG (booking) ===
+${topList}
+
+=== TẤT CẢ NHÀ HÀNG ===
+${allRestList}`;
     } catch (e) {
       console.error("[AI/admin-chat] DB error:", e.message, e.stack?.slice(0, 200));
       dataContext = "Dữ liệu tạm thời không khả dụng: " + e.message;
@@ -334,7 +358,7 @@ Trả lời ngắn gọn, chuyên nghiệp, tập trung insight. Không bịa d�
 
 ${dataContext}`;
 
-    // Ưu tiên Anthropic nếu có key
+    // Ưu tiên AI-Box nếu có key
     let result = { ok: false, status: 500, error: { message: "No AI service available" } };
     if (anthropicKey) {
       try {
@@ -346,21 +370,17 @@ ${dataContext}`;
       }
     }
 
-    if (!apiKey) {
-      // Nếu cả 2 đều không có → trả về lỗi rõ ràng
-      if (result && !result.ok) {
-        return res.json({ success: false, message: "Không thể kết nối AI. Vui lòng kiểm tra API key hoặc thử lại sau." });
-      }
-      return res.json({ success: false, message: "AI key chưa cấu hình" });
+    if (apiKey) {
+      result = await callAI(apiKey, messages, systemPrompt);
+      if (result.ok) return res.json({ success: true, text: result.text });
     }
 
-    result = await callAI(apiKey, messages, systemPrompt);
-
-    if (!result.ok) {
-      return res.json({ success: false, message: result.error?.message || "AI error" });
+    // Fallback: trả về dữ liệu thô nếu AI không phản hồi
+    if (dataContext && dataContext.length > 10) {
+      return res.json({ success: true, text: `Tôi tạm thời không thể phân tích bằng AI. Đây là dữ liệu hệ thống hiện tại:\n\n${dataContext}` });
     }
 
-    return res.json({ success: true, text: result.text });
+    return res.json({ success: false, message: "Không thể kết nối AI. Vui lòng thử lại sau." });
   } catch (err) {
     console.error("[AI/admin-chat]", err.message, err.stack?.slice(0, 300));
     return res.status(500).json({ success: false, message: "Lỗi server: " + (err.message || "unknown") });
