@@ -148,7 +148,13 @@ Khi đã thu thập đủ thông tin đặt bàn (ngày + giờ + số người 
 
 ## MẶC ĐỊNH MỀM
 Khi user không nói rõ: purpose=casual, partySize=2, location=Hồ Chí Minh, time=19:00.
-Nếu dùng mặc định → nói nhẹ để user sửa nếu cần.`;
+
+## LỌC THEO GIÁ CỌC
+- "bàn 200k" → thêm "deposit":200000 vào JSON
+- "từ 200k đến 500k" → thêm "minDeposit":200000,"maxDeposit":500000
+- "dưới 300k" → thêm "maxDeposit":300000
+- KHÔNG tự thêm deposit nếu user không đề cập đến giá
+- Chỉ gửi số, không gửi chữ "k" (200k = 200000)`;
 }
 
 const STEP_QUICK_REPLIES: Partial<Record<BookingStep, QuickReply[]>> = {
