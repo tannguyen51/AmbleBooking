@@ -63,7 +63,9 @@ export default function AdminAIChat() {
     setLoading(true);
     try {
       const res = await adminAPI.aiChat([...messages, userMsg]);
-      const aiMsg: Message = { role: "assistant", content: res.data?.success ? res.data.text : "Lỗi kết nối, thử lại sau.", timestamp: new Date().toISOString() };
+      console.log("[AdminAI] response:", JSON.stringify(res.data).slice(0, 200));
+      const text = res.data?.success ? res.data.text : "Lỗi kết nối, thử lại sau.";
+      const aiMsg: Message = { role: "assistant", content: text || "(empty response)", timestamp: new Date().toISOString() };
       setMessages(prev => [...prev, aiMsg]);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Lỗi kết nối. Thử lại sau.", timestamp: new Date().toISOString() }]);
