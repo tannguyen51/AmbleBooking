@@ -419,14 +419,22 @@ Trả lời ngắn gọn, chuyên nghiệp, tập trung insight. Không bịa d�
 ${dataContext}`;
 
     // Ưu tiên Anthropic nếu có key
-    let result;
+    let result = { ok: false, status: 500, error: { message: "No AI service available" } };
     if (anthropicKey) {
-      result = await callAnthropic(anthropicKey, messages, systemPrompt);
-      if (result.ok) return res.json({ success: true, text: result.text });
-      console.log("[AI/admin-chat] Anthropic failed, fallback to OpenRouter");
+      try {
+        result = await callAnthropic(anthropicKey, messages, systemPrompt);
+        if (result.ok) return res.json({ success: true, text: result.text });
+        console.log("[AI/admin-chat] Anthropic failed, fallback to OpenRouter");
+      } catch (e) {
+        console.log("[AI/admin-chat] Anthropic exception:", e.message);
+      }
     }
 
     if (!apiKey) {
+      // Nếu cả 2 đều không có → trả về lỗi rõ ràng
+      if (result && !result.ok) {
+        return res.json({ success: false, message: "Không thể kết nối AI. Vui lòng kiểm tra API key hoặc thử lại sau." });
+      }
       return res.json({ success: false, message: "AI key chưa cấu hình" });
     }
 
