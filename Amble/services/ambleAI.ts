@@ -138,7 +138,7 @@ Lưu ý: không gộp ngày+giờ chung câu. Không hỏi lại thông tin user
 ## KHI NÀO TRẢ JSON
 Khi đã đủ thông tin để tìm bàn/nhà hàng → trả JSON thuần (không kèm text).
 
-2 loại JSON:
+2 loại JSON (CHỈ dùng 2 action này, không dùng action khác):
 - search_restaurants: tìm nhà hàng
   {"action":"search_restaurants","location":"Quan 7"}
 - search: tìm bàn cụ thể
@@ -239,7 +239,7 @@ function parseSearchJSON(
     // Chuan hoa single quotes -> double quotes de JSON.parse khong bi loi
     let jsonStr = match[0].replace(/['\u2018\u2019]/g, '"');
     const parsed = JSON.parse(jsonStr);
-    if (parsed.action !== "search" && parsed.action !== "search_restaurants") return null;
+    if (parsed.action !== "search" && parsed.action !== "search_restaurants" && parsed.action !== "reserve") return null;
     return {
       action: parsed.action,
       purpose: parsed.purpose,
