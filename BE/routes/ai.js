@@ -313,17 +313,18 @@ router.post("/admin-chat", async (req, res) => {
       const monthRev = monthResult[0] || { total: 0, count: 0 };
       const avgDeposit = revenue.count > 0 ? Math.round(revenue.total / revenue.count) : 0;
 
-      // Top nhà hàng: đếm booking theo restaurantId
+      // Top nhà hàng: đếm booking + doanh thu
       const topRestaurants = await Booking.aggregate([
-        { $group: { _id: "$restaurantId", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }, { $limit: 20 },
+        { $match: { status: { $in: ["completed","confirmed","occupied"] } } },
+        { $group: { _id: "$restaurantId", bookings: { $sum: 1 }, revenue: { $sum: "$pricing.depositAmount" } } },
+        { $sort: { revenue: -1 } }, { $limit: 20 },
       ]);
       const restIds = topRestaurants.map(r => r._id);
       const restaurants = await Restaurant.find({ _id: { $in: restIds } }, { name: 1, city: 1, cuisine: 1, rating: 1, subscriptionPackage: 1 }).lean();
       const nameMap = {}; restaurants.forEach(r => { nameMap[r._id] = r; });
       const topList = topRestaurants.map((r, i) => {
         const rest = nameMap[r._id];
-        return `${i+1}. ${rest?.name||"Unknown"} (${rest?.city||"?"}, ${rest?.cuisine||"?"}, rating: ${rest?.rating||0}, gói: ${rest?.subscriptionPackage||"?"}) — ${r.count} bookings`;
+        return `${i+1}. ${rest?.name||"Unknown"} | ${rest?.city||"?"} | ${rest?.cuisine||"?"} | rating ${rest?.rating||0} | gói ${rest?.subscriptionPackage||"?"} | ${r.bookings} bookings | ${r.revenue.toLocaleString("vi-VN")}đ doanh thu`;
       }).join("\n");
 
       // Booking status breakdown
@@ -342,7 +343,9 @@ router.post("/admin-chat", async (req, res) => {
     }
 
     const systemPrompt = `Bạn là MunchMap AI — trợ lý phân tích cho admin nền tảng đặt bàn MunchMap.
-Trả lời ngắn gọn, chuyên nghiệp, tập trung insight. Không bịa dữ liệu.
+Trả lời ngắn gọn, chuyên nghiệp, dựa CHÍNH XÁC vào dữ liệu bên dưới. Không bịa số.
+Nếu admin hỏi về 1 nhà hàng cụ thể → tìm tên đó trong danh sách Top 20 và trả lời.
+Nếu không có trong danh sách → nói rõ "Nhà hàng này không có trong top 20".
 
 ${dataContext}`;
 
