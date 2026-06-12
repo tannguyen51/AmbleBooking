@@ -67,8 +67,10 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
           || data?.choices?.[0]?.message?.reasoning_content
           || "";
         if (text) {
-          console.log("[AI/Foundry] success!");
+          console.log("[AI/Foundry] success! text len:", text.length);
           return { ok: true, text, model };
+        }
+        console.log("[AI/Foundry] empty response, raw:", JSON.stringify(data).slice(0, 500));
         }
         console.log("[AI/Foundry] bad response:", JSON.stringify(data).slice(0, 200));
       } else {
