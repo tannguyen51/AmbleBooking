@@ -71,8 +71,6 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
           return { ok: true, text, model };
         }
         console.log("[AI/Foundry] empty response, raw:", JSON.stringify(data).slice(0, 500));
-        }
-        console.log("[AI/Foundry] bad response:", JSON.stringify(data).slice(0, 200));
       } else {
         const errText = await response.text().catch(() => "");
         console.log(`[AI/Foundry] returned ${response.status}:`, errText.slice(0, 300));
