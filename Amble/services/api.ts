@@ -393,7 +393,7 @@ export const adminAPI = {
   getAuditLogs: (params?: { action?: string; targetType?: string; targetId?: string; limit?: number }) =>
     api.get("/admin/audit", { params }),
   aiChat: (messages: { role: "user" | "assistant"; content: string }[]) =>
-    api.post("/ai/admin-chat", { messages }),
+    api.post("/ai/admin-chat", { messages }, { timeout: 60000 }),
 
   getUsers: (params?: {
     search?: string;

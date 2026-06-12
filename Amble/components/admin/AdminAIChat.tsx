@@ -62,7 +62,8 @@ export default function AdminAIChat() {
     setInput("");
     setLoading(true);
     try {
-      const payload = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+      // Chỉ gửi 10 tin nhắn gần nhất để tránh payload quá lớn
+      const payload = [...messages, userMsg].slice(-10).map(m => ({ role: m.role, content: m.content }));
       console.log("[AdminAI] sending, msgs:", payload.length);
       const res = await adminAPI.aiChat(payload);
       console.log("[AdminAI] response:", JSON.stringify(res.data).slice(0, 300));
