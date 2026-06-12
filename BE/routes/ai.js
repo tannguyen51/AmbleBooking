@@ -332,22 +332,10 @@ router.post("/admin-chat", async (req, res) => {
       const cancelRate = totalBookings > 0 ? Math.round(((stMap["cancelled"]||0)/totalBookings)*100) : 0;
 
       // All restaurant names for reference
-      const allRestaurants = await Restaurant.find({ isActive: true }, { name: 1, city: 1, cuisine: 1 }).lean();
-      const allRestList = allRestaurants.map(r => `${r.name} (${r.city}, ${r.cuisine})`).join("; ");
+      const allRestCount = await Restaurant.countDocuments({ isActive: true });
 
-      dataContext = `=== DỮ LIỆU HỆ THỐNG MUNCHMAP ===
-Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} tuần này).
-Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} chờ duyệt).
-Nhà hàng active: ${activeRestaurants}/${totalRestaurants}.
-Bookings: ${totalBookings} tổng, ${todayBookings} hôm nay.
-Doanh thu: ${revenue.total.toLocaleString("vi-VN")}đ tổng (${revenue.count} bk), ${todayRev.total.toLocaleString("vi-VN")}đ hôm nay, ${monthRev.total.toLocaleString("vi-VN")}đ tháng này. TB ${avgDeposit.toLocaleString("vi-VN")}đ/bk.
-Booking status: completed=${stMap["completed"]||0}, confirmed=${stMap["confirmed"]||0}, pending=${stMap["pending"]||0}, cancelled=${stMap["cancelled"]||0}, occupied=${stMap["occupied"]||0}. Hủy: ${cancelRate}%.
-
-=== TOP 20 NHÀ HÀNG (booking) ===
-${topList}
-
-=== TẤT CẢ NHÀ HÀNG ===
-${allRestList}`;
+      dataContext = `Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} tuần này). Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} chờ duyệt). Nhà hàng: ${activeRestaurants}/${totalRestaurants} active. Bookings: ${totalBookings} tổng (${todayBookings} hôm nay). Doanh thu: ${revenue.total.toLocaleString("vi-VN")}đ tổng (${revenue.count} bk, TB ${avgDeposit.toLocaleString("vi-VN")}đ), ${todayRev.total.toLocaleString("vi-VN")}đ hôm nay, ${monthRev.total.toLocaleString("vi-VN")}đ tháng này. Booking status: completed=${stMap["completed"]||0}, confirmed=${stMap["confirmed"]||0}, cancelled=${stMap["cancelled"]||0}. Hủy: ${cancelRate}%.\nTop 20 nhà hàng (booking):\n${topList}`;
+      console.log("[AI/admin-chat] dataContext length:", dataContext.length);
     } catch (e) {
       console.error("[AI/admin-chat] DB error:", e.message, e.stack?.slice(0, 200));
       dataContext = "Dữ liệu tạm thời không khả dụng: " + e.message;
