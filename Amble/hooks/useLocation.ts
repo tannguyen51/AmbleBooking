@@ -22,28 +22,19 @@ export function useLocation(): UseLocationResult {
       const { status } = await Location.requestForegroundPermissionsAsync();
       console.log("[GPS] permission status:", status);
       if (status !== "granted") {
-        // Không có quyền → fallback HCM ngay
-        setLocation({ lat: 10.7626, lng: 106.6603 });
+        setError("Quyền truy cập vị trí bị từ chối");
         setLoading(false);
         return;
       }
 
-      // Set HCM fallback NGAY LẬP TỨC để hiện km, GPS thật cập nhật sau
-      setLocation({ lat: 10.7626, lng: 106.6603 });
-
-      // Thử lấy GPS thật (chạy ngầm, không block)
-      try {
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-        });
-        console.log("[GPS] got real position:", pos.coords.latitude, pos.coords.longitude);
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      } catch (e: any) {
-        console.log("[GPS] real GPS failed, keeping HCM fallback:", e?.message);
-      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+      });
+      console.log("[GPS] got position:", pos.coords.latitude, pos.coords.longitude);
+      setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     } catch (e: any) {
       console.log("[GPS] error:", e?.message);
-      setLocation({ lat: 10.7626, lng: 106.6603 });
+      setError("Không thể lấy vị trí. Bật GPS và thử lại.");
     } finally {
       setLoading(false);
     }

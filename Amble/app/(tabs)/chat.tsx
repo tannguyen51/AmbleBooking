@@ -398,7 +398,6 @@ export default function ChatScreen() {
     }
   };
 
-  const handleQuickReply = (reply: QuickReply) => sendMessage(reply.value);
 
   const handleBookTable = (card: TableCard, draft: any) => {
     router.push({
@@ -520,12 +519,6 @@ export default function ChatScreen() {
   };
 
   // ── Initial quick suggestions ────────────────────────
-  const suggestions = [
-    t("chat.chipNearby"),
-    t("chat.chipDate"),
-    t("chat.chipFamily"),
-    t("chat.chipGroup"),
-  ];
 
   return (
     <SafeAreaView style={s.container} edges={["left", "right"]}>
@@ -723,22 +716,6 @@ const s = StyleSheet.create({
   tsUser: { color: "rgba(255,255,255,0.65)", textAlign: "right" },
   tsAI: { color: "#9CA3AF" },
 
-  qrRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 6,
-    marginLeft: 34,
-  },
-  qrChip: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-  },
-  qrText: { fontSize: 13, color: PRIMARY, fontWeight: "600" },
 
   typing: {
     flexDirection: "row",
@@ -776,22 +753,6 @@ const s = StyleSheet.create({
     borderRadius: 16,
   },
   typingText: { fontSize: 12, color: "#9CA3AF" },
-  inputSuggestions: {
-    paddingHorizontal: 16,
-    paddingBottom: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  suggestionChip: {
-    backgroundColor: "#F9FAFB",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-  },
-  suggestionText: { fontSize: 13, color: "#374151", fontWeight: "500" },
 
   inputBar: {
     backgroundColor: "#fff",

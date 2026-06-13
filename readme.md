@@ -1,170 +1,213 @@
-#  Amble App — Full Stack Setup Guide
+# 🍽️ MunchMap — Nền tảng đặt bàn nhà hàng
 
-A complete walking route mobile app built with **Expo (React Native)** + **Express.js** + **MongoDB**.
+> Đặt bàn nhà hàng thông minh, nhanh chóng, có AI hỗ trợ.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Expo-SDK%2051-blue?logo=expo" alt="Expo SDK 51" />
+  <img src="https://img.shields.io/badge/Node.js-18%2B-green?logo=node.js" alt="Node 18+" />
+  <img src="https://img.shields.io/badge/MongoDB-7%2B-brightgreen?logo=mongodb" alt="MongoDB 7+" />
+  <img src="https://img.shields.io/badge/AI-DeepSeek%20V4-purple?logo=openai" alt="DeepSeek V4" />
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT" />
+</p>
 
 ---
 
-## 📁 Project Structure
+## ✨ Tính năng
+
+### Cho khách hàng
+- 🔍 **Tìm kiếm nhà hàng** theo khu vực, ẩm thực, giá cả
+- 📍 **GPS nhà hàng gần đây** — tự động hiển thị khoảng cách
+- 🤖 **AI Chatbot đặt bàn** — trò chuyện tự nhiên, AI tự động gợi ý bàn phù hợp
+- 💳 **Thanh toán online** qua PayOS (VNPay)
+- 🔔 **Thông báo** nhắc lịch đặt bàn sắp tới
+- ❤️ **Yêu thích** nhà hàng, xem lịch sử đặt bàn
+- 🌐 **Đa ngôn ngữ**: Tiếng Việt, English, 中文, 한국어, 日本語
+
+### Cho đối tác (chủ nhà hàng)
+- 📊 **Dashboard quản lý** — doanh thu, booking, trạng thái bàn
+- 🪑 **Quản lý bàn** — thêm/sửa/xóa bàn, up ảnh, set giá cọc
+- 📋 **Quản lý đặt bàn** — xác nhận, từ chối, check-in
+- 📈 **Phân tích** — thống kê booking, doanh thu, giờ cao điểm
+- 💎 **Gói Premium** — ưu tiên hiển thị, tăng độ phủ
+
+### Cho Admin
+- 🧠 **AI Phân tích** — chat với AI về doanh thu, xu hướng, top nhà hàng
+- 👥 **Quản lý đối tác** — duyệt/từ chối, khóa/mở khóa
+- 🏪 **Quản lý nhà hàng** — featured, active, gói dịch vụ
+- 📊 **Analytics** — funnel, tỉ lệ hủy, chuyển đổi
+
+---
+
+## 🏗️ Cấu trúc dự án
 
 ```
-amble-project/
-├── backend/                  # Express.js + MongoDB API
-│   ├── src/
-│   │   ├── s/
-│   │   │   ├── User.js       # User schema (customer/admin)
-│   │   │   └── Route.js      # Walking route schema
-│   │   ├── controllers/
-│   │   │   ├── authController.js
-│   │   │   ├── userController.js
-│   │   │   └── routeController.js
-│   │   ├── routes/
-│   │   │   ├── auth.js
-│   │   │   ├── users.js
-│   │   │   └── routes.js
-│   │   ├── middleware/
-│   │   │   └── auth.js       # JWT middleware
-│   │   └── server.js         # Entry point
-│   ├── scripts/
-│   │   └── seed.js           #  Database seed script
-│   ├── .env.example
-│   └── package.json
+AmbleBooking1/
+├── BE/                          # Backend Express.js + MongoDB
+│   ├── controllers/             # auth, admin, partner, restaurant, booking, payment
+│   ├── models/                  # User, Partner, Restaurant, Table, Booking, Review
+│   ├── routes/                  # auth, partner, admin, restaurants, booking, ai, payment, upload
+│   ├── middleware/               # auth (JWT customer), partnerAuth, adminAuth, rolePermission
+│   ├── services/                # dailyAnalytics, bookingCleanup, subscriptionExpiry
+│   ├── utils/                   # mailer (Brevo API)
+│   ├── config/                  # payos (PayOS SDK)
+│   ├── uploads/                 # Ảnh upload (restaurants/, tables/)
+│   ├── app.js                   # Entry point
+│   ├── seed.js                  # Dữ liệu mẫu (10 nhà hàng, bàn, users)
+│   └── .env.example
 │
-└── frontend/                 # Expo React Native App
+└── Amble/                       # Frontend Expo React Native
     ├── app/
-    │   ├── _layout.tsx       # Root layout + auth guard
-    │   ├── (auth)/
-    │   │   ├── _layout.tsx
-    │   │   ├── login.tsx     # Login screen
-    │   │   └── register.tsx  # Register screen
-    │   └── (tabs)/
-    │       ├── _layout.tsx
-    │       ├── index.tsx     # Home screen
-    │       ├── explore.tsx   # Explore routes screen
-    │       └── profile.tsx   # Profile screen
-    ├── services/
-    │   └── api.ts            # Axios API service
-    ├── store/
-    │   └── authStore.ts      # Zustand auth state
-    ├── constants/
-    │   └── theme.ts          # Design tokens
-    └── package.json
+    │   ├── _layout.tsx          # Root layout + auth guard + routing
+    │   ├── (auth)/              # Login, Register, Forgot/Reset password
+    │   ├── (tabs)/              # Home, Explore, Chat, History, Profile, Rewards
+    │   ├── (partner)/           # Dashboard, Tables, Orders, Analytics, Profile
+    │   ├── (partner-auth)/      # Partner login, register, forgot/reset, payment
+    │   ├── admin/               # Dashboard, Partners, Restaurants, Bookings, Analytics
+    │   ├── restaurant/[id].tsx  # Chi tiết nhà hàng + đặt bàn
+    │   ├── booking/             # Select table, Confirm, Payment, Success
+    │   └── welcome.tsx          # Chọn vai trò (Khách / Đối tác / Admin)
+    ├── components/              # admin/, partner/ (shared UI components)
+    ├── services/                # api.ts, ambleAI.ts, restaurantApi.ts
+    ├── store/                   # authStore, partnerAuthStore, favoritesStore, languageStore
+    ├── hooks/                   # useLocation (GPS hook)
+    ├── i18n/                    # translations.ts (5 ngôn ngữ)
+    ├── constants/               # adminTheme.ts, theme.ts, partnerPermissions.ts
+    ├── types/                   # chat.ts, restaurant.ts, booking.ts
+    ├── app.json                 # Expo config (scheme: munchmap, package: com.amble.app)
+    └── eas.json                 # EAS Build profiles (staging APK, production AAB)
 ```
 
 ---
 
-## 🚀 Setup Instructions
+## 🚀 Cài đặt nhanh
 
-### Prerequisites
-- Node.js >= 18
-- MongoDB (local or MongoDB Atlas)
-- Expo CLI: `npm install -g expo-cli`
+### Yêu cầu
+- **Node.js** >= 18
+- **MongoDB** (local hoặc Atlas)
+- **Expo CLI**: `npm install -g expo-cli`
+- **EAS CLI**: `npm install -g eas-cli` (để build APK/AAB)
 
----
-
-### 1. Backend Setup
+### 1. Backend
 
 ```bash
-cd backend
-
-# Install dependencies
+cd BE
 npm install
-
-# Create .env file
 cp .env.example .env
-# Edit .env with your MongoDB URI and JWT secret
-
-# Start the server
+# Sửa MONGODB_URI, JWT_SECRET, OPENROUTER_API_KEY, GOOGLE_CLIENT_ID...
 npm run dev
-# Server runs at http://localhost:5000
+# Server chạy tại http://localhost:5000
 ```
 
----
-
-### 2. 🌱 Seed the Database
+### 2. Seed dữ liệu
 
 ```bash
-cd backend
-
-# Run the seed script
-npm run seed
+cd BE
+node seed.js
+# Tạo 10 nhà hàng mẫu + bàn + users test
 ```
 
-**This will:**
-- Clear existing data
-- Insert **8 walking routes** (easy/moderate/hard)
-- Insert **4 users** (3 customers + 1 admin)
-
-**Test accounts after seeding:**
-
-| Role     | Email                     | Password      |
-|----------|---------------------------|---------------|
-| Customer | lan.nguyen@gmail.com      | password123   |
-| Customer | minh.tran@gmail.com       | password123   |
-| Customer | hoa.pham@gmail.com        | password123   |
-| Admin    | admin@amble.com           | admin123456   |
-
----
-
-### 3. Frontend Setup
+### 3. Frontend
 
 ```bash
-cd frontend
-
-# Install dependencies
+cd Amble
 npm install
+npx expo start --clear
+# Quét QR bằng Expo Go để test
+```
 
-# Update API URL in services/api.ts
-# Change BASE_URL to your backend IP:
-# - Emulator: http://10.0.2.2:5000/api
-# - Physical device: http://YOUR_COMPUTER_IP:5000/api
-# - Local: http://localhost:5000/api
+### 4. Build APK (production)
 
-# Start Expo
-npm start
+```bash
+cd Amble
+npx eas build --platform android --profile staging    # APK test
+npx eas build --platform android --profile production # AAB cho CH Play
 ```
 
 ---
 
-## 🔌 API Endpoints
+## 🔌 API Chính
 
-### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Get current user (auth required) |
-
-### Users (auth required)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/users/profile` | Get profile |
-| PUT | `/api/users/profile` | Update profile |
-| PUT | `/api/users/change-password` | Change password |
-| POST | `/api/users/favorite/:routeId` | Toggle favorite route |
-
-### Routes (auth required)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/routes` | Get all routes (filter by difficulty/search) |
-| GET | `/api/routes/popular` | Get popular routes |
-| GET | `/api/routes/:id` | Get single route |
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| **Auth** |||
+| POST | `/api/auth/register` | Đăng ký khách hàng |
+| POST | `/api/auth/login` | Đăng nhập |
+| GET | `/api/auth/google` | Google OAuth |
+| POST | `/api/auth/forgot-password` | Quên mật khẩu |
+| **Restaurant** |||
+| GET | `/api/restaurants` | Danh sách nhà hàng |
+| GET | `/api/restaurants/featured` | Nhà hàng nổi bật |
+| GET | `/api/restaurants/nearby?lat=&lng=` | Nhà hàng gần đây (GPS) |
+| GET | `/api/restaurants/:id` | Chi tiết nhà hàng |
+| **Booking** |||
+| GET | `/api/booking/tables/:restaurantId` | Danh sách bàn |
+| POST | `/api/booking` | Tạo booking mới |
+| **Payment** |||
+| POST | `/api/payment/partner/create-payos` | Tạo thanh toán PayOS |
+| POST | `/api/payment/partner/webhook` | Webhook PayOS |
+| **AI** |||
+| POST | `/api/ai/chat` | Chat AI khách hàng |
+| POST | `/api/ai/admin-chat` | Chat AI admin (phân tích dữ liệu) |
+| **Upload** |||
+| POST | `/api/upload/image` | Upload ảnh (base64 → server) |
+| **Partner** |||
+| POST | `/api/partner/auth/register` | Đăng ký đối tác |
+| GET | `/api/partner/dashboard/overview` | Dashboard đối tác |
+| POST | `/api/partner/tables` | Tạo bàn mới |
+| **Admin** |||
+| GET | `/api/admin/dashboard` | Dashboard admin |
+| GET | `/api/admin/partners` | Danh sách đối tác |
+| PUT | `/api/admin/partners/:id/approve` | Duyệt đối tác |
 
 ---
 
-## 📱 App Screens
+## 🤖 AI Chatbot
 
-| Screen | Description |
-|--------|-------------|
-| **Login** | Email/password login with demo account hint |
-| **Register** | Full registration form with validation |
-| **Home** | Dashboard with stats, quick actions, popular routes |
-| **Explore** | Search & filter all walking routes |
-| **Profile** | View/edit profile, change password, logout |
+MunchMap tích hợp **DeepSeek V4 Pro** qua AI-Box proxy cho cả khách hàng và admin.
+
+| Tính năng | Khách hàng | Admin |
+|-----------|-----------|-------|
+| Mô hình | DeepSeek V4 Pro | DeepSeek V4 Pro |
+| Chức năng | Đặt bàn tự nhiên, gợi ý nhà hàng | Phân tích doanh thu, booking, xu hướng |
+| Context | Lịch sử đặt bàn + GPS | Dữ liệu thời gian thực từ DB |
+| Ngôn ngữ | Tự động theo user (VI/EN) | Tiếng Việt |
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Backend:** Node.js, Express.js, MongoDB, Mongoose, JWT, bcryptjs
+| Layer | Công nghệ |
+|-------|-----------|
+| **Frontend** | Expo SDK 51, React Native, Expo Router, Zustand, Axios |
+| **Backend** | Node.js, Express.js, MongoDB/Mongoose, JWT |
+| **AI** | DeepSeek V4 Pro (qua AI-Box), OpenRouter fallback |
+| **Thanh toán** | PayOS |
+| **Email** | Brevo API |
+| **Auth** | JWT + Google OAuth |
+| **Build** | EAS Build (Expo Application Services) |
+| **Deploy** | Railway (backend), Google Play Store (Android) |
 
-**Frontend:** Expo, React Native, Expo Router, Zustand, Axios, AsyncStorage, LinearGradient
+---
+
+## 🌍 Biến môi trường (BE/.env)
+
+```env
+MONGODB_URI=mongodb://...
+JWT_SECRET=your_secret
+OPENROUTER_API_KEY=sk-or-...
+ANTHROPIC_FOUNDRY_API_KEY=sk-...
+ANTHROPIC_FOUNDRY_BASE_URL=https://api.ai-box.vn
+ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_CALLBACK_URL=https://amblebooking-production.up.railway.app/api/auth/google/callback
+GOOGLE_APP_REDIRECT=munchmap://auth/google
+BREVO_API_KEY=...
+EXPO_PUBLIC_API_URL=https://amblebooking-production.up.railway.app/api
+```
+
+---
+
+## 📝 License
+
+MIT © 2026 MunchMap

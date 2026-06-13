@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
+let reqCounter = 0;
+const nextReqId = () => `ai-${Date.now()}-${++reqCounter}`;
+
 const OR_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const MODEL_CANDIDATES = (
@@ -47,7 +50,8 @@ async function callAnthropic(apiKey, messages, systemPrompt) {
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ],
       };
-      console.log(`[AI/Foundry] trying model=${model}...`);
+      const rid = nextReqId();
+      console.log(`[AI/Foundry] ${rid} trying model=${model}...`);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
       const response = await fetch(endpoint, {
@@ -336,7 +340,8 @@ router.post("/admin-chat", async (req, res) => {
       const allRestCount = await Restaurant.countDocuments({ isActive: true });
 
       dataContext = `Users: ${totalUsers} (${activeUsers} active, +${newUsersWeek} tuần này). Partners: ${totalPartners} (${activePartners} active, ${pendingPartners} chờ duyệt). Nhà hàng: ${activeRestaurants}/${totalRestaurants} active. Bookings: ${totalBookings} tổng (${todayBookings} hôm nay). Doanh thu: ${revenue.total.toLocaleString("vi-VN")}đ tổng (${revenue.count} bk, TB ${avgDeposit.toLocaleString("vi-VN")}đ), ${todayRev.total.toLocaleString("vi-VN")}đ hôm nay, ${monthRev.total.toLocaleString("vi-VN")}đ tháng này. Booking status: completed=${stMap["completed"]||0}, confirmed=${stMap["confirmed"]||0}, cancelled=${stMap["cancelled"]||0}. Hủy: ${cancelRate}%.\nTop 20 nhà hàng (booking):\n${topList}`;
-      console.log("[AI/admin-chat] dataContext length:", dataContext.length);
+      const rid = nextReqId();
+    console.log(`[AI/admin-chat] ${rid} dataContext length:`, dataContext.length);
     } catch (e) {
       console.error("[AI/admin-chat] DB error:", e.message, e.stack?.slice(0, 200));
       dataContext = "Dữ liệu tạm thời không khả dụng: " + e.message;

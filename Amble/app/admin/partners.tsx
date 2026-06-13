@@ -58,27 +58,15 @@ export default function AdminPartnersScreen() {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const ACTIVE_OPTIONS = [
-    { value: "all", label: t("admin.partners.all") },
-    { value: "active", label: t("admin.partners.active") },
-    { value: "locked", label: t("admin.partners.locked") },
-  ] as const;
-
   const STATUS_OPTIONS = [
-    { value: "pending", label: t("admin.partners.pending") },
-    { value: "paid_pending", label: "Đã TT" },
-    { value: "active", label: t("admin.partners.running") },
-    { value: "expired", label: t("admin.partners.expired") },
-    { value: "cancelled", label: t("admin.partners.cancelled") },
     { value: "all", label: t("admin.partners.all") },
+    { value: "pending", label: t("admin.partners.pending") },
+    { value: "active", label: t("admin.partners.running") },
   ] as const;
   const [status, setStatus] = useState<
     PartnerItem["subscriptionStatus"] | "all"
-  >("pending");
-  const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "active" | "locked"
   >("all");
+  const [search, setSearch] = useState("");
   const [partners, setPartners] = useState<PartnerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectVisible, setRejectVisible] = useState(false);
@@ -94,10 +82,6 @@ export default function AdminPartnersScreen() {
       const res = await adminAPI.getPartners({
         status: status === "all" ? undefined : status,
         search: search || undefined,
-        isActive:
-          activeFilter === "all"
-            ? undefined
-            : activeFilter === "active",
       });
       setPartners(res.data?.partners || []);
     } catch {
@@ -109,7 +93,7 @@ export default function AdminPartnersScreen() {
 
   useEffect(() => {
     loadPartners();
-  }, [status, activeFilter]);
+  }, [status, search]);
 
   const handleApprove = async (partner: PartnerItem) => {
     try {
@@ -174,16 +158,6 @@ export default function AdminPartnersScreen() {
         <TouchableOpacity style={styles.refreshBtn} onPress={loadPartners}>
           <Text style={styles.refreshText}>Go</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.filterGroup}>
-        <Text style={styles.filterLabel}>{t("admin.partners.statusTitle")}</Text>
-        <AdminSegmented
-          options={ACTIVE_OPTIONS}
-          value={activeFilter}
-          onChange={setActiveFilter}
-          compact
-        />
       </View>
 
       <View style={styles.filterGroup}>

@@ -55,11 +55,11 @@ export const DEFAULT_SESSION: AISession = {
   history: [],
 };
 
-// ─── Gọi Gemini qua BE proxy (key bảo mật trong BE/.env) ───────────────────
+// ─── Gọi AI qua BE proxy ───────────────────
 
 const BE_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api";
 
-async function callClaude(
+async function callBackendAI(
   systemPrompt: string,
   history: { role: "user" | "assistant"; content: string }[],
   userMessage: string,
@@ -93,7 +93,7 @@ async function callClaude(
 
   if (!res.ok) {
     const errText = await res.text();
-    console.warn("[callClaude] upstream error:", res.status, errText);
+    console.warn("[callBackendAI] upstream error:", res.status, errText);
 
     // Upstream AI bị lỗi tạm thời: trả fallback mềm để UX không bị văng lỗi đỏ.
     if (res.status >= 500) {
@@ -114,8 +114,10 @@ async function callClaude(
 
 function getSystemPrompt() {
   const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   return `Bạn là MunchMap AI — trợ lý đặt bàn thông minh của MunchMap.
-Hôm nay: ${today}
+Hôm nay: ${today}. Bây giờ là: ${currentTime}
 
 ## TÍNH CÁCH & PHONG CÁCH
 - NGUYÊN TẮC NGÔN NGỮ: User hỏi tiếng Việt → trả lời tiếng Việt. User hỏi tiếng Anh → trả lời tiếng Anh.
@@ -128,7 +130,7 @@ Hôm nay: ${today}
 ## CÁCH XỬ LÝ ĐẶT BÀN
 Khi user muốn đặt bàn, hỏi từng thứ một, mỗi câu 1 thông tin:
 1. NGÀY (sau 21h → gợi ý ngày mai)
-2. GIỜ
+2. GIỜ — **QUAN TRỌNG: nếu user chọn giờ đã qua trong ngày hôm nay (ví dụ: bây giờ là 20h mà user đòi đặt 19h) → từ chối nhẹ nhàng và gợi ý giờ sớm nhất có thể (giờ hiện tại + 1 tiếng)**
 3. SỐ NGƯỜI
 4. KHU VỰC (nếu có GPS thì dùng luôn, khỏi hỏi)
 5. LOẠI BÀN (nếu cần)
@@ -157,52 +159,6 @@ Khi user không nói rõ: purpose=casual, partySize=2, location=Hồ Chí Minh, 
 - Chỉ gửi số, không gửi chữ "k" (200k = 200000)`;
 }
 
-const STEP_QUICK_REPLIES: Partial<Record<BookingStep, QuickReply[]>> = {
-  idle: [
-    { id: "1", text: "Đặt bàn hẹn hò", value: "Tôi muốn đặt bàn hẹn hò" },
-    { id: "2", text: "Đặt bàn gia đình", value: "Đặt bàn cho gia đình" },
-    {
-      id: "3",
-      text: "Tìm nhà hàng ngon",
-      value: "Gợi ý nhà hàng ngon ở Sài Gòn",
-    },
-  ],
-  purpose: [
-    { id: "1", text: "Hẹn hò", value: "Hẹn hò" },
-    { id: "2", text: "Gia đình", value: "Gia đình" },
-    { id: "3", text: "Công việc", value: "Công việc" },
-    { id: "4", text: "Kỷ niệm", value: "Kỷ niệm" },
-  ],
-  date: [
-    { id: "1", text: "Hôm nay", value: "Hôm nay" },
-    { id: "2", text: "Ngày mai", value: "Ngày mai" },
-    { id: "3", text: "Thứ 7 này", value: "Thứ 7 này" },
-  ],
-  time: [
-    { id: "1", text: "12:00", value: "12:00" },
-    { id: "2", text: "18:00", value: "18:00" },
-    { id: "3", text: "19:00", value: "19:00" },
-    { id: "4", text: "20:00", value: "20:00" },
-  ],
-  partySize: [
-    { id: "1", text: "2 người", value: "2 người" },
-    { id: "2", text: "4 người", value: "4 người" },
-    { id: "3", text: "6 người", value: "6 người" },
-  ],
-  location: [
-    { id: "1", text: "Hồ Chí Minh", value: "Hồ Chí Minh" },
-    { id: "2", text: "Hà Nội", value: "Hà Nội" },
-    { id: "3", text: "Đà Nẵng", value: "Đà Nẵng" },
-    { id: "4", text: "Gần tôi", value: "Gần tôi" },
-  ],
-  tableType: [
-    { id: "1", text: "VIP", value: "VIP" },
-    { id: "2", text: "View đẹp", value: "View đẹp" },
-    { id: "3", text: "Bàn thường", value: "Bàn thường" },
-    { id: "4", text: "Gần cửa sổ", value: "Gần cửa sổ" },
-    { id: "5", text: "Riêng tư", value: "Riêng tư" },
-  ],
-};
 
 // ─── Detect step từ response của Claude ──────────────────────────────────────
 
@@ -448,7 +404,7 @@ export const ambleAI = {
     try {
       // Gọi Claude với toàn bộ lịch sử hội thoại + context cá nhân
       const systemPrompt = userContext ? `${getSystemPrompt()}\n\n## THÔNG TIN NGƯỜI DÙNG\n${userContext}` : getSystemPrompt();
-      const rawResponse = await callClaude(systemPrompt, history, msg);
+      const rawResponse = await callBackendAI(systemPrompt, history, msg);
 
       // Cập nhật history
       const newHistory = [
@@ -554,7 +510,7 @@ export const ambleAI = {
 
       const nextStep = detectStepFromResponse(rawResponse, step);
       const quickReplies =
-        STEP_QUICK_REPLIES[nextStep] || STEP_QUICK_REPLIES["idle"];
+        [];
 
       return {
         response: {
@@ -570,7 +526,7 @@ export const ambleAI = {
       return {
         response: {
           text: "Mình đang gặp sự cố nhỏ, bạn thử lại sau nhé!",
-          quickReplies: STEP_QUICK_REPLIES["idle"],
+          quickReplies: [],
           step,
           draft,
         },
