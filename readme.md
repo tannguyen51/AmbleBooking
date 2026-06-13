@@ -76,53 +76,6 @@ AmbleBooking1/
     ├── app.json                 # Expo config (scheme: munchmap, package: com.amble.app)
     └── eas.json                 # EAS Build profiles (staging APK, production AAB)
 ```
-
----
-
-## 🚀 Cài đặt nhanh
-
-### Yêu cầu
-- **Node.js** >= 18
-- **MongoDB** (local hoặc Atlas)
-- **Expo CLI**: `npm install -g expo-cli`
-- **EAS CLI**: `npm install -g eas-cli` (để build APK/AAB)
-
-### 1. Backend
-
-```bash
-cd BE
-npm install
-cp .env.example .env
-# Sửa MONGODB_URI, JWT_SECRET, OPENROUTER_API_KEY, GOOGLE_CLIENT_ID...
-npm run dev
-# Server chạy tại http://localhost:5000
-```
-
-### 2. Seed dữ liệu
-
-```bash
-cd BE
-node seed.js
-# Tạo 10 nhà hàng mẫu + bàn + users test
-```
-
-### 3. Frontend
-
-```bash
-cd Amble
-npm install
-npx expo start --clear
-# Quét QR bằng Expo Go để test
-```
-
-### 4. Build APK (production)
-
-```bash
-cd Amble
-npx eas build --platform android --profile staging    # APK test
-npx eas build --platform android --profile production # AAB cho CH Play
-```
-
 ---
 
 ## 🔌 API Chính
@@ -187,26 +140,7 @@ MunchMap tích hợp **DeepSeek V4 Pro** qua AI-Box proxy cho cả khách hàng 
 | **Build** | EAS Build (Expo Application Services) |
 | **Deploy** | Railway (backend), Google Play Store (Android) |
 
----
 
-## 🌍 Biến môi trường (BE/.env)
-
-```env
-MONGODB_URI=mongodb://...
-JWT_SECRET=your_secret
-OPENROUTER_API_KEY=sk-or-...
-ANTHROPIC_FOUNDRY_API_KEY=sk-...
-ANTHROPIC_FOUNDRY_BASE_URL=https://api.ai-box.vn
-ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_CALLBACK_URL=https://amblebooking-production.up.railway.app/api/auth/google/callback
-GOOGLE_APP_REDIRECT=munchmap://auth/google
-BREVO_API_KEY=...
-EXPO_PUBLIC_API_URL=https://amblebooking-production.up.railway.app/api
-```
-
----
 
 ## 📝 License
 
