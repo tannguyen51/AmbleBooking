@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     letterSpacing: 0.2,
-    fontFamily: "TAN-NIMBUS",
+    fontFamily: "DFVN-TAN-NIMBUS",
+    fontWeight: "400",
   },
 });

@@ -2,6 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Font from "expo-font";
+import {
+  Montserrat_300Light,
+  Montserrat_400Regular,
+  Montserrat_500Medium,
+  Montserrat_700Bold,
+} from "@expo-google-fonts/montserrat";
 import { ActivityIndicator, View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { usePartnerAuthStore } from "../store/partnerAuthStore";
@@ -31,6 +37,10 @@ function RootLayout() {
         await Font.loadAsync({
           "TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
           "DFVN-TAN-NIMBUS": require("../assets/TAN-NIMBUS.ttf"),
+          "Montserrat_300Light": Montserrat_300Light,
+          "Montserrat_400Regular": Montserrat_400Regular,
+          "Montserrat_500Medium": Montserrat_500Medium,
+          "Montserrat_700Bold": Montserrat_700Bold,
         });
       } catch (e) {
         console.warn("Font loading error:", e);

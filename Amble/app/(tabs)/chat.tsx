@@ -20,22 +20,23 @@ import {
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ambleAI,
   AISession,
   DEFAULT_SESSION,
-  TableCard,
-  QuickReply,
 } from "@/services/ambleAI";
+import type { TableCard, QuickReply } from "@/types/chat";
 import { ChatMessage } from "@/types/chat";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAuthStore } from "../../store/authStore";
 import { bookingAPI } from "../../services/api";
 import { useLocation } from "../../hooks/useLocation";
 
-const PRIMARY = "#ff8b25";
+const PRIMARY = "#6F55FF";
+const ACCENT = "#FF8F1F";
 const { width: SW } = Dimensions.get("window");
 
 // ─── Table Card Component ─────────────────────────────────────────────────────
@@ -182,7 +183,7 @@ function TableCardItem({
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={["#FF6B35", "#FFD700"]}
+              colors={["#FFD109", "#FF8F1F"]}
               style={tc.bookBtnInner}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -251,7 +252,7 @@ function TableCardItem({
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#FF6B35", "#FFD700"]}
+                colors={["#FFD109", "#FF8F1F"]}
                 style={gal.bookBtnInner}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -284,6 +285,7 @@ export default function ChatScreen() {
   ]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
   const [session, setSession] = useState<AISession>(DEFAULT_SESSION);
   const [userContext, setUserContext] = useState("");
   const { user } = useAuthStore();
@@ -399,6 +401,24 @@ export default function ChatScreen() {
   };
 
 
+  const takePhoto = async () => {
+    setShowAttach(false);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      setInputText((prev) => prev + " [Ảnh: " + result.assets[0].uri + "]");
+    }
+  };
+
+  const pickImage = async () => {
+    setShowAttach(false);
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      setInputText((prev) => prev + " [Ảnh: " + result.assets[0].uri + "]");
+    }
+  };
+
   const handleBookTable = (card: TableCard, draft: any) => {
     router.push({
       pathname: "/booking/confirm" as any,
@@ -424,13 +444,6 @@ export default function ChatScreen() {
     return (
       <View style={{ marginBottom: 12 }}>
         <View style={[s.msgRow, isUser ? s.msgRowUser : s.msgRowAI]}>
-          {/* AI avatar */}
-          {!isUser && (
-            <View style={s.aiAvatar}>
-              <Ionicons name="chatbubble-ellipses" size={16} color={PRIMARY} />
-            </View>
-          )}
-
           {/* Bubble */}
           <View
             style={[
@@ -452,15 +465,9 @@ export default function ChatScreen() {
             </Text>
           </View>
 
-          {/* User avatar */}
-          {isUser && (
-            <View style={s.userAvatar}>
-              <Ionicons name="person" size={14} color="#fff" />
-            </View>
-          )}
-        </View>
+          </View>
 
-        {/* Quick replies - đã tắt */}
+          {/* Quick replies - đã tắt */}
         {/* Table cards */}
         {!isUser && item.tableCards && item.tableCards.length > 0 && (
           <View style={{ marginTop: 8, marginLeft: 36 }}>
@@ -522,43 +529,30 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["left", "right"]}>
-      <KeyboardAvoidingView
-        style={s.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      <LinearGradient
+        colors={["#FFFFFF", "#FFF3BE"]}
+        style={{ flex: 1 }}
       >
-        {/* Header */}
-        <View
-          style={[s.header, { paddingTop: 12 + insets.top }]}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
-          <View style={s.headerLeft}>
-            <View style={s.headerAvatar}>
-              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
-            </View>
-            <View>
-              <Text style={s.headerTitle}>{t("chat.headerTitle")}</Text>
-              <View style={s.headerOnline}>
-                <View style={s.onlineDot} />
-                <Text style={s.headerSub}>{t("chat.headerOnline")}</Text>
-              </View>
-            </View>
-          </View>
+        {/* Header — Figma: back arrow + centered title */}
+        <View style={[s.header, { paddingTop: 12 + insets.top }]}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={28} color="#FF8F1F" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={() => {
               AsyncStorage.removeItem("amble_chat_history").catch(() => {});
               setSession(DEFAULT_SESSION);
-              setMessages([
-                {
-                  id: `reset-${Date.now()}`,
-                  text: t("chat.resetMessage"),
-                  sender: "ai",
-                  timestamp: new Date(),
-                },
-              ]);
+              setMessages([{ id: `reset-${Date.now()}`, text: t("chat.resetMessage"), sender: "ai", timestamp: new Date() }]);
             }}
             style={s.resetBtn}
           >
-            <Ionicons name="refresh" size={20} color="#fff" />
+            <Ionicons name="refresh" size={18} color="#8A8787" />
           </TouchableOpacity>
         </View>
 
@@ -575,9 +569,6 @@ export default function ChatScreen() {
         {/* Typing indicator */}
         {loading && (
           <View style={s.typing}>
-          <View style={s.typingAvatar}>
-              <Ionicons name="chatbubble-ellipses" size={14} color={PRIMARY} />
-            </View>
             <View style={s.typingBubble}>
               <ActivityIndicator size="small" color={PRIMARY} />
               <Text style={s.typingText}>{t("chat.typing")}</Text>
@@ -585,35 +576,59 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* Input */}
+        {/* Input — Figma: 314×42, r=15, white */}
           <View style={s.inputWrap}>
-            <TextInput
-              style={s.input}
-              placeholder={t("chat.inputPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              editable={!loading}
-              onSubmitEditing={() => sendMessage()}
-            />
+            <TouchableOpacity style={s.plusBtn} onPress={() => setShowAttach(true)}>
+              <Ionicons name="add" size={22} color="#8A8787" />
+            </TouchableOpacity>
+            <View style={s.inputBar}>
+              <TextInput
+                style={s.input}
+                placeholder="Hỏi Munchy"
+                placeholderTextColor="#8A8787"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                editable={!loading}
+                onSubmitEditing={() => sendMessage()}
+              />
+              <TouchableOpacity style={s.micBtn}>
+                <Ionicons name="mic-outline" size={20} color="#FF8F1F" />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={[
-                s.sendBtn,
-                (!inputText.trim() || loading) && s.sendBtnOff,
-              ]}
+              style={[s.sendBtn, (!inputText.trim() || loading) && s.sendBtnOff]}
               onPress={() => sendMessage()}
               disabled={!inputText.trim() || loading}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color={inputText.trim() && !loading ? "#fff" : "#C4C4C4"}
-              />
+              <Ionicons name="arrow-up" size={18} color={inputText.trim() && !loading ? "#fff" : "#C4C4C4"} />
             </TouchableOpacity>
           </View>
       </KeyboardAvoidingView>
+      </LinearGradient>
+
+      {/* Attach Modal — Figma Rectangle 93 */}
+      <Modal visible={showAttach} transparent animationType="fade" onRequestClose={() => setShowAttach(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} activeOpacity={1} onPress={() => setShowAttach(false)}>
+          <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: 80 }}>
+            <View style={{ backgroundColor: "#fff", borderRadius: 20, padding: 20, width: 282, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 5, elevation: 6, marginBottom: 20 }}>
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }} onPress={takePhoto}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 5, elevation: 4 }}>
+                  <Ionicons name="camera-outline" size={22} color="#FF8F1F" />
+                </View>
+                <Text style={{ fontSize: 16, color: "#555" }}>Chụp ảnh</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }} onPress={pickImage}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 5, elevation: 4 }}>
+                  <Ionicons name="images-outline" size={22} color="#FF8F1F" />
+                </View>
+                <Text style={{ fontSize: 16, color: "#555" }}>Chọn ảnh trong thư viện</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -621,52 +636,18 @@ export default function ChatScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9FAFB" },
+  container: { flex: 1, backgroundColor: "#FFF3BE" },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 14,
-    backgroundColor: PRIMARY,
+    paddingBottom: 12,
+    backgroundColor: "transparent",
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  headerAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  headerAvatarImg: {
-    width: 24,
-    height: 24,
-    resizeMode: "contain",
-  },
-  headerTitle: { fontSize: 16, color: "#fff", fontFamily: "TAN-NIMBUS" },
-  headerOnline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 1,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#4ADE80",
-  },
-  headerSub: { fontSize: 11, color: "rgba(255,255,255,0.85)" },
-  resetBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 16, color: "#8A8787", fontFamily: "Montserrat_400Regular", fontWeight: "400", fontFamily: "Montserrat_400Regular" },
+  headerSub: { fontSize: 16, color: "#8A8787", fontFamily: "Montserrat_400Regular", fontWeight: "400", fontFamily: "Montserrat_400Regular", marginTop: 2 },
+  resetBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
 
   msgRow: { flexDirection: "row", alignItems: "flex-end", gap: 6 },
   msgRowUser: { justifyContent: "flex-end" },
@@ -694,12 +675,12 @@ const s = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#374151",
+    backgroundColor: "#FF8F1F",
     alignItems: "center",
     justifyContent: "center",
   },
   bubble: { padding: 12, borderRadius: 18 },
-  bubbleUser: { backgroundColor: PRIMARY, borderBottomRightRadius: 4 },
+  bubbleUser: { backgroundColor: "#FF8F1F", borderBottomRightRadius: 4 },
   bubbleAI: {
     backgroundColor: "#fff",
     borderBottomLeftRadius: 4,
@@ -754,38 +735,37 @@ const s = StyleSheet.create({
   },
   typingText: { fontSize: 12, color: "#9CA3AF" },
 
-  inputBar: {
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#ECEFF3",
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 12,
-  },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#EEF0F3",
-    borderRadius: 999,
-    marginHorizontal: 16,
-    paddingLeft: 16,
-    paddingRight: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 50,
+    backgroundColor: "transparent",
   },
-  input: {
+  plusBtn: { width: 42, height: 42, borderRadius: 15, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  inputBar: {
     flex: 1,
-    fontSize: 16,
-    color: "#1A1A1A",
-    maxHeight: 100,
-    paddingTop: 0,
-    paddingBottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    height: 48,
+    paddingLeft: 14,
+    paddingRight: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 6,
   },
+  input: { flex: 1, fontSize: 16, color: "#1A1A1A", maxHeight: 100, paddingTop: 0, paddingBottom: 0, fontFamily: "Montserrat_400Regular" },
+  micBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: PRIMARY,
+    width: 41,
+    height: 37,
+    borderRadius: 15,
+    backgroundColor: "#FF8F1F",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -815,14 +795,14 @@ const tc = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
   },
   restAvatar: { width: 32, height: 32, borderRadius: 8 },
-  restName: { fontSize: 13, fontWeight: "700", color: "#1A1A1A" },
+  restName: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" },
   restMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
     marginTop: 1,
   },
-  restRating: { fontSize: 11, fontWeight: "600", color: "#F59E0B" },
+  restRating: { fontSize: 11, fontFamily: "Montserrat_500Medium", fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#F59E0B" },
   restSep: { fontSize: 10, color: "#D1D5DB" },
   restCity: { fontSize: 11, color: "#9CA3AF" },
   tableImg: { width: "100%", height: 160 },
@@ -834,7 +814,7 @@ const tc = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 20,
   },
-  typeBadgeText: { fontSize: 11, fontWeight: "700" },
+  typeBadgeText: { fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700" },
   galleryBadge: {
     position: "absolute",
     top: 8,
@@ -847,7 +827,7 @@ const tc = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 12,
   },
-  galleryCount: { fontSize: 11, color: "#fff", fontWeight: "600" },
+  galleryCount: { fontSize: 11, color: "#fff", fontFamily: "Montserrat_500Medium", fontFamily: "Montserrat_500Medium", fontWeight: "500" },
   body: { padding: 12 },
   titleRow: {
     flexDirection: "row",
@@ -855,7 +835,7 @@ const tc = StyleSheet.create({
     alignItems: "center",
     marginBottom: 6,
   },
-  tableName: { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
+  tableName: { fontSize: 15, fontFamily: "Montserrat_700Bold", fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" },
   availBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -871,7 +851,7 @@ const tc = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#22C55E",
   },
-  availText: { fontSize: 11, fontWeight: "600", color: "#065F46" },
+  availText: { fontSize: 11, fontFamily: "Montserrat_500Medium", fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#065F46" },
   featureChip: {
     backgroundColor: "#F3F4F6",
     paddingHorizontal: 8,
@@ -898,7 +878,7 @@ const tc = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  bookBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  bookBtnText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
 });
 
 // Simple restaurant card styles
@@ -917,9 +897,9 @@ const sr = StyleSheet.create({
   },
   img: { width: "100%", height: 90 },
   info: { padding: 8 },
-  name: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
+  name: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
   meta: { flexDirection: "row", alignItems: "center", gap: 3 },
-  rating: { fontSize: 11, fontWeight: "600", color: "#F59E0B" },
+  rating: { fontSize: 11, fontFamily: "Montserrat_500Medium", fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#F59E0B" },
   sep: { fontSize: 10, color: "#D1D5DB" },
   city: { fontSize: 11, color: "#9CA3AF" },
 });
@@ -936,7 +916,7 @@ const gal = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#fff",
     flex: 1,
     marginRight: 8,
@@ -969,5 +949,5 @@ const gal = StyleSheet.create({
     overflow: "hidden",
   },
   bookBtnInner: { paddingVertical: 14, alignItems: "center" },
-  bookBtnText: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  bookBtnText: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
 });

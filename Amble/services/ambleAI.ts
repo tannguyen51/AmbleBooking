@@ -116,7 +116,7 @@ function getSystemPrompt() {
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  return `Bạn là MunchMap AI — trợ lý đặt bàn thông minh của MunchMap.
+  return `Bạn là Munchy — trợ lý đặt bàn thông minh của MunchMap.
 Hôm nay: ${today}. Bây giờ là: ${currentTime}
 
 ## TÍNH CÁCH & PHONG CÁCH

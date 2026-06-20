@@ -15,14 +15,15 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import { userAPI, bookingAPI } from "../../services/api";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const PRIMARY = "#FF6B35";
-const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
-const BG = "#FAFAFA";
+const PRIMARY = "#FF8F1F";
+const GRAD: [string, string] = ["#FFD109", "#FF8F1F"];
+const BG = "#FFFFFF";
 const TEXT = "#1A1A1A";
 const TEXT_SEC = "#6B7280";
 const MUTED = "#9CA3AF";
@@ -40,13 +41,19 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
 
 // ─── Stat Card (inside header gradient) ──────────────────────────────────────
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ icon, label, value }: { icon: string; label: string; value: number }) {
   return (
     <View style={st.card}>
+      <View style={st.iconCircle}>
+        <Ionicons name={icon as any} size={18} color="#FF8F1F" />
+      </View>
       <Text style={st.value}>{value}</Text>
       <Text style={st.label}>{label}</Text>
     </View>
   );
+}
+function StatDivider() {
+  return <View style={st.divider} />;
 }
 const st = StyleSheet.create({
   card: {
@@ -54,10 +61,20 @@ const st = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "transparent",
   },
-  value: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  label: { fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFF3ED",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  divider: { width: 1, backgroundColor: "#E8E8E8", alignSelf: "stretch", marginVertical: 4 },
+  value: { fontSize: 22, fontWeight: "900", color: "#1A1A1A" },
+  label: { fontSize: 11, color: "#6B7280", marginTop: 2 },
 });
 
 // ─── Menu Item (standalone card, like src) ───────────────────────────────────
@@ -174,6 +191,7 @@ export default function ProfileScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [bookingCount, setBookingCount] = useState(0);
   const [rewardPoints, setRewardPoints] = useState(0);
   const [rewardTier, setRewardTier] = useState("Bronze");
@@ -280,29 +298,36 @@ export default function ProfileScreen() {
   };
 
   const initials = user?.fullName?.charAt(0)?.toUpperCase() || "U";
+
+  const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  };
   const favoritePreview = favoriteRestaurants.slice(0, 2);
   const formattedPoints = rewardPoints.toLocaleString("vi-VN");
   const remainingToNextTier = Math.max(0, rewardNeeded).toLocaleString("vi-VN");
   const reviewsCount = Math.min(5, Math.max(0, bookingCount));
 
   return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
     <ScrollView style={s.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={GRAD}
-        style={s.header}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={s.header}>
         <View style={s.blobTopRight} />
         <View style={s.blobBottomLeft} />
 
         <View style={s.avatarRow}>
           <View style={s.avatarWrap}>
             <View style={s.avatar}>
-              <Text style={s.avatarText}>{initials}</Text>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={{ width: 96, height: 96, borderRadius: 22 }} />
+              ) : (
+                <Text style={s.avatarText}>{initials}</Text>
+              )}
             </View>
-            <TouchableOpacity style={s.cameraBtn}>
-              <Ionicons name="camera-outline" size={14} color={PRIMARY} />
+            <TouchableOpacity style={s.cameraBtn} onPress={pickAvatar}>
+              <Ionicons name="camera-outline" size={14} color="#FF8F1F" />
             </TouchableOpacity>
           </View>
 
@@ -315,7 +340,7 @@ export default function ProfileScreen() {
                 <Ionicons
                   name="create-outline"
                   size={16}
-                  color="rgba(255,255,255,0.88)"
+                  color="#FF8F1F"
                 />
               </TouchableOpacity>
             </View>
@@ -333,13 +358,13 @@ export default function ProfileScreen() {
         </View>
 
         <View style={s.statsRow}>
-          <StatCard label={t("profile.statsBookings")} value={bookingCount} />
-          <View style={{ width: 8 }} />
-          <StatCard label={t("profile.statsFavorites")} value={favoriteRestaurants.length} />
-          <View style={{ width: 8 }} />
-          <StatCard label={t("profile.statsReviews")} value={reviewsCount} />
+          <StatCard icon="calendar-outline" label={t("profile.statsBookings")} value={bookingCount} />
+          <StatDivider />
+          <StatCard icon="heart-outline" label={t("profile.statsFavorites")} value={favoriteRestaurants.length} />
+          <StatDivider />
+          <StatCard icon="star-outline" label={t("profile.statsReviews")} value={reviewsCount} />
         </View>
-      </LinearGradient>
+      </View>
 
       <View style={s.body}>
         <View style={s.rewardsCard}>
@@ -437,7 +462,7 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={{ marginTop: 12, marginBottom: 40, gap: 8 }}>
+        <View style={{ marginTop: 12, marginBottom: 100, gap: 8 }}>
           <MenuItem
             icon="📋"
             label={t("profile.menuHistory")}
@@ -601,6 +626,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 
@@ -611,6 +637,7 @@ const s = StyleSheet.create({
     paddingTop: 56,
     paddingHorizontal: 20,
     paddingBottom: 24,
+    backgroundColor: "#ff9c3a",
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     overflow: "hidden",
@@ -668,14 +695,14 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  name: { fontSize: 18, fontWeight: "900", color: "#fff" },
-  sub: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 3 },
-  sub2: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 2 },
+  name: { fontSize: 18, fontWeight: "900", color: "#1A1A1A" },
+  sub: { fontSize: 13, color: "#6B7280", marginTop: 3 },
+  sub2: { fontSize: 13, color: "#6B7280", marginTop: 2 },
   rankBadge: {
     marginTop: 10,
     alignSelf: "flex-start",
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "#FFF3ED",
     paddingHorizontal: 12,
     paddingVertical: 5,
     flexDirection: "row",
@@ -683,8 +710,8 @@ const s = StyleSheet.create({
     gap: 6,
   },
   rankEmoji: { fontSize: 12 },
-  rankText: { fontSize: 13, fontWeight: "800", color: "#fff" },
-  statsRow: { flexDirection: "row" },
+  rankText: { fontSize: 13, fontWeight: "800", color: "#1A1A1A" },
+  statsRow: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, paddingVertical: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   body: { paddingHorizontal: 16, paddingTop: 16 },
 
   rewardsCard: {
@@ -897,5 +924,3 @@ const lo = StyleSheet.create({
   },
   leaveText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 });
-
-

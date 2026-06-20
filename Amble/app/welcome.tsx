@@ -4,147 +4,77 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MunchMapLogo from "../components/AmbleLogo";
-import { useTranslation } from "../i18n/useTranslation";
-
-const { width, height } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { t, isEnglish, language } = useTranslation();
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
 
+      {/* Background — cam trên, vàng dưới */}
       <LinearGradient
-        colors={["#ff8b25", "#ffd109", "#ffd8a4"]}
+        colors={["#FF8B25", "#FFD109", "#FFD109"]}
+        locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFillObject}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       />
 
-      <View style={styles.blob1} />
-      <View style={styles.blob2} />
-
-      <View style={styles.hero}>
-        <View style={styles.logoRow}>
-          <MunchMapLogo size="lg" textColor="#FFFFFF" />
-        </View>
-
-        <Text style={styles.headline}>{
-          language === "en" ? t("welcome.headlineEn") :
-          language === "zh" ? "不仅是美食。\n您的体验。" :
-          language === "ko" ? "단순한 식사가 아닌.\n당신의 경험." :
-          language === "ja" ? "食事だけではない。\nあなたの体験。" :
-          t("welcome.headlineVi")
-        }</Text>
+      {/* Logo area — top 45% */}
+      <View style={styles.logoArea}>
+        <MunchMapLogo size="xl" textColor="#FFFFFF" />
+        <Text style={styles.slogan}>ĐI ĂN TIỆN HƠN{"\n"}ĐẶT BÀN XỊN HƠN</Text>
       </View>
 
-      <View style={styles.sheet}>
-        <Text style={styles.sheetPrompt}>{t("welcome.rolePrompt")}</Text>
-
-        <TouchableOpacity
-          style={styles.cardCustomer}
-          onPress={() => router.push("/(auth)/login")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardIconWrap}>
-            <LinearGradient
-              colors={["#ff8b25", "#ffd109"]}
-              style={styles.cardIconGrad}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="person" size={20} color="#ffffff" />
-            </LinearGradient>
+      {/* White card — bottom 55% */}
+      <View style={styles.card}>
+        {/* Customer */}
+        <TouchableOpacity style={styles.roleCard} onPress={() => router.push("/(auth)/login")} activeOpacity={0.85}>
+          <View style={styles.roleIcon}>
+            <Ionicons name="person" size={20} color="#FFF" />
           </View>
-
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{t("welcome.customerTitle")}</Text>
-            <Text style={styles.cardSubtitle}>{t("welcome.customerSubtitle")}</Text>
-          </View>
-
-          <Text style={styles.cardArrow}>›</Text>
+          <Text style={styles.roleLabel}>Khách hàng</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.cardPartner}
-          onPress={() => router.push("../(partner-auth)/partner-login")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardIconWrap}>
-            <View style={styles.cardIconDark}>
-              <Ionicons name="restaurant" size={20} color="#FF6B35" />
-            </View>
+        {/* Partner */}
+        <TouchableOpacity style={styles.roleCard} onPress={() => router.push("/(partner-auth)/partner-login")} activeOpacity={0.85}>
+          <View style={styles.roleIcon}>
+            <Ionicons name="restaurant" size={20} color="#FFF" />
           </View>
-
-          <View style={styles.cardText}>
-            <Text style={[styles.cardTitle, { color: "#1A1A1A" }]}>
-              {t("welcome.partnerTitle")}
-            </Text>
-            <Text style={styles.cardSubtitle}>{t("welcome.partnerSubtitle")}</Text>
-          </View>
-
-          <Text style={[styles.cardArrow, { color: "#999" }]}>›</Text>
+          <Text style={styles.roleLabel}>Nhà hàng</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.cardAdmin}
-          onPress={() => router.push("/admin/login")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardIconWrap}>
-            <LinearGradient
-              colors={["#0F172A", "#1E293B"]}
-              style={styles.cardIconGrad}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="shield-checkmark" size={20} color="#ffffff" />
-            </LinearGradient>
+        {/* Admin */}
+        <TouchableOpacity style={styles.roleCard} onPress={() => router.push("/admin/login")} activeOpacity={0.85}>
+          <View style={styles.roleIcon}>
+            <Ionicons name="shield-checkmark" size={20} color="#FFF" />
           </View>
-
-          <View style={styles.cardText}>
-            <Text style={[styles.cardTitle, { color: "#0F172A" }]}>
-              {t("welcome.adminTitle")}
-            </Text>
-            <Text style={styles.cardSubtitle}>{t("welcome.adminSubtitle")}</Text>
-          </View>
-
-          <Text style={[styles.cardArrow, { color: "#0F172A" }]}>›</Text>
+          <Text style={styles.roleLabel}>Admin</Text>
         </TouchableOpacity>
 
+        {/* Divider — Figma: "Hoặc" #ABABAB */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{t("welcome.or")}</Text>
+          <Text style={styles.dividerText}>Hoặc</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        <TouchableOpacity
-          style={styles.registerBtn}
-          onPress={() => router.push("/(auth)/register")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.registerBtnText}>{t("welcome.register")}</Text>
+        {/* Register — Figma: 370×58, #FF8F1F, r=10 */}
+        <TouchableOpacity style={styles.registerBtn} onPress={() => router.push("/(auth)/register")} activeOpacity={0.85}>
+          <Text style={styles.registerText}>Đăng ký tài khoản mới</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.changeLanguageBtn}
-          onPress={() => router.push("/language")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.changeLanguageLeft}>
-            <Ionicons name="language-outline" size={17} color="#6B7280" />
-            <Text style={styles.changeLanguageText}>{t("welcome.changeLanguage")}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        {/* Language — Figma: white pill 171×40, r=10 */}
+        <TouchableOpacity style={styles.langBtn} onPress={() => router.push("/language")} activeOpacity={0.85}>
+          <Ionicons name="language-outline" size={20} color="#FF8F1F" />
+          <Text style={styles.langText}>Đổi ngôn ngữ</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -152,193 +82,49 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#ff8b25",
+  root: { flex: 1, backgroundColor: "#FFD109" },
+  glowOrange: {
+    position: "absolute", width: 500, height: 500, borderRadius: 250,
+    backgroundColor: "#FF8B25", opacity: 0.3, top: -100, left: -80,
   },
-
-  blob1: {
-    position: "absolute",
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    top: -width * 0.2,
-    right: -width * 0.2,
+  glowWhite: {
+    position: "absolute", width: 400, height: 400, borderRadius: 200,
+    backgroundColor: "#FFFFFF", opacity: 0.2, bottom: "35%", right: -100,
   },
-  blob2: {
-    position: "absolute",
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width * 0.25,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    top: height * 0.15,
-    left: -width * 0.15,
+  logoArea: { flex: 0.35, justifyContent: "flex-start", paddingTop: 60, paddingLeft: 24, paddingBottom: 16 },
+  slogan: {
+    fontSize: 20, fontWeight: "900", fontFamily: "Montserrat_700Bold",
+    color: "#FFFFFF", textAlign: "left", marginTop: 8,
+    textShadowColor: "rgba(0,0,0,0.1)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
   },
-
-  hero: {
-    flex: 1,
-    paddingTop: 64,
-    paddingHorizontal: 28,
-    paddingBottom: 32,
-    justifyContent: "flex-start",
+  card: {
+    flex: 0.65, backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 16, paddingTop: 48, paddingBottom: 40, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 8,
   },
-
-  logoRow: {
-    marginBottom: 34,
+  roleCard: {
+    flexDirection: "row", alignItems: "center", backgroundColor: "#FFFFFF",
+    borderRadius: 15, padding: 14, marginBottom: 12, width: "100%",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 10, elevation: 3, gap: 14,
   },
-  changeLanguageBtn: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
-    borderRadius: 14,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    minHeight: 48,
+  roleIcon: {
+    width: 42, height: 42, borderRadius: 10, backgroundColor: "#FF8F1F",
+    alignItems: "center", justifyContent: "center",
   },
-  changeLanguageLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  changeLanguageText: {
-    color: "#374151",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  headline: {
-    fontSize: 36,
-    fontWeight: "900",
-    color: "#fff",
-    lineHeight: 44,
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 20,
-    color: "rgba(255,255,255,0.85)",
-    letterSpacing: 0.3,
-  },
-
-  sheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 40,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  sheetPrompt: {
-    fontSize: 14,
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-
-  cardCustomer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#ff8b25",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: "#FFF8F4",
-  },
-  cardPartner: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#1A1A1A",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: "#F7F7F7",
-  },
-  cardAdmin: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#0F172A",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: "#EEF2FF",
-  },
-
-  cardIconWrap: {
-    marginRight: 14,
-  },
-  cardIconGrad: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardIconDark: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: "#888",
-  },
-  cardArrow: {
-    fontSize: 22,
-    color: "#ff8b25",
-    fontWeight: "300",
-  },
-
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#EBEBEB",
-  },
-  dividerText: {
-    fontSize: 12,
-    color: "#AAA",
-    marginHorizontal: 12,
-  },
-
+  roleLabel: { fontSize: 16, fontWeight: "500", fontFamily: "Montserrat_500Medium", color: "#000" },
+  dividerRow: { flexDirection: "row", alignItems: "center", width: "100%", marginVertical: 12 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#E8E8E8" },
+  dividerText: { fontSize: 16, fontWeight: "500", fontFamily: "Montserrat_500Medium", color: "#ABABAB", marginHorizontal: 12 },
   registerBtn: {
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FF8F1F", borderRadius: 10, height: 58, width: "100%",
+    alignItems: "center", justifyContent: "center", marginBottom: 16,
   },
-  registerBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1A1A1A",
+  registerText: { fontSize: 20, fontWeight: "400", fontFamily: "Montserrat_400Regular", color: "#FFFFFF" },
+  langBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    backgroundColor: "#FFFFFF", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24, gap: 8,
   },
+  langText: { fontSize: 16, fontWeight: "500", fontFamily: "Montserrat_500Medium", color: "#000" },
 });

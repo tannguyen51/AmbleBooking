@@ -164,7 +164,7 @@ export default function RewardsScreen() {
       <SafeAreaView style={s.container} edges={["left", "right"]}>
         <View style={[s.headerWrap, { paddingTop: 12 + insets.top }]}>
           <View style={s.headerRow}>
-            <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+            <TouchableOpacity style={s.backBtn} onPress={() => router.push("/(tabs)/profile")}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
             <Text style={s.headerTitle}>{t("rewards.title")}</Text>
@@ -194,7 +194,7 @@ export default function RewardsScreen() {
       >
         <View style={[s.headerWrap, { paddingTop: 12 + insets.top }]}>
           <View style={s.headerRow}>
-            <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+            <TouchableOpacity style={s.backBtn} onPress={() => router.push("/(tabs)/profile")}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
             <Text style={s.headerTitle}>{t("rewards.title")}</Text>

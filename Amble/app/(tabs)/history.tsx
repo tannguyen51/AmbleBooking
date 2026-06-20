@@ -1,4 +1,4 @@
-﻿﻿﻿import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -23,7 +23,8 @@ import { bookingAPI } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { useTranslation } from "../../i18n/useTranslation";
 
-const PRIMARY = "#FF6B35";
+const PRIMARY = "#FF8F1F";
+const GRAD: [string, string] = ["#FFD109", "#FF8F1F"];
 
 type Tab = "active" | "completed";
 
@@ -431,13 +432,26 @@ export default function BookingHistoryScreen() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: "#FFF3BE" }}>
+      <LinearGradient
+        colors={["#FFFFFF", "#FFFFFF", "rgba(255,255,255,0)"]}
+        locations={[0, 0.5, 1]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: "70%" }}
+        pointerEvents="none"
+      />
     <SafeAreaView style={s.container} edges={["left", "right"]}>
       <View style={[s.header, { paddingTop: 12 + insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
+          <Ionicons name="arrow-back" size={24} color="#FF8F1F" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{t("history.title")}</Text>
+        <Text style={s.headerTitle}>Lịch sử đặt bàn</Text>
         <View style={{ width: 40 }} />
+      </View>
+
+      {/* Search bar — Figma: 368×37, r=13, white */}
+      <View style={s.searchBar}>
+        <Ionicons name="search" size={18} color="#A4A4A4" />
+        <TextInput style={s.searchInput} placeholder="Tìm kiếm bàn" placeholderTextColor="#A4A4A4" />
       </View>
 
       <View style={s.tabBar}>
@@ -457,7 +471,6 @@ export default function BookingHistoryScreen() {
                 {tab.label}
                 {count > 0 ? ` (${count})` : ""}
               </Text>
-              {active && <View style={s.tabIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -585,54 +598,62 @@ export default function BookingHistoryScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9FAFB" },
+  container: { flex: 1, backgroundColor: "transparent" },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 14,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    paddingBottom: 12,
+    backgroundColor: "transparent",
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
+  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: "#1E1E1E", textAlign: "center" },
   tabBar: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderRadius: 13,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
   },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 13,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    height: 37,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#A4A4A4", padding: 0 },
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 14,
-    position: "relative",
+    paddingVertical: 8,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
-  tabActive: {},
-  tabTxt: { fontSize: 13, fontWeight: "600", color: "#9CA3AF" },
-  tabTxtActive: { color: PRIMARY, fontWeight: "700" },
-  tabIndicator: {
-    position: "absolute",
-    bottom: 0,
-    left: "20%",
-    right: "20%",
-    height: 2,
-    backgroundColor: PRIMARY,
-    borderRadius: 1,
-  },
+  tabActive: { borderColor: "#FF8F1F" },
+  tabTxt: { fontSize: 14, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#1E1E1E" },
+  tabTxtActive: { color: "#FF8F1F", fontFamily: "Montserrat_700Bold", fontWeight: "700" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   emptyTxt: { fontSize: 16, color: "#9CA3AF", fontWeight: "600" },
   exploreBtn: { borderRadius: 12, overflow: "hidden", marginTop: 8 },
@@ -643,68 +664,64 @@ const s = StyleSheet.create({
 const c = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3},
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
     elevation: 3,
   },
-  cardImg: { width: "100%", height: 120 },
-  cardBody: { padding: 14 },
+  cardImg: { width: "100%", height: 110 },
+  cardBody: { padding: 12 },
   cardHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   restName: {
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#1A1A1A",
     flex: 1,
     marginRight: 8,
   },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  statusTxt: { fontSize: 11, fontWeight: "700" },
+  statusTxt: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500" },
   countdownRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
+    gap: 4,
+    marginBottom: 6,
     alignSelf: "flex-start",
     backgroundColor: "#FFF7ED",
     borderWidth: 1,
     borderColor: "#FDBA74",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 999,
   },
-  countdownText: {
-    fontSize: 12,
-    color: "#B45309",
-    fontWeight: "700",
-  },
+  countdownText: { fontSize: 11, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#B45309" },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 5,
+    gap: 4,
+    marginBottom: 3,
   },
-  detailTxt: { fontSize: 13, color: "#6B7280" },
+  detailTxt: { fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280" },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
   },
-  depositLabel: { fontSize: 11, color: "#9CA3AF" },
-  depositValue: { fontSize: 16, fontWeight: "800", color: PRIMARY },
-  bookingNum: { fontSize: 12, fontWeight: "700", color: "#9CA3AF" },
+  depositLabel: { fontSize: 10, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#9CA3AF" },
+  depositValue: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: PRIMARY },
+  bookingNum: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#9CA3AF" },
   cancelBtn: {
     marginTop: 10,
     paddingVertical: 10,

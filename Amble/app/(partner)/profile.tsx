@@ -1,28 +1,26 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
-  AppState,
-  AppStateStatus,
   Image,
-  Linking,
   SafeAreaView,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
-import { partnerDashboardAPI, paymentAPI, uploadAPI } from "../../services/api";
-import { hasPartnerPermission } from "../../constants/partnerPermissions";
-import { useTranslation } from "../../i18n/useTranslation";
+import { LinearGradient } from "expo-linear-gradient";
+import { partnerAuthAPI, partnerDashboardAPI, paymentAPI } from "../../services/api";
 
 type OpenDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -47,8 +45,6 @@ const CUISINE_OPTIONS = [
   "Cafe",
 ];
 
-const FALLBACK_COVER =
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
 
 type SubscriptionPlan = "pro" | "premium";
 
@@ -60,109 +56,32 @@ const SUBSCRIPTION_PLANS: Array<{
   setupFee: string;
   tone: "base" | "premium";
 }> = [
-  {
-    key: "pro",
-    title: "Gói cơ bản (Pro)",
-    subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn",
-    monthlyFee: "Miễn phí tháng",
-    setupFee: "Phí khởi tạo 799k/tháng",
-    tone: "base",
-  },
-  {
-    key: "premium",
-    title: "Gói thông dụng (Premium)",
-    subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ",
-    monthlyFee: "699k/tháng",
-    setupFee: "Phí khởi tạo 599k/tháng",
-    tone: "premium",
-  },
+  { key: "pro", title: "Gói cơ bản (Pro)", subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn", monthlyFee: "Miễn phí tháng", setupFee: "Phí khởi tạo 799k/tháng", tone: "base" },
+  { key: "premium", title: "Gói thông dụng (Premium)", subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ", monthlyFee: "699k/tháng", setupFee: "Phí khởi tạo 599k/tháng", tone: "premium" },
 ];
 
 const PLAN_BENEFITS = [
-  {
-    feature: "Quản lý đặt bàn trực tuyến",
-    core: "Có",
-    premium: "Có",
-  },
-  {
-    feature: "Quản lý thông tin khách đặt bàn",
-    core: "Có",
-    premium: "Có",
-  },
-  {
-    feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống",
-    core: "Có",
-    premium: "Có",
-  },
-  {
-    feature: "Dashboard vận hành",
-    core: "Cơ bản",
-    premium: "Nâng cao",
-  },
-  {
-    feature: "Hiển thị trong danh sách nhà hàng trên Amble",
-    core: "Có",
-    premium: "Có",
-  },
-  {
-    feature: "Ưu tiên hiển thị trong khung đề xuất",
-    core: "—",
-    premium: "Có",
-  },
-  {
-    feature: "Đưa nhà hàng lên mục xu hướng / nổi bật",
-    core: "—",
-    premium: "Có",
-  },
- 
-  
-  
-
-  
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
+  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", premium: "Có" },
+  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
+  { feature: "Hiển thị trong danh sách nhà hàng trên Amble", core: "Có", premium: "Có" },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
+  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", premium: "Có" },
 ];
 
+const FALLBACK_COVER =
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
+
 export default function PartnerProfileScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
-  const { logout, partner, loadPartner } = usePartnerAuthStore();
-  const canManageStaff = hasPartnerPermission(partner?.role, "staff:view");
+  const { logout, partner } = usePartnerAuthStore();
+  const canManageStaff = partner?.role === "owner";
 
   const [pendingCount, setPendingCount] = useState(0);
-  const [showAccountCenter, setShowAccountCenter] = useState(false);
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showAccountCenterMenu, setShowAccountCenterMenu] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(
-    partner?.subscriptionPackage === "premium" ? "premium" : "pro",
-  );
-
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Upgrade payment state
-  const [isUpgradePaying, setIsUpgradePaying] = useState(false);
-  const [upgradePaymentStatus, setUpgradePaymentStatus] = useState<"idle" | "paying" | "checking" | "success" | "failed">("idle");
-  const upgradeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const getExpiryText = (expiry: string | null | undefined): string | null => {
-    if (!expiry) return null;
-    const now = Date.now();
-    const end = new Date(expiry).getTime();
-    const diff = end - now;
-    if (diff <= 0) return "Đã hết hạn";
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days > 0) return `Còn ${days} ngày`;
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    if (hours > 0) return `Còn ${hours} giờ`;
-    return "Sắp hết hạn";
-  };
-
-  const PRIMARY = "#FF6B35";
+  const [isSaving, setIsSaving] = useState(true);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
 
   const [coverImage, setCoverImage] = useState("");
   const [name, setName] = useState("");
@@ -173,6 +92,8 @@ export default function PartnerProfileScreen() {
   const [introduction, setIntroduction] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [hasParking, setHasParking] = useState(false);
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
   const [openTime, setOpenTime] = useState("08:00");
   const [closeTime, setCloseTime] = useState("22:00");
 
@@ -182,18 +103,29 @@ export default function PartnerProfileScreen() {
   const [tiktok, setTiktok] = useState("");
   const [website, setWebsite] = useState("");
 
-  const getCuisineDisplay = (cuisineValue: string): string => {
-    const cuisineMap: Record<string, string> = {
-      "Việt Nam": t("partner.profile.cuisineVietnamese"),
-      "Nhật Bản": t("partner.profile.cuisineJapanese"),
-      "Hàn Quốc": t("partner.profile.cuisineKorean"),
-      "Âu": t("partner.profile.cuisineWestern"),
-      "Fusion": t("partner.profile.cuisineFusion"),
-      "BBQ": t("partner.profile.cuisineBBQ"),
-      "Hải sản": t("partner.profile.cuisineSeafood"),
-      "Cafe": t("partner.profile.cuisineCafe"),
-    };
-    return cuisineMap[cuisineValue] || cuisineValue;
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [pwVisible, setPwVisible] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
+  const currentPlan = partner?.subscriptionPackage === "premium" ? "premium" : "pro";
+
+  const getExpiryText = (expiry: string | null | undefined): string | null => {
+    if (!expiry) return null;
+    const now = Date.now();
+    const end = new Date(expiry).getTime();
+    const diff = end - now;
+    if (diff <= 0) return "Đã hết hạn";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return "Còn " + days + " ngày";
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (hours > 0) return "Còn " + hours + " giờ";
+    return "Sắp hết hạn";
   };
 
   useEffect(() => {
@@ -216,6 +148,16 @@ export default function PartnerProfileScreen() {
         setIntroduction(profile.introduction || "");
         setCuisine(profile.cuisine || "");
         setHasParking(!!profile.hasParking);
+        setPriceMin(
+          profile.priceMin !== undefined && profile.priceMin !== null
+            ? String(profile.priceMin)
+            : "",
+        );
+        setPriceMax(
+          profile.priceMax !== undefined && profile.priceMax !== null
+            ? String(profile.priceMax)
+            : "",
+        );
         setOpenTime(profile.openTime || "08:00");
         setCloseTime(profile.closeTime || "22:00");
 
@@ -243,7 +185,7 @@ export default function PartnerProfileScreen() {
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t("common.notification"), "Vui lòng cấp quyền thư viện ảnh.");
+      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền thư viện ảnh.");
       return;
     }
 
@@ -261,7 +203,7 @@ export default function PartnerProfileScreen() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t("common.notification"), "Vui lòng cấp quyền camera.");
+      Alert.alert("Quyền truy cập", "Vui lòng cấp quyền camera.");
       return;
     }
 
@@ -277,38 +219,31 @@ export default function PartnerProfileScreen() {
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
-      Alert.alert(t("common.notification"), t("partner.profile.nameRequired"));
+      Alert.alert("Thiếu thông tin", "Tên nhà hàng là bắt buộc.");
+      return;
+    }
+
+    const parsedMin = priceMin.trim() ? Number(priceMin) : 0;
+    const parsedMax = priceMax.trim() ? Number(priceMax) : 0;
+
+    if (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax)) {
+      Alert.alert("Lỗi", "Giá tối thiểu và tối đa phải là số.");
+      return;
+    }
+
+    if (parsedMin > parsedMax) {
+      Alert.alert("Lỗi", "Giá tối thiểu phải nhỏ hơn hoặc bằng giá tối đa.");
       return;
     }
 
     try {
       setIsSaving(true);
-
-      // Upload ảnh nếu là local URI
-      let finalCover = coverImage;
-      if (coverImage && (coverImage.startsWith("file://") || coverImage.startsWith("content://"))) {
-        try {
-          const base64 = await fetch(coverImage)
-            .then(r => r.blob())
-            .then(b => new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.readAsDataURL(b);
-            }));
-          const uploadRes = await uploadAPI.uploadImage(base64, "restaurants");
-          if (uploadRes.data?.url) finalCover = uploadRes.data.url;
-        } catch {}
-      }
-      // Nếu URL tương đối (từ server), thêm base URL
-      if (finalCover && finalCover.startsWith("/uploads/")) {
-        finalCover = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app") + finalCover;
-      }
       const sortedDays = DAY_OPTIONS.map((d) => d.key).filter((d) =>
         openDays.includes(d),
       );
 
       await partnerDashboardAPI.updateRestaurantProfile({
-        coverImage: finalCover,
+        coverImage,
         name,
         address,
         city,
@@ -317,6 +252,8 @@ export default function PartnerProfileScreen() {
         introduction,
         cuisine,
         hasParking,
+        priceMin: parsedMin,
+        priceMax: parsedMax,
         openTime,
         closeTime,
         openDays: sortedDays,
@@ -326,162 +263,21 @@ export default function PartnerProfileScreen() {
         website,
       });
 
-      Alert.alert(t("common.success"), t("partner.profile.updateSuccess"));
+      Alert.alert("Thành công", "Đã cập nhật hồ sơ nhà hàng.");
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Không thể cập nhật hồ sơ nhà hàng";
-      Alert.alert(t("common.error"), message);
+      Alert.alert("Lỗi", message);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleChangePassword = async () => {
-    if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert(t("common.notification"), "Vui lòng điền đầy đủ thông tin.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert(t("common.error"), "Mật khẩu mới không khớp.");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await partnerAuthAPI.changePassword({
-        currentPassword: oldPassword,
-        newPassword,
-      });
-      Alert.alert(t("common.success"), t("partner.profile.changePasswordSuccess"));
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setShowChangePassword(false);
-    } catch (error: any) {
-      const message = error?.response?.data?.message || "Không thể đổi mật khẩu";
-      Alert.alert(t("common.error"), message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const currentPlan =
-    partner?.subscriptionPackage === "premium" ? "premium" : "pro";
-
-  const openSubscription = () => {
-    setSelectedPlan(currentPlan);
-    setUpgradePaymentStatus("idle");
-    setShowSubscriptionModal(true);
-  };
-
-  const handlePaySubscription = async () => {
-    const plan = SUBSCRIPTION_PLANS.find((item) => item.key === selectedPlan);
-    if (!plan) return;
-
-    if (selectedPlan === currentPlan) {
-      Alert.alert(t("common.notification"), "Nhà hàng đang sử dụng gói này.");
-      return;
-    }
-
-    if (!partner?._id) return;
-
-    try {
-      setIsUpgradePaying(true);
-      setUpgradePaymentStatus("paying");
-      setShowSubscriptionModal(false);
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
-      const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
-      const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
-
-      const res = await paymentAPI.createPartnerUpgradePayosPayment({
-        partnerId: partner._id,
-        fromPackage: currentPlan,
-        toPackage: "premium",
-        returnUrl,
-        cancelUrl,
-      });
-
-      const checkoutUrl = res.data?.checkoutUrl;
-      if (checkoutUrl) {
-        // Reopen modal with paying status so user sees "Đang chờ thanh toán"
-        setShowSubscriptionModal(true);
-        Linking.openURL(checkoutUrl).catch(() => {});
-      }
-    } catch (error: any) {
-      setUpgradePaymentStatus("failed");
-      setShowSubscriptionModal(true);
-      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể tạo thanh toán nâng cấp.");
-    } finally {
-      setIsUpgradePaying(false);
-    }
-  };
-
-  const checkUpgradePayment = useCallback(async () => {
-    if (!partner?._id) return;
-    try {
-      const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
-      const pkg = res.data?.subscriptionPackage;
-      const payType = res.data?.paymentType;
-      if (pkg === "premium" || payType === "upgrade") {
-        setUpgradePaymentStatus("success");
-        if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
-        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
-        await usePartnerAuthStore.getState().loadPartner();
-      }
-    } catch {
-      // Sẽ retry ở lần poll tiếp theo
-    }
-  }, [partner?._id]);
-
-  // Poll khi user quay lại từ PayOS
-  useEffect(() => {
-    if (upgradePaymentStatus !== "paying") return;
-
-    const onAppStateChange = (nextState: AppStateStatus) => {
-      if (nextState === "active") {
-        setUpgradePaymentStatus("checking");
-        checkUpgradePayment();
-      }
-    };
-
-    const sub = AppState.addEventListener("change", onAppStateChange);
-    upgradeTimerRef.current = setInterval(checkUpgradePayment, 5000);
-
-    // Timeout sau 3 phút — nếu vẫn chưa xác nhận thì cho thử lại
-    pollTimeoutRef.current = setTimeout(() => {
-      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
-      setUpgradePaymentStatus("failed");
-    }, 3 * 60 * 1000);
-
-    return () => {
-      sub.remove();
-      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
-      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
-    };
-  }, [upgradePaymentStatus, checkUpgradePayment]);
-
-  useEffect(() => {
-    return () => {
-      if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
-    };
-  }, []);
-  const openVoucher = () => {
-    Alert.alert(t("partner.profile.voucher"), t("partner.profile.voucherComingSoon"));
-  };
-  const openTerms = () => {
-    router.push("/partner-terms");
-  };
-  const openSupport = () => {
-    Alert.alert(t("partner.profile.support"), t("partner.profile.supportInfo"));
   };
 
   const handleLogout = () => {
-    Alert.alert(t("partner.profile.logout"), t("partner.profile.logoutConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
+    Alert.alert("Đăng xuất", "Bạn muốn đăng xuất tài khoản đối tác?", [
+      { text: "Hủy", style: "cancel" },
       {
-        text: t("partner.profile.logout"),
+        text: "Đăng xuất",
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -491,733 +287,313 @@ export default function PartnerProfileScreen() {
     ]);
   };
 
+  const openVoucher = () => {
+    Alert.alert(
+      "Voucher nhà hàng",
+      "Tính năng quản lý voucher sẽ được bật trong bản cập nhật tiếp theo.",
+    );
+  };
+
+  const openSubscription = () => {
+    setSelectedPlan(partner?.subscriptionPackage === "premium" ? "premium" : "pro");
+    setShowSubscriptionModal(true);
+  };
+
+  const openTerms = () => {
+    router.push("/partner-terms");
+  };
+
+  const openSupport = () => {
+    Alert.alert("Hỗ trợ", "Email: munchmap.vn@gmail.com");
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword.trim() || !newPassword.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập đủ mật khẩu hiện tại và mới.");
+      return;
+    }
+
+    if (newPassword.trim().length < 6) {
+      Alert.alert("Mật khẩu yếu", "Mật khẩu mới cần ít nhất 6 ký tự.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Mật khẩu không khớp", "Xác nhận mật khẩu chưa chính xác.");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      await partnerAuthAPI.changePassword({
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim(),
+      });
+      Alert.alert("Thành công", "Đổi mật khẩu thành công.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Không thể đổi mật khẩu.";
+      Alert.alert("Lỗi", message);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={["#FFFFFF", "rgba(255,255,255,0)"]}
+        locations={[0.3, 1]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: "100%" }}
+        pointerEvents="none"
+      />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentInner}
       >
-        <Text style={styles.title}>{t("partner.profile.title")}</Text>
-
-        <TouchableOpacity style={[styles.card, styles.accountCenterCard]} onPress={() => setShowAccountCenterMenu(!showAccountCenterMenu)}>
-          <View style={[styles.menuItem, styles.accountCenterMenuItem]}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="settings-outline" size={18} color="#374151" />
-              <Text style={[styles.menuItemText, styles.accountCenterMenuText]}>{t("partner.profile.accountCenter")}</Text>
-            </View>
-            <Ionicons name={showAccountCenterMenu ? "chevron-up" : "chevron-down"} size={16} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-
-
-        {canManageStaff && (
-          <>
-            <TouchableOpacity
-              style={styles.teamEntryBtn}
-              onPress={() => router.push("/partner-team")}
-            >
-              <Ionicons name="people-outline" size={16} color="#FF6B35" />
-              <Text style={styles.teamEntryText}>{t("partner.profile.staffManagement")}</Text>
-              <Ionicons name="chevron-forward-outline" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
-
-
-          </>
-        )}
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("partner.profile.coverImage")}</Text>
-          <Image
-            source={{ uri: coverImage || FALLBACK_COVER }}
-            style={styles.coverImage}
-          />
-          <View style={styles.coverActions}>
-            <TouchableOpacity style={styles.coverBtn} onPress={takePhoto}>
-              <Ionicons name="camera-outline" size={16} color="#374151" />
-              <Text style={styles.coverBtnText}>{t("partner.tables.camera")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.coverBtn} onPress={pickFromLibrary}>
-              <Ionicons name="images-outline" size={16} color="#374151" />
-              <Text style={styles.coverBtnText}>{t("partner.tables.library")}</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Header */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 20, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }} numberOfLines={1}>{partner?.restaurantName || "Nhà hàng của bạn"}</Text>
         </View>
 
+        {/* Cover image */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("partner.profile.services")}</Text>
+          <Image source={{ uri: coverImage || FALLBACK_COVER }} style={styles.coverImage} />
+        </View>
 
-          <View
-            style={[
-              styles.subscriptionSummary,
-              currentPlan === "premium" && styles.subscriptionSummaryPremium,
-            ]}
-          >
-            <View style={styles.subscriptionSummaryLeft}>
-              <View
-                style={[
-                  styles.subscriptionIcon,
-                  currentPlan === "premium" && styles.subscriptionIconPremium,
-                ]}
-              >
-                <Ionicons
-                  name={currentPlan === "premium" ? "sparkles-outline" : "diamond-outline"}
-                  size={18}
-                  color={currentPlan === "premium" ? "#7C3AED" : "#FF6B35"}
-                />
+                {/* Current subscription */}
+        <View style={[styles.card, { paddingVertical: 10, backgroundColor: "#F5F3FF" }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: currentPlan === "premium" ? "#F3E8FF" : "#FFF3ED", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name={currentPlan === "premium" ? "sparkles-outline" : "diamond-outline"} size={18} color={currentPlan === "premium" ? "#7C3AED" : "#FF8F1F"} />
               </View>
-              <View style={styles.subscriptionSummaryText}>
-                <Text style={styles.subscriptionSummaryTitle}>
-                  {currentPlan === "premium"
-                    ? "Gói thông dụng (Premium)"
-                    : "Gói cơ bản (Pro)"}
-                </Text>
-                <Text style={styles.subscriptionSummarySub}>
-                  {currentPlan === "premium"
-                    ? "Đang được ưu tiên hiển thị trên trang chủ"
-                    : "Miễn phí tháng, có thể nâng cấp bất cứ lúc nào"}
+              <View>
+                <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887" }}>Gói đang sử dụng</Text>
+                <Text style={{ fontSize: 15, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020", marginTop: 2 }}>
+                  {currentPlan === "premium" ? "Gói Premium" : "Gói Pro"}
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text
-                style={[
-                  styles.subscriptionBadge,
-                  currentPlan === "premium" && styles.subscriptionBadgePremium,
-                ]}
-              >
-                {currentPlan === "premium" ? "Premium" : "Pro"}
-              </Text>
-              {currentPlan === "premium" && getExpiryText(partner?.subscriptionExpiry) ? (
-                <Text style={styles.expiryLabel}>{getExpiryText(partner?.subscriptionExpiry)}</Text>
-              ) : null}
-            </View>
+            {currentPlan === "premium" && getExpiryText(partner?.subscriptionExpiry) ? (
+              <View style={{ backgroundColor: "#FFF3ED", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F" }}>{getExpiryText(partner?.subscriptionExpiry)}</Text>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: "#E8F5E9", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#16A34A" }}>Miễn phí</Text>
+              </View>
+            )}
           </View>
-
-          <TouchableOpacity style={styles.menuItem} onPress={openSubscription}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="diamond-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>Chọn gói & thanh toán</Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: currentPlan === "premium" ? "#B45309" : "#059669" }}>
-                {currentPlan === "premium" ? "Premium" : "Pro"}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={openVoucher}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="ticket-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>{t("partner.profile.voucher")}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={openTerms}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="document-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>{t("partner.profile.terms")}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={openSupport}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="help-buoy-outline" size={18} color="#374151" />
-              <Text style={styles.menuItemText}>{t("partner.profile.support")}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
+          <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887", marginTop: 6 }}>
+            {currentPlan === "premium" ? "Ưu tiên hiển thị, đề xuất và nổi bật trên trang chủ" : "Quản lý đặt bàn cơ bản, miễn phí tháng đầu"}
+          </Text>
         </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-          <Text style={styles.logoutText}>{t("partner.profile.logout")}</Text>
-        </TouchableOpacity>
+{/* Menu grid */}
+        <View style={[styles.card, { marginTop: 30 }]}>
+          <Text style={styles.sectionTitle}>Dịch vụ & Tiện ích</Text>
+          <View style={styles.menuGrid}>
+            {[
+              { icon: "person-outline", label: "Hồ sơ", onPress: () => setShowProfileDetails(true) },
+              { icon: "people-outline", label: "Nhân viên", onPress: () => router.push("/partner-team") },
+              { icon: "diamond-outline", label: "Gói thanh toán", onPress: openSubscription },
+              { icon: "pricetag-outline", label: "Voucher", onPress: openVoucher },
+              { icon: "shield-outline", label: "Điều khoản", onPress: openTerms },
+              { icon: "help-outline", label: "Hỗ trợ", onPress: openSupport },
+              { icon: "exit-outline", label: "Đăng xuất", onPress: handleLogout },
+            ].map((item, i) => (
+              <TouchableOpacity key={i} style={[styles.gridItem, i === 6 && { width: "100%", justifyContent: "center" }]} onPress={item.onPress}>
+                <View style={[styles.gridIcon, i === 6 && { backgroundColor: "transparent" }]}>
+                  <Ionicons name={item.icon as any} size={i === 6 ? 22 : 20} color={i === 6 ? "#FF8F1F" : "#FFF"} />
+                </View>
+                <Text style={[styles.gridLabel, i === 6 && { color: "#FF8F1F", fontFamily: "Montserrat_700Bold", fontWeight: "700" }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
         {isLoading && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color="#FF6B35" />
-            <Text style={styles.loadingText}>{t("partner.profile.syncing")}</Text>
+            <ActivityIndicator size="small" color="#FF8F1F" />
+            <Text style={styles.loadingText}>Đang đồng bộ dữ liệu...</Text>
           </View>
         )}
       </ScrollView>
-      <PartnerBottomNav pendingCount={pendingCount} />
-
-      <Modal
-        visible={showAccountCenter}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowAccountCenter(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("partner.profile.accountCenter")}</Text>
-              <TouchableOpacity onPress={() => setShowAccountCenter(false)}>
-                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+      
+      {/* Edit Profile Modal */}
+      <Modal visible={showProfileDetails} transparent animationType="slide" onRequestClose={() => setShowProfileDetails(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => setShowProfileDetails(false)}>
+                <Ionicons name="close" size={24} color="#202020" />
               </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setShowAccountCenter(false);
-              }}
-            >
-              <Ionicons name="document-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>{t("partner.profile.title")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setShowAccountCenter(false);
-                Alert.alert(t("partner.profile.changePasswordTitle"), t("partner.profile.changePasswordComingSoon"));
-              }}
-            >
-              <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setShowAccountCenter(false)}
-            >
-              <Text style={styles.modalCloseBtnText}>{t("common.close")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showEditProfile}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowEditProfile(false)}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-            <View style={styles.modalHeader2}>
-              <TouchableOpacity onPress={() => setShowEditProfile(false)}>
-                <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
-              </TouchableOpacity>
-              <Text style={styles.modalTitle2}>{t("partner.profile.title")}</Text>
+              <Text style={{ fontSize: 18, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>Chỉnh sửa hồ sơ</Text>
               <View style={{ width: 24 }} />
             </View>
 
-            <Image
-              source={{ uri: coverImage || FALLBACK_COVER }}
-              style={styles.coverImage}
-            />
-            <View style={styles.coverActions}>
-              <TouchableOpacity style={styles.coverBtn} onPress={takePhoto}>
-                <Ionicons name="camera-outline" size={16} color="#374151" />
-                <Text style={styles.coverBtnText}>{t("partner.tables.camera")}</Text>
+            <Image source={{ uri: coverImage || FALLBACK_COVER }} style={{ width: "100%", height: 180, borderRadius: 12, backgroundColor: "#F3F4F6", marginBottom: 12 }} />
+            
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+              <TouchableOpacity onPress={takePhoto} style={{ flex: 1, backgroundColor: "#FF8F1F", borderRadius: 10, paddingVertical: 10, alignItems: "center" }}>
+                <Text style={{ color: "#FFF", fontFamily: "Montserrat_500Medium", fontWeight: "500", fontSize: 13 }}>Chụp ảnh</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.coverBtn} onPress={pickFromLibrary}>
-                <Ionicons name="images-outline" size={16} color="#374151" />
-                <Text style={styles.coverBtnText}>{t("partner.tables.library")}</Text>
+              <TouchableOpacity onPress={pickFromLibrary} style={{ flex: 1, backgroundColor: "#F3F4F6", borderRadius: 10, paddingVertical: 10, alignItems: "center" }}>
+                <Text style={{ color: "#202020", fontFamily: "Montserrat_500Medium", fontWeight: "500", fontSize: 13 }}>Thư viện</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>{t("partner.profile.nameLabel")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.namePlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={name}
-              onChangeText={setName}
-            />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Tên nhà hàng</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 12 }} value={name} onChangeText={setName} placeholder="Nhập tên nhà hàng" placeholderTextColor="#9CA3AF" />
 
-            <Text style={styles.inputLabel}>{t("partner.profile.addressLabel")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.addressPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={address}
-              onChangeText={setAddress}
-            />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Địa chỉ</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 12 }} value={address} onChangeText={setAddress} placeholder="Nhập địa chỉ" placeholderTextColor="#9CA3AF" />
 
-            <Text style={styles.inputLabel}>{t("partner.profile.cityLabel")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.cityPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={city}
-              onChangeText={setCity}
-            />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Số điện thoại</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 12 }} value={phone} onChangeText={setPhone} placeholder="Nhập số điện thoại" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
 
-            <Text style={styles.inputLabel}>{t("partner.profile.phoneLabel")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.phonePlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={phone}
-              onChangeText={setPhone}
-            />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Mô tả</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 16, minHeight: 80, textAlignVertical: "top" }} value={description} onChangeText={setDescription} placeholder="Mô tả nhà hàng" placeholderTextColor="#9CA3AF" multiline />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Giới thiệu</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 16, minHeight: 60, textAlignVertical: "top" }} value={introduction} onChangeText={setIntroduction} placeholder="Lời giới thiệu" placeholderTextColor="#9CA3AF" multiline />
 
-            <Text style={styles.inputLabel}>{t("partner.profile.descriptionLabel")}</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder={t("partner.profile.descriptionPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-            />
-
-            <Text style={styles.inputLabel}>{t("partner.profile.introLabel")}</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder={t("partner.profile.introPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={introduction}
-              onChangeText={setIntroduction}
-              multiline
-            />
-
-            <Text style={styles.sectionTitle}>{t("partner.profile.cuisine")}</Text>
-            <View style={styles.cuisineWrap}>
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Loại ẩm thực</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
               {CUISINE_OPTIONS.map((item) => {
                 const active = cuisine === item;
                 return (
-                  <TouchableOpacity
-                    key={item}
-                    style={[
-                      styles.cuisineChip,
-                      active && styles.cuisineChipActive,
-                    ]}
-                    onPress={() => setCuisine(item)}
-                  >
-                    <Text
-                      style={[
-                        styles.cuisineChipText,
-                        active && styles.cuisineChipTextActive,
-                      ]}
-                    >
-                      {getCuisineDisplay(item)}
-                    </Text>
+                  <TouchableOpacity key={item} onPress={() => setCuisine(item)} style={{ borderRadius: 20, borderWidth: 1, borderColor: active ? "#FF8F1F" : "#E5E7EB", paddingHorizontal: 12, paddingVertical: 6, backgroundColor: active ? "#FFF3ED" : "#FFFFFF" }}>
+                    <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: active ? "#FF8F1F" : "#6B7280" }}>{item}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={styles.sectionTitle}>{t("partner.profile.parking")}</Text>
-            <View style={styles.parkingRow}>
-              <Text style={styles.parkingLabel}>{t("partner.profile.parking")}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.parkingToggleTrack,
-                  hasParking
-                    ? styles.parkingToggleTrackOn
-                    : styles.parkingToggleTrackOff,
-                ]}
-                onPress={() => setHasParking((v) => !v)}
-                activeOpacity={0.85}
-              >
-                <View
-                  style={[
-                    styles.parkingToggleThumb,
-                    hasParking
-                      ? styles.parkingToggleThumbOn
-                      : styles.parkingToggleThumbOff,
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.sectionTitle}>{t("partner.profile.openTime")}</Text>
-            <View style={styles.timeRow}>
-              <View style={styles.timeCol}>
-                <Text style={styles.inputLabel}>{t("partner.profile.openTime")}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="08:00"
-                  placeholderTextColor="#9CA3AF"
-                  value={openTime}
-                  onChangeText={setOpenTime}
-                />
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Giờ mở cửa</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Mở cửa</Text>
+                <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 10, fontSize: 14, color: "#202020" }} value={openTime} onChangeText={setOpenTime} placeholder="08:00" placeholderTextColor="#9CA3AF" />
               </View>
-              <View style={styles.timeCol}>
-                <Text style={styles.inputLabel}>{t("partner.profile.closeTime")}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="22:00"
-                  placeholderTextColor="#9CA3AF"
-                  value={closeTime}
-                  onChangeText={setCloseTime}
-                />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Đóng cửa</Text>
+                <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 10, fontSize: 14, color: "#202020" }} value={closeTime} onChangeText={setCloseTime} placeholder="22:00" placeholderTextColor="#9CA3AF" />
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>{t("partner.profile.openDays")}</Text>
-            <View style={styles.daysRow}>
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Ngày mở cửa</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
               {DAY_OPTIONS.map((day) => {
                 const active = openDays.includes(day.key);
                 return (
-                  <TouchableOpacity
-                    key={day.key}
-                    style={[styles.dayChip, active && styles.dayChipActive]}
-                    onPress={() => toggleOpenDay(day.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.dayChipText,
-                        active && styles.dayChipTextActive,
-                      ]}
-                    >
-                      {t(`partner.dashboard.${day.key}` as any)}
-                    </Text>
+                  <TouchableOpacity key={day.key} onPress={() => toggleOpenDay(day.key)} style={{ width: 40, height: 36, borderRadius: 18, borderWidth: 1, borderColor: active ? "#FF8F1F" : "#E5E7EB", alignItems: "center", justifyContent: "center", backgroundColor: active ? "#FF8F1F" : "#FFFFFF" }}>
+                    <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: active ? "#FFFFFF" : "#6B7280" }}>{day.label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={styles.sectionTitle}>{t("partner.profile.social")}</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 }}>Mạng xã hội</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 10 }} value={facebook} onChangeText={setFacebook} placeholder="Facebook URL" placeholderTextColor="#9CA3AF" autoCapitalize="none" />
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 10 }} value={instagram} onChangeText={setInstagram} placeholder="Instagram URL" placeholderTextColor="#9CA3AF" autoCapitalize="none" />
+            <TextInput style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 14, color: "#202020", marginBottom: 12 }} value={website} onChangeText={setWebsite} placeholder="Website URL" placeholderTextColor="#9CA3AF" autoCapitalize="none" />
 
-            <Text style={styles.inputLabel}>Facebook</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.facebookPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={facebook}
-              onChangeText={setFacebook}
-              autoCapitalize="none"
-            />
 
-            <Text style={styles.inputLabel}>Instagram</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.instagramPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={instagram}
-              onChangeText={setInstagram}
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.inputLabel}>TikTok</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.tiktokPlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={tiktok}
-              onChangeText={setTiktok}
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.inputLabel}>Website</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.websitePlaceholder")}
-              placeholderTextColor="#9CA3AF"
-              value={website}
-              onChangeText={setWebsite}
-              autoCapitalize="none"
-            />
-
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSaveProfile}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={16} color="#fff" />
-                  <Text style={styles.saveBtnText}>{t("partner.profile.saveButton")}</Text>
-                </>
-              )}
+            <TouchableOpacity onPress={async () => { await handleSaveProfile(); setShowProfileDetails(false); }} style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: "#FFF", fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500" }}>Lưu thay đổi</Text>
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <Modal
-        visible={showAccountCenterMenu}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAccountCenterMenu(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.accountCenterModalContent]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("partner.profile.accountCenter")}</Text>
-              <TouchableOpacity onPress={() => setShowAccountCenterMenu(false)}>
-                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
-              </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setShowAccountCenterMenu(false);
-                setShowEditProfile(true);
-              }}
-            >
-              <Ionicons name="document-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>{t("partner.profile.title")}</Text>
-            </TouchableOpacity>
+      <PartnerBottomNav pendingCount={pendingCount} />
+    
 
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setShowAccountCenterMenu(false);
-                setShowChangePassword(true);
-              }}
-            >
-              <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
-              <Text style={styles.modalBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setShowAccountCenterMenu(false)}
-            >
-              <Text style={styles.modalCloseBtnText}>{t("common.close")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showChangePassword}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowChangePassword(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("partner.profile.changePasswordTitle")}</Text>
-              <TouchableOpacity onPress={() => setShowChangePassword(false)}>
-                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.inputLabel}>{t("partner.profile.currentPassword")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.currentPassword")}
-              placeholderTextColor="#9CA3AF"
-              value={oldPassword}
-              onChangeText={setOldPassword}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>{t("partner.profile.newPassword")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.newPassword")}
-              placeholderTextColor="#9CA3AF"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-
-            <Text style={styles.inputLabel}>{t("partner.profile.confirmPassword")}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t("partner.profile.confirmPassword")}
-              placeholderTextColor="#9CA3AF"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleChangePassword}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                  <Text style={styles.saveBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setShowChangePassword(false)}
-            >
-              <Text style={styles.modalCloseBtnText}>{t("common.cancel")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showSubscriptionModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSubscriptionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.subscriptionModal]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Gói đối tác</Text>
-                <Text style={styles.subscriptionModalSub}>
-                  Tháng đầu miễn phí khởi tạo cho cả 2 gói
-                </Text>
-              </View>
+      {/* Subscription Modal */}
+      <Modal visible={showSubscriptionModal} transparent animationType="slide" onRequestClose={() => setShowSubscriptionModal(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "85%" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" }}>Gói đối tác</Text>
               <TouchableOpacity onPress={() => setShowSubscriptionModal(false)}>
                 <Ionicons name="close-outline" size={24} color="#1A1A1A" />
               </TouchableOpacity>
             </View>
-
-            <ScrollView
-              style={styles.subscriptionScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.planGrid}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 10 }}>
                 {SUBSCRIPTION_PLANS.map((plan) => {
                   const active = selectedPlan === plan.key;
-                  const isCurrent = currentPlan === plan.key;
-                  const premium = plan.tone === "premium";
-
+                  const isCurrent = (partner?.subscriptionPackage || "pro") === plan.key;
                   return (
-                    <TouchableOpacity
-                      key={plan.key}
-                      activeOpacity={0.9}
-                      style={[
-                        styles.planCard,
-                        active && styles.planCardActive,
-                        premium && styles.planCardPremium,
-                        active && premium && styles.planCardPremiumActive,
-                      ]}
+                    <TouchableOpacity key={plan.key} activeOpacity={0.9}
+                      style={{
+                        borderWidth: 2,
+                        borderColor: active ? (plan.tone === "premium" ? "#7C3AED" : "#FF8F1F") : "#E8E8E8",
+                        borderRadius: 15, padding: 16,
+                        backgroundColor: active ? (plan.tone === "premium" ? "#F3E8FF" : "#FFF7ED") : "#FFFFFF"
+                      }}
                       onPress={() => setSelectedPlan(plan.key)}
                     >
-                      <View style={styles.planTopRow}>
-                        <View style={styles.planTitleWrap}>
-                          <Text style={styles.planTitle}>{plan.title}</Text>
-                          <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>{plan.title}</Text>
+                          <Text style={{ fontSize: 12, color: "#898887", marginTop: 4 }}>{plan.subtitle}</Text>
                         </View>
-                        <View
-                          style={[
-                            styles.planRadio,
-                            active && styles.planRadioActive,
-                            premium && active && styles.planRadioPremium,
-                          ]}
-                        >
-                          {active && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: active ? (plan.tone === "premium" ? "#7C3AED" : "#FF8F1F") : "#D1D5DB", alignItems: "center", justifyContent: "center" }}>
+                          {active && <Ionicons name="checkmark" size={14} color="#FF8F1F" />}
                         </View>
                       </View>
-
-                      <View style={styles.planPriceRow}>
-                        <Text
-                          style={[
-                            styles.planPrice,
-                            premium && styles.planPricePremium,
-                          ]}
-                        >
-                          {plan.monthlyFee}
-                        </Text>
-                        {isCurrent && <Text style={styles.currentPlanPill}>Đang dùng</Text>}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+                        <Text style={{ fontSize: 18, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>{plan.monthlyFee}</Text>
+                        {isCurrent && <Text style={{ fontSize: 11, color: "#FF8F1F", backgroundColor: "#FFF7ED", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, overflow: "hidden" }}>Đang dùng</Text>}
                       </View>
-                      <Text style={styles.planSetup}>{plan.setupFee}</Text>
+                      <Text style={{ fontSize: 12, color: "#898887", marginTop: 2 }}>{plan.setupFee}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
-              <View style={styles.featureTable}>
-                <View style={[styles.featureRow, styles.featureHeaderRow]}>
-                  <Text style={[styles.featureCell, styles.featureCellName, styles.featureHeaderText]}>
-                    Tính năng
-                  </Text>
-                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
-                    Pro Plan
-                  </Text>
-                  <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
-                    Premium Plan
-                  </Text>
+              {/* Feature comparison table */}
+              <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+                <Text style={{ fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020", marginBottom: 12 }}>So sánh gói</Text>
+                <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F3F4F6", paddingBottom: 8, marginBottom: 8 }}>
+                  <Text style={{ flex: 1, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>Tính năng</Text>
+                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#898887", textAlign: "center" }}>Pro</Text>
+                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>Premium</Text>
                 </View>
-                {PLAN_BENEFITS.map((benefit) => (
-                  <View key={benefit.feature} style={styles.featureRow}>
-                    <Text style={[styles.featureCell, styles.featureCellName]}>
-                      {benefit.feature}
-                    </Text>
-                    <Text style={[styles.featureCell, styles.featurePlanCell]}>
-                      {benefit.core}
-                    </Text>
-                    <Text style={[styles.featureCell, styles.featurePlanCell, styles.featurePremiumValue]}>
-                      {benefit.premium}
-                    </Text>
+                {PLAN_BENEFITS.map((b, i) => (
+                  <View key={i} style={{ flexDirection: "row", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#F9FAFB" }}>
+                    <Text style={{ flex: 1, fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#202020" }}>{b.feature}</Text>
+                    <Text style={{ width: 70, fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887", textAlign: "center" }}>{b.core}</Text>
+                    <Text style={{ width: 70, fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>{b.premium}</Text>
                   </View>
                 ))}
               </View>
-            </ScrollView>
+              
+              <View style={{ marginTop: 16 }}>
 
-            {/* Pay button */}
-            {upgradePaymentStatus === "success" ? (
-              <View style={styles.successBanner}>
-                <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
-                <Text style={styles.successText}>Nâng cấp thành công!</Text>
+                <TouchableOpacity style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center" }} onPress={() => { setShowSubscriptionModal(false); router.push("/(partner-auth)/partner-payment"); }}>
+                  <Text style={{ fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" }}>Nâng cấp ngay</Text>
+                </TouchableOpacity>
               </View>
-            ) : upgradePaymentStatus === "paying" || upgradePaymentStatus === "checking" ? (
-              <View style={styles.checkingBanner}>
-                <ActivityIndicator size="small" color={PRIMARY} />
-                <Text style={styles.checkingText}>
-                  {upgradePaymentStatus === "checking" ? "Đang kiểm tra thanh toán..." : "Đang chờ thanh toán qua PayOS..."}
-                </Text>
-              </View>
-            ) : upgradePaymentStatus === "failed" ? (
-              <TouchableOpacity
-                style={styles.payBtn}
-                onPress={handlePaySubscription}
-              >
-                <Ionicons name="refresh-outline" size={17} color="#fff" />
-                <Text style={styles.payBtnText}>Thử lại thanh toán</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[
-                  styles.payBtn,
-                  selectedPlan === currentPlan && styles.payBtnDisabled,
-                ]}
-                onPress={handlePaySubscription}
-                disabled={isUpgradePaying || selectedPlan === currentPlan}
-              >
-                {isUpgradePaying ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="card-outline" size={17} color="#fff" />
-                    <Text style={styles.payBtnText}>
-                      {selectedPlan === currentPlan
-                        ? "Đang sử dụng gói này"
-                        : selectedPlan === "premium"
-                          ? "Thanh toán 699k/tháng"
-                          : "Chọn gói cơ bản"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8F9FA" },
+  safeArea: { flex: 1, backgroundColor: "#FFF3BE" },
   content: { flex: 1 },
-  contentInner: { padding: 16, paddingBottom: 24, gap: 12 },
-  title: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#1A1A1A",
-    marginBottom: 2,
-  },
+  contentInner: { padding: 16, paddingTop: 80, paddingBottom: 24, gap: 12 },
+  title: { fontSize: 20, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020", marginBottom: 2 },
   card: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -1247,12 +623,33 @@ const styles = StyleSheet.create({
   teamEntryText: {
     flex: 1,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#C2410C",
+  },
+  toggleCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
+    color: "#111827",
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "800",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#111827",
     marginBottom: 8,
   },
@@ -1280,12 +677,12 @@ const styles = StyleSheet.create({
   },
   coverBtnText: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#374151",
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#6B7280",
     marginTop: 4,
     marginBottom: 6,
@@ -1300,9 +697,36 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 13,
   },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 10,
+    color: "#111827",
+    fontSize: 13,
+  },
+  passwordToggle: {
+    paddingLeft: 6,
+    paddingVertical: 6,
+  },
   textArea: {
     minHeight: 86,
     textAlignVertical: "top",
+  },
+  priceRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 6,
+  },
+  priceCol: {
+    flex: 1,
   },
   cuisineWrap: {
     flexDirection: "row",
@@ -1311,18 +735,18 @@ const styles = StyleSheet.create({
   },
   cuisineChip: {
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#fff",
   },
   cuisineChipActive: {
-    borderColor: "#FF6B35",
+    borderColor: "#FF8F1F",
     backgroundColor: "#FFF3ED",
   },
-  cuisineChipText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
-  cuisineChipTextActive: { color: "#FF6B35" },
+  cuisineChipText: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#6B7280" },
+  cuisineChipTextActive: { color: "#FF8F1F" },
   parkingRow: {
     marginTop: 6,
     borderWidth: 1,
@@ -1335,7 +759,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  parkingLabel: { fontSize: 14, color: "#374151", fontWeight: "800" },
+  parkingLabel: { fontSize: 14, color: "#374151", fontFamily: "Montserrat_700Bold", fontWeight: "700" },
   parkingToggleTrack: {
     width: 46,
     height: 26,
@@ -1344,10 +768,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   parkingToggleTrackOn: {
-    backgroundColor: "#FF6B35",
+    backgroundColor: "#ff8b25",
   },
   parkingToggleTrackOff: {
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#D1D5DB",
   },
   parkingToggleThumb: {
     width: 20,
@@ -1376,23 +800,23 @@ const styles = StyleSheet.create({
   dayChip: {
     minWidth: 44,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#fff",
   },
   dayChipActive: {
-    borderColor: "#FF6B35",
+    borderColor: "#FF8F1F",
     backgroundColor: "#FFF3ED",
   },
-  dayChipText: { fontSize: 12, fontWeight: "700", color: "#6B7280" },
-  dayChipTextActive: { color: "#FF6B35" },
+  dayChipText: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#6B7280" },
+  dayChipTextActive: { color: "#FF8F1F" },
   saveBtn: {
     marginTop: 12,
-    backgroundColor: "#FF6B35",
+    backgroundColor: "#FF8F1F",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
@@ -1400,7 +824,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  saveBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
+  saveBtnText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
+  menuGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  gridItem: { width: "48%", flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 15, padding: 12, marginBottom: 10, alignItems: "center", gap: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 },
+  gridIcon: { width: 40, height: 39, borderRadius: 10, backgroundColor: "#FF8F1F", alignItems: "center", justifyContent: "center" },
+  gridLabel: { fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#202020" },
   menuItem: {
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -1417,7 +845,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  menuItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  menuItemText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#111827" },
   logoutBtn: {
     borderRadius: 14,
     borderWidth: 1,
@@ -1429,7 +857,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  logoutText: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
+  logoutText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#EF4444" },
   loadingRow: {
     marginTop: 10,
     flexDirection: "row",
@@ -1437,326 +865,61 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingText: { fontSize: 12, color: "#9CA3AF" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
-  modalBtn: { borderWidth: 1, borderColor: "#FED7AA", borderRadius: 12, backgroundColor: "#FFF7ED", paddingHorizontal: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  modalBtnText: { fontSize: 14, fontWeight: "700", color: "#C2410C" },
-  modalCloseBtn: { marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", paddingVertical: 12, alignItems: "center", justifyContent: "center" },
-  modalCloseBtnText: { fontSize: 13, fontWeight: "700", color: "#6B7280" },
-  modalHeader2: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#EEF0F3" },
-  modalTitle2: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
-  saveText: { fontSize: 14, fontWeight: "700", color: "#FF6B35" },
-  infoSection: { marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#EEF0F3" },
-  infoLabel: { fontSize: 12, fontWeight: "700", color: "#6B7280", marginBottom: 6 },
-  infoValue: { fontSize: 14, fontWeight: "600", color: "#111827", lineHeight: 20 },
-  editBtn: { marginTop: 16, backgroundColor: "#FF6B35", borderRadius: 12, paddingVertical: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
-  editBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
-  accountCenterCard: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#FED7AA",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginHorizontal: 0,
-    marginVertical: 8,
-    borderWidth: 1
-  },
-  accountCenterMenuItem: { paddingVertical: 16, paddingHorizontal: 12, borderWidth: 0 },
-  accountCenterMenuText: { fontSize: 14, fontWeight: "800" },
-  subscriptionSummary: {
+});
+
+const fo = StyleSheet.create({
+  label: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280", marginBottom: 6 },
+  input: {
+    borderWidth: 1.5,
+    borderColor: "#F3F4F6",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#FED7AA",
-    backgroundColor: "#FFF7ED",
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  subscriptionSummaryPremium: {
-    borderColor: "#DDD6FE",
-    backgroundColor: "#F5F3FF",
-  },
-  subscriptionSummaryLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  subscriptionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#FFEDD5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  subscriptionIconPremium: {
-    backgroundColor: "#EDE9FE",
-  },
-  subscriptionSummaryText: { flex: 1 },
-  subscriptionSummaryTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#111827",
-  },
-  subscriptionSummarySub: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#6B7280",
-    lineHeight: 16,
-  },
-  subscriptionBadge: {
-    borderRadius: 999,
-    overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: "#FFEDD5",
-    color: "#C2410C",
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  subscriptionBadgePremium: {
-    backgroundColor: "#EDE9FE",
-    color: "#6D28D9",
-  },
-  expiryLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#B45309",
-    backgroundColor: "#FFFBEB",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  subscriptionModal: {
-    maxHeight: "88%",
-  },
-  subscriptionScroll: {
-    maxHeight: 520,
-  },
-  subscriptionModalSub: {
-    marginTop: 3,
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "600",
-  },
-  planGrid: {
-    gap: 12,
-  },
-  planCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    gap: 10,
-  },
-  planCardActive: {
-    borderColor: "#FF6B35",
-    backgroundColor: "#FFF7ED",
-  },
-  planCardPremium: {
-    borderColor: "#DDD6FE",
-  },
-  planCardPremiumActive: {
-    borderColor: "#8B5CF6",
-    backgroundColor: "#F5F3FF",
-  },
-  planTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  planTitleWrap: { flex: 1 },
-  planTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#111827",
-  },
-  planSubtitle: {
-    marginTop: 3,
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "600",
-    lineHeight: 17,
-  },
-  planRadio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  planRadioActive: {
-    borderColor: "#FF6B35",
-    backgroundColor: "#FF6B35",
-  },
-  planRadioPremium: {
-    borderColor: "#8B5CF6",
-    backgroundColor: "#8B5CF6",
-  },
-  planPriceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  planPrice: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#C2410C",
-  },
-  planPricePremium: {
-    color: "#6D28D9",
-  },
-  currentPlanPill: {
-    borderRadius: 999,
-    overflow: "hidden",
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    backgroundColor: "#DCFCE7",
-    color: "#15803D",
-    fontSize: 10,
-    fontWeight: "900",
-  },
-  planSetup: {
-    marginTop: -6,
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "700",
-  },
-  planPerks: {
-    gap: 7,
-  },
-  planPerkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  planPerkText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#374151",
-    fontWeight: "600",
-    lineHeight: 17,
-  },
-  featureTable: {
-    marginTop: 14,
-    marginBottom: 2,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-    overflow: "hidden",
-  },
-  featureRow: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
-  },
-  featureHeaderRow: {
-    borderTopWidth: 0,
-    backgroundColor: "#F9FAFB",
-  },
-  featureCell: {
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    fontSize: 11,
-    lineHeight: 16,
-    color: "#374151",
-    fontWeight: "600",
-  },
-  featureCellName: {
-    flex: 1.55,
-  },
-  featurePlanCell: {
-    flex: 0.78,
-    textAlign: "center",
-  },
-  featureHeaderText: {
-    color: "#111827",
-    fontWeight: "900",
-  },
-  featurePremiumValue: {
-    color: "#6D28D9",
-    fontWeight: "800",
-  },
-  payBtn: {
-    marginTop: 14,
-    minHeight: 48,
-    borderRadius: 14,
-    backgroundColor: "#7C3AED",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  payBtnDisabled: {
-    backgroundColor: "#D1D5DB",
-  },
-  payBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  dropdownContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#EEF0F3",
-    marginHorizontal: 16,
-    marginVertical: 8,
-    overflow: "hidden",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
-    elevation: 2
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEF0F3",
-    gap: 10
+    fontSize: 15,
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
   },
-  dropdownItemText: { fontSize: 13, fontWeight: "700", color: "#111827" },
-  accountCenterModalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 12 },
-  successBanner: {
-    marginTop: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 12,
+});
+
+const mo = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E5E7EB",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  title: { fontSize: 18, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#111827", marginBottom: 20 },
+  row: { flexDirection: "row", gap: 10, marginTop: 6 },
+  cancelBtn: {
+    flex: 1,
     paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  successText: { fontSize: 14, fontWeight: "700", color: "#16A34A" },
-  checkingBanner: {
-    marginTop: 8,
-    flexDirection: "row",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#F3F4F6",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFF7ED",
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "#FED7AA",
   },
-  checkingText: { fontSize: 13, fontWeight: "600", color: "#FF6B35" },
+  cancelText: { fontSize: 14, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#6B7280" },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#FF8F1F",
+    alignItems: "center",
+  },
+  saveText: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
 });

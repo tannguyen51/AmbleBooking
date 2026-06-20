@@ -218,10 +218,9 @@ export default function PartnerTablesScreen() {
   ];
 
   const typeTabs: Array<{ key: "all" | TableType; label: string }> = [
-    { key: "all", label: "Tất cả loại bàn" },
     { key: "standard", label: "Standard" },
+    { key: "vip", label: "VIP" },
     { key: "view", label: "Bàn view" },
-    { key: "vip", label: "Bàn VIP" },
   ];
 
   const updateForm = (key: keyof TableFormState, value: string | boolean) => {
@@ -420,28 +419,19 @@ export default function PartnerTablesScreen() {
         </View>
       </View>
 
-      {/* Status Cards */}
+      {/* Stats Cards — Figma: 117×57, white, r=15, shadow */}
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, styles.statCardAvailable]}>
-          <View style={[styles.statIconWrap, { backgroundColor: '#DCFCE7' }]}>
-            <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-          </View>
-          <Text style={[styles.statValue, { color: '#22C55E' }]}>{stats.available}</Text>
-          <Text style={[styles.statLabel, { color: '#22C55E' }]}>{t("partner.tables.available")}</Text>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.available}</Text>
+          <Text style={styles.statLabel}>Bàn trống</Text>
         </View>
-        <View style={[styles.statCard, styles.statCardBooked]}>
-          <View style={[styles.statIconWrap, { backgroundColor: '#FEE2E2' }]}>
-            <Ionicons name="book" size={16} color="#EF4444" />
-          </View>
-          <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.booked}</Text>
-          <Text style={[styles.statLabel, { color: '#EF4444' }]}>{t("partner.tables.booked")}</Text>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.booked}</Text>
+          <Text style={styles.statLabel}>Đã đặt</Text>
         </View>
-        <View style={[styles.statCard, styles.statCardTotal]}>
-          <View style={[styles.statIconWrap, { backgroundColor: '#EEF2FF' }]}>
-            <Ionicons name="grid-outline" size={16} color="#4F46E5" />
-          </View>
-          <Text style={[styles.statValue, { color: '#4F46E5' }]}>{stats.total}</Text>
-          <Text style={[styles.statLabel, { color: '#4F46E5' }]}>Tổng bàn</Text>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { fontFamily: "Montserrat_700Bold" }]}>{stats.total}</Text>
+          <Text style={[styles.statLabel, { fontFamily: "Montserrat_700Bold" }]}>Tổng</Text>
         </View>
       </View>
 
@@ -457,52 +447,20 @@ export default function PartnerTablesScreen() {
         />
       </View>
 
-      <View style={styles.filterContainer}>
-        {/* Filter Row 1: Status */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRowFirst}>
-          {filterTabs.map((tab) => {
-            const isActive = filter === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.filterChip,
-                  isActive && styles.filterChipActive,
-                ]}
-                onPress={() => setFilter(tab.key)}
-              >
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Filter Row 2: Type */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {typeTabs.map((tab) => {
-            const isActive = typeFilter === tab.key;
-            const isVip = tab.key === "vip";
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.filterChip,
-                  isActive && !isVip && styles.filterChipActive,
-                  isActive && isVip && styles.filterChipVip,
-                ]}
-                onPress={() => setTypeFilter(tab.key)}
-              >
-                {isActive && isVip && <LinearGradient colors={['#D4AF37', '#B8942E']} style={styles.filterChipVipGradient} />}
-                {isVip && <Ionicons name="diamond" size={10} color={isActive ? "#FFFFFF" : "#D4AF37"} style={{ marginRight: 3 }} />}
-                <Text style={[styles.filterText, isActive && !isVip && styles.filterTextActive, isActive && isVip && { color: '#FFFFFF' }]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+      {/* Type tabs */}
+      <View style={styles.filterRow}>
+        {typeTabs.map((tab) => {
+          const isActive = typeFilter === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.filterChip, isActive && styles.filterChipActive]}
+              onPress={() => setTypeFilter(tab.key)}
+            >
+              <Text style={[styles.typeText, isActive && styles.typeTextActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView
@@ -581,12 +539,10 @@ export default function PartnerTablesScreen() {
                 {canManageTables && (
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(table)} disabled={isSubmitting}>
-                      <Ionicons name="create-outline" size={14} color="#1D4ED8" />
-                      <Text style={styles.editBtnText}>{t("common.edit")}</Text>
+                      <Text style={styles.editBtnText}>Chỉnh sửa bàn</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(table.id)} disabled={isSubmitting}>
-                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                      <Text style={styles.deleteBtnText}>{t("common.delete")}</Text>
+                      <Ionicons name="trash" size={18} color="#FF8B25" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -859,82 +815,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     gap: 8,
-    marginTop: 8,
-    marginBottom: 10,
+    marginTop: 6,
+    marginBottom: 6,
   },
   statCard: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 15,
+    paddingVertical: 12,
     paddingHorizontal: 10,
-    borderWidth: 1,
-    justifyContent: "space-between",
-    gap: 6,
-  },
-  statCardAvailable: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
-  statCardBooked: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-  statCardTotal: { backgroundColor: "#EEF2FF", borderColor: "#C7D2FE" },
-  statIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
-    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
   },
+  statNumber: { fontSize: 24, fontFamily: "Montserrat_500Medium", color: "#202020" },
+  statLabel: { fontSize: 12, fontFamily: "Montserrat_500Medium", color: "#202020", marginTop: 2 },
   statValue: { fontSize: 18, fontWeight: "900" },
-  statLabel: { fontSize: 11, fontWeight: "600" },
 
-  // Search
+  // Search — Figma: 370×40, r=15, white, shadow
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 8,
-    marginBottom: 4,
-    gap: 4,
+    borderRadius: 15,
+    height: 40,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 5,
-    color: "#1A1A1A",
-    fontSize: 11,
-  },
-
-  // Filter Chips
-  filterContainer: {
-    marginBottom: 16,
-  },
-  filterRowFirst: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 6,
-    marginBottom: 10,
-  },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Montserrat_400Regular", color: "#202020", padding: 0 },
   filterRow: {
     flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 16,
-    gap: 6,
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: "wrap",
   },
   filterChip: {
-    height: 36,
-    borderRadius: 18,
-    paddingHorizontal: 14,
+    height: 30,
+    borderRadius: 15,
+    paddingHorizontal: 12,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2F4F7",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E4E7EC",
-    flexDirection: "row",
+    borderColor: "#E0E0E0",
   },
   filterChipActive: {
-    backgroundColor: "#1A1C29",
-    borderColor: "#1A1C29",
+    backgroundColor: "#FF8F1F",
+    borderColor: "#FF8F1F",
   },
   filterChipVip: {
     overflow: "hidden",
@@ -944,12 +881,12 @@ const styles = StyleSheet.create({
   filterChipVipGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#667085", textAlign: "center" },
-  filterTextActive: { color: "#FFFFFF" },
+  filterText: { fontSize: 13, fontFamily: "Montserrat_500Medium", color: "#202020" },
+  filterTextActive: { color: "#FFFFFF", fontFamily: "Montserrat_700Bold" },
 
   // Table List
   listWrap: { flex: 1 },
-  listContent: { padding: 12, gap: 8, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 12, paddingBottom: 80, gap: 8 },
   centerBox: {
     alignItems: "center",
     justifyContent: "center",
@@ -1056,35 +993,36 @@ const styles = StyleSheet.create({
   bookingInfoText: { fontSize: 12, color: "#92400E" },
 
   // Action buttons
-  actionRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  actionRow: { flexDirection: "row", gap: 8, marginTop: 12, alignItems: "center" },
   editBtn: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 9,
+    borderRadius: 15,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
   deleteBtn: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 9,
+    width: 32,
+    height: 32,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  editBtnText: { fontSize: 13, fontWeight: "700", color: "#1D4ED8" },
-  deleteBtnText: { fontSize: 13, fontWeight: "700", color: "#EF4444" },
+  editBtnText: { fontSize: 15, fontFamily: "Montserrat_500Medium", color: "#505050" },
 
-  // Modal (keep original)
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -1196,8 +1134,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  typeText: { fontSize: 12, fontWeight: "700" },
-  typeTextActive: { fontWeight: "800" },
+  typeText: { fontSize: 12, fontFamily: "Montserrat_500Medium", color: "#202020" },
+  typeTextActive: { color: "#FFFFFF", fontFamily: "Montserrat_700Bold" },
   imageSectionTitle: {
     fontSize: 13,
     fontWeight: "800",

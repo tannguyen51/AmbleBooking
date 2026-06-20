@@ -164,3 +164,5 @@ Theo dõi thời điểm khách hàng đặt bàn nhiều nhất theo ngày và 
 | Deposit Conversion Rate | Tỷ lệ khách thanh toán cọc             | Đánh giá hiệu quả chính sách đặt bàn |
 | Repeat Booking Rate     | Tỷ lệ khách đặt lại                    | Đo mức độ trung thành                |
 |                         |                                        |                                      |
+
+

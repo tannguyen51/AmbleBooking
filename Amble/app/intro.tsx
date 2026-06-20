@@ -20,14 +20,18 @@ export default function IntroScreen() {
       <StatusBar barStyle="light-content" />
 
       <LinearGradient
-        colors={["#ff8b25", "#ffd109", "#ffb347"]}
+        colors={["#FF8B25", "#FF8F1F", "#FFD109"]}
         style={StyleSheet.absoluteFillObject}
-        start={{ x: 0.05, y: 0 }}
-        end={{ x: 0.95, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       />
 
-      <View style={styles.blobOne} />
-      <View style={styles.blobTwo} />
+      {/* White glow wash — fades into orange gradient */}
+      <LinearGradient
+        colors={["rgba(255,255,255,0.7)", "rgba(255,255,255,0)"]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: "40%" }}
+        pointerEvents="none"
+      />
 
       <View style={styles.content}>
         <View style={styles.logoWrap}>
@@ -35,12 +39,7 @@ export default function IntroScreen() {
           <Text style={styles.brand}>Munchmap</Text>
         </View>
 
-        <Text style={styles.headline}>{
-          language === "zh" ? "不仅是美食。\n您的体验。" :
-          language === "ko" ? "단순한 식사가 아닌.\n당신의 경험." :
-          language === "ja" ? "食事だけではない。\nあなたの体験。" :
-          isEnglish ? t("intro.headlineEn") : t("intro.headlineVi")
-        }</Text>
+        <Text style={styles.headline}>Đi ăn tiện hơn{"\n"}Đặt bàn xịn hơn</Text>
 
         <View style={styles.buttonStack}>
           <TouchableOpacity
@@ -69,30 +68,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ff8b25",
   },
-  blobOne: {
-    position: "absolute",
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: "rgba(255, 224, 166, 0.2)",
-    top: 120,
-    left: -70,
-  },
-  blobTwo: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "rgba(255, 210, 122, 0.2)",
-    top: 160,
-    right: -90,
-  },
   content: {
     flex: 1,
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 180,
-    paddingBottom: 96,
+    paddingTop: 250,
+    paddingBottom: 60,
+    justifyContent: "space-between",
   },
   logoWrap: {
     alignItems: "center",
@@ -112,10 +94,10 @@ const styles = StyleSheet.create({
     marginTop: 34,
     textAlign: "center",
     color: "#FFFFFF",
-    fontSize: 34,
-    lineHeight: 42,
-    fontWeight: "900",
-    letterSpacing: -0.2,
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: "500",
+    fontFamily: "Montserrat_500Medium",
   },
   tagline: {
     marginTop: 16,
@@ -130,30 +112,32 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   primaryBtn: {
-    height: 64,
-    borderRadius: 20,
+    height: 54,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fdfbe3",
+    backgroundColor: "#FFFFFF",
   },
   primaryBtnText: {
-    fontSize: 20,
-    lineHeight: 24,
-    color: "#ff7700",
+    fontSize: 18,
+    color: "#FF8F1F",
     fontWeight: "900",
+    fontFamily: "Montserrat_700Bold",
   },
   secondaryBtn: {
-    height: 50,
-    borderRadius: 16,
+    height: 54,
+    borderRadius: 12,
     marginHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "transparent",
   },
   secondaryBtnText: {
-    fontSize: 17,
-    lineHeight: 20,
-    color: "#ff8b25",
+    fontSize: 18,
+    color: "#FFFFFF",
     fontWeight: "600",
+    fontFamily: "Montserrat_500Medium",
   },
 });

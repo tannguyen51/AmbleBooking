@@ -307,62 +307,10 @@ export default function PartnerDashboard() {
           />
         </Animated.View>
 
-        {/* ── Floor Plan - Sơ đồ bàn ───────────────────────── */}
+        {/* ── Floor Plan - Sơ đồ bàn ── *Ẩn theo yêu cầu*
         {floorTables.length > 0 && (
-          <Animated.View style={[slideUp(chartAnim), { marginBottom: 16 }]}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Ionicons name="grid-outline" size={14} color="#1A1A1A" />
-                <Text style={styles.sectionTitle}>Sơ đồ bàn</Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push("/(partner)/tables")}>
-                <View style={styles.sectionLinkBtn}>
-                  <Text style={styles.sectionLink}>{t("common.viewAll")}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            {/* Legend */}
-            <View style={styles.legendRow}>
-              {[
-                { color: "#22C55E", label: "Trống" },
-                { color: "#EAB308", label: "Đã đặt" },
-                { color: "#EF4444", label: "Đang dùng" },
-                { color: "#9CA3AF", label: "Đang dọn" },
-                { color: "#F97316", label: "Quá giờ" },
-              ].map((item) => (
-                <View key={item.color} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendLabel}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
-            {/* Table Grid */}
-            <View style={styles.floorGrid}>
-              {floorTables.map((table: any) => {
-                const tableStatus = getTableStatusColor(table.status, table);
-                return (
-                  <TouchableOpacity
-                    key={table.id}
-                    style={[
-                      styles.floorCell,
-                      { backgroundColor: tableStatus.bg, borderColor: tableStatus.color },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.floorCellName, { color: tableStatus.color }]}>
-                      {table.name}
-                    </Text>
-                    {table.currentBooking && (
-                      <Text style={[styles.floorCellGuest, { color: tableStatus.color }]}>
-                        {table.currentBooking.guests}kh
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Animated.View>
-        )}
+          ...
+        )} */}
 
         {/* ── Upcoming bookings ─────────────────────────────── */}
         {upcomingBookings.length > 0 && (
@@ -553,44 +501,19 @@ function StatCard({
   alert?: boolean;
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (!alert) return;
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.92,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, [alert]);
+  useEffect(() => { if (alert) { /* pulse animation */ } }, [alert]);
 
   return (
-    <Animated.View
-      style={[
-        styles.statCard,
-        {
-          backgroundColor: bg,
-          transform: [{ scale: alert ? pulseAnim : new Animated.Value(1) }],
-        },
-      ]}
-    >
+    <View style={styles.statCard}>
       <View style={styles.statRow}>
-        <Ionicons name={iconName as any} size={16} color="#6B7280" />
-        <Text style={styles.statLabel}>{label}</Text>
+        <Ionicons name={iconName as any} size={18} color={color} />
       </View>
-      <Text style={[styles.statValue, { color }]}>
+      <Text style={[styles.statValue, { color: "#000" }]}>
         {value}
         {total !== undefined && <Text style={styles.statTotal}>/{total}</Text>}
       </Text>
-    </Animated.View>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -618,8 +541,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  headerSub: { fontSize: 12, color: "#9CA3AF" },
-  headerName: { fontSize: 20, fontWeight: "900", color: "#1A1A1A" },
+  headerSub: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: "#202020" },
+  headerName: { fontSize: 20, fontFamily: "Montserrat_700Bold", color: "#202020" },
 
   // Restaurant row
   restaurantRow: {
@@ -656,11 +579,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statCard: {
-    width: (width - 50) / 2,
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 15,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "#E8E8E8",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+    flex: 1,
+    minWidth: "45%",
   },
   statRow: {
     flexDirection: "row",
@@ -669,7 +599,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   statLabel: { fontSize: 11, color: "#9CA3AF", fontWeight: "500" },
-  statValue: { fontSize: 26, fontWeight: "900" },
+  statValue: { fontSize: 26, fontWeight: "600" },
   statTotal: { fontSize: 14, color: "#9CA3AF" },
 
   // Revenue chart

@@ -40,8 +40,8 @@ type IconName = keyof typeof Ionicons.glyphMap;
 // ─── Design tokens ────────────────────────────────────────
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
-const LOGO_TEXT = "#FF8C42";
-const BG = "#FAFAFA";
+const LOGO_TEXT = "#212121";
+const BG = "#FFFFFF";
 const SURFACE = "#FFFFFF";
 const TEXT = "#1A1A1A";
 const TEXT_SEC = "#6B7280";
@@ -496,7 +496,7 @@ export default function HomeScreen() {
       .slice(0, 3);
   }, [allRestaurants]);
 
-  const displayNearby = nearby.length > 0 ? nearby.slice(0, 3) : nearbyFromAll;
+  const displayNearby = nearby.length > 0 ? nearby.slice(0, 10) : allRestaurants.slice(0, 10);
   const { location, requestLocation } = useLocation();
   const [forDate, setForDate] = useState<Restaurant[]>([]);
   const [budgetList, setBudgetList] = useState<Restaurant[]>([]);
@@ -901,23 +901,20 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={["left", "right"]}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="#FFF8F5"
+        backgroundColor="#FFFFFF"
         translucent={false}
       />
 
-      <ScrollView
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={PRIMARY}
-            colors={[PRIMARY]}
-          />
-        }
-      >
-        {/* ════ HEADER ════ */}
+      <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+        {/* White overlay — fades from 35% to reveal cream below */}
+        <LinearGradient
+          colors={["#FFFFFF", "#FFFFFF", "rgba(255,255,255,0)"]}
+          locations={[0, 0.5, 1]}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+                {/* White card — Figma Rectangle 123: 402×280, white, r=15, shadow r=4 */}
+        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 15, marginHorizontal: 0, paddingTop: 0, paddingBottom: 0, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }}>
+{/* ════ HEADER ════ */}
         <View style={[styles.header, { paddingTop: 16 + insets.top }]}>
           {/* Logo + icon buttons */}
           <View style={styles.headerTop}>
@@ -925,43 +922,66 @@ export default function HomeScreen() {
 
             <View style={styles.headerBtns}>
               <TouchableOpacity
-                style={styles.headerIconBtn}
-                onPress={() => router.push("/favorites")}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 18 }}>❤️</Text>
-                {favoriteIds.length > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeNum}>{favoriteIds.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerIconBtn}
-                onPress={handleBellPress}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 18 }}>🔔</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.notifBadge}>
-                    <Text style={styles.notifBadgeNum}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  style={styles.headerIconBtn}
+                  onPress={() => router.push("/favorites")}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="heart-outline" size={22} color="#FF0059" />
+                  {favoriteIds.length > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeNum}>{favoriteIds.length}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.headerIconBtn}
+                  onPress={handleBellPress}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="notifications-outline" size={22} color="#FFCF00" />
+                  {unreadCount > 0 && (
+                    <View style={styles.notifBadge}>
+                      <Text style={styles.notifBadgeNum}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
-          {/* Greeting */}
-          <View style={styles.greetingWrap}>
-            <Text style={styles.greetingName}>
+          {/* Greeting — Figma ver 2 */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <Text style={{ fontSize: 20, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#000" }}>
               {user
                 ? `${t("home.greetingPrefix")}${t(greeting())}, ${user.fullName?.split(" ").pop()}!`
                 : t("home.greetingFallback")}
             </Text>
-            <Text style={styles.greetingSub}>{t("home.greetingSubtitle")}</Text>
+            <Text style={{ fontSize: 15, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#6A6A6A", marginTop: 2 }}>
+              {t("home.greetingSubtitle")}
+            </Text>
           </View>
 
-          {/* Notification Modal */}
+            {/* Search bar */}
+            <View style={{ marginTop: 10, marginHorizontal: 16, paddingTop: 5, paddingBottom: 30, overflow: "visible" }}>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 15, height: 48, flexDirection: "row", alignItems: "center", paddingLeft: 18, paddingRight: 3, shadowColor: "#FF8F1F", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20, elevation: 8, borderWidth: 1.5, borderColor: "rgba(255,143,31,0.35)" }}>
+              <TouchableOpacity style={{ flex: 1, justifyContent: "center" }} onPress={() => router.push("/(tabs)/chat")} activeOpacity={0.7}>
+                <Text style={{ fontSize: 16, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#999" }}>
+                  Bạn muốn đi đâu? Hỏi Munchy!
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ width: 47, height: 42, borderRadius: 15, backgroundColor: "#FF8F1F", alignItems: "center", justifyContent: "center", marginLeft: 8 }}
+                onPress={() => router.push("/(tabs)/chat")}
+                activeOpacity={0.9}
+              >
+                <Image source={require("../../assets/images/chatbot-speech-bubble.png")} style={{ width: 24, height: 24, tintColor: "#fff" }} resizeMode="contain" />
+              </TouchableOpacity>
+            </View>
+            </View>
+
+                  </View>
+
+        {/* Notification Modal */}
           <Modal visible={notifVisible} transparent animationType="fade" onRequestClose={() => setNotifVisible(false)}>
             <TouchableOpacity style={styles.notifOverlay} activeOpacity={1} onPress={() => setNotifVisible(false)}>
               <View style={styles.notifSheet}>
@@ -1000,688 +1020,125 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </Modal>
 
-          {/* Search bar */}
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={16} color="#6B7280" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t("home.searchPlaceholder")}
-              placeholderTextColor={TEXT_MUTED}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch("")}>
-                <Ionicons name="close" size={18} color={TEXT_MUTED} />
-              </TouchableOpacity>
+          {/* ════ CONTENT ════ */}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 0, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+            {/* Quán Hot gần bạn! — 1 large card, snap */}
+            {displayNearby.length > 0 && (
+              <View style={{ marginBottom: 16, paddingTop: 15 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 20, fontFamily: "Montserrat_700Bold", fontWeight: "200", color: "#000000" }}>Quán Hot gần bạn!</Text>
+                </View>
+                <FlatList
+                  data={displayNearby.slice(0, 10)}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={370}
+                  decelerationRate="fast"
+                  snapToAlignment="start"
+                  keyExtractor={(item) => item._id}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingRight: 4 }}
+                  renderItem={({ item }) => (
+                    <View style={{ width: 350, marginRight: 20 }}>
+                      <RestaurantCardFull
+                        item={item}
+                        favoriteIds={favoriteIds}
+                        onToggleFav={toggleFav}
+                        {...cardTranslations}
+                      />
+                    </View>
+                  )}
+                />
+              </View>
             )}
-            {/* Filter button */}
-            <TouchableOpacity
-              onPress={() => setShowFilters((v) => !v)}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={hasActiveFilter ? GRAD : ["#E5E7EB", "#E5E7EB"]}
-                style={styles.micBtn}
-              >
-                <Ionicons
-                  name="options-outline"
-                  size={16}
-                  color={hasActiveFilter ? "#fff" : TEXT_SEC}
-                />
-                {filterCount > 0 && (
-                  <View style={styles.filterBadge}>
-                    <Text style={styles.filterBadgeText}>{filterCount}</Text>
-                  </View>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
 
-          {/* Filter panel */}
-          {showFilters && (
-            <View style={styles.filterSheet}>
-              <View style={styles.filterSheetHeader}>
-                <View>
-                  <Text style={styles.filterTitle}>{t("home.filterTitle")}</Text>
-                  <Text style={styles.filterSub}>
-                    {filterCount > 0
-                      ? `${filterCount} ${t("home.filterCount")}`
-                      : t("home.filterSubtitle")}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.filterLabel}>{t("home.filterLocation")}</Text>
-              <View style={styles.filterRow}>
-                {[
-                  { key: "nearby", label: t("home.filterNearby") },
-                  { key: "district", label: t("home.filterDistrict") },
-                  { key: "place", label: t("home.filterPlace") },
-                ].map((item) => {
-                  const active = draftFilters.locationMode === item.key;
-                  return (
-                    <TouchableOpacity
-                      key={item.key}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          locationMode: active ? null : (item.key as any),
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {draftFilters.locationMode === "district" && (
-                <View style={styles.inlineInputRow}>
-                  <Ionicons
-                    name="location-outline"
-                    size={16}
-                    color={TEXT_MUTED}
-                  />
-                  <TextInput
-                    style={styles.inlineInput}
-                    placeholder={t("home.filterDistrictPlaceholder")}
-                    placeholderTextColor={TEXT_MUTED}
-                    value={draftFilters.district}
-                    onChangeText={(value) =>
-                      setDraftFilters((prev) => ({ ...prev, district: value }))
-                    }
-                  />
-                </View>
-              )}
-
-              {draftFilters.locationMode === "place" && (
-                <View style={styles.inlineInputRow}>
-                  <Ionicons name="pin-outline" size={16} color={TEXT_MUTED} />
-                  <TextInput
-                    style={styles.inlineInput}
-                    placeholder={t("home.filterPlacePlaceholder")}
-                    placeholderTextColor={TEXT_MUTED}
-                    value={draftFilters.place}
-                    onChangeText={(value) =>
-                      setDraftFilters((prev) => ({ ...prev, place: value }))
-                    }
-                  />
-                </View>
-              )}
-
-              <Text style={styles.filterLabel}>{t("home.filterDistance")}</Text>
-              <View style={styles.filterRow}>
-                {DISTANCE_OPTIONS.map((d) => {
-                  const active = draftFilters.distance === d;
-                  return (
-                    <TouchableOpacity
-                      key={d}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          distance: active ? null : d,
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {distanceLabelMap[d] || d}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.filterLabel}>{t("home.filterDateTime")}</Text>
-              <View style={styles.reservationRow}>
-                <TouchableOpacity
-                  style={styles.reservationInputWrap}
-                  onPress={() => {
-                    setTempDate(dateValue);
-                    setShowDatePicker(true);
-                  }}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name="calendar-outline"
-                    size={16}
-                    color={TEXT_MUTED}
-                  />
-                  <Text
-                    style={[
-                      styles.reservationValue,
-                      !draftFilters.date && styles.reservationPlaceholder,
-                    ]}
-                  >
-                    {draftFilters.date || t("home.filterDate")}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.reservationInputWrap}
-                  onPress={() => {
-                    setTempTime(timeValue);
-                    setShowTimePicker(true);
-                  }}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="time-outline" size={16} color={TEXT_MUTED} />
-                  <Text
-                    style={[
-                      styles.reservationValue,
-                      !draftFilters.time && styles.reservationPlaceholder,
-                    ]}
-                  >
-                    {draftFilters.time || t("home.filterTime")}
-                  </Text>
-                </TouchableOpacity>
-                <View style={styles.peopleControl}>
-                  <TouchableOpacity
-                    style={styles.peopleBtn}
-                    onPress={() =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        people: Math.max(1, prev.people - 1),
-                      }))
-                    }
-                  >
-                    <Text style={styles.peopleBtnText}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.peopleCount}>{draftFilters.people}</Text>
-                  <TouchableOpacity
-                    style={styles.peopleBtn}
-                    onPress={() =>
-                      setDraftFilters((prev) => ({
-                        ...prev,
-                        people: Math.min(12, prev.people + 1),
-                      }))
-                    }
-                  >
-                    <Text style={styles.peopleBtnText}>+</Text>
+            {/* Quán đẹp gần đây — featured first, then by distance */}
+            {allRestaurants.length > 0 && (
+              <View style={{ marginBottom: 16, paddingTop: 3 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 19, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#000" }}>Quán đẹp gần đây</Text>
+                  <TouchableOpacity onPress={() => router.push({ pathname: "/(tabs)/explore", params: { preset: "local" } } as any)} activeOpacity={0.7}>
+                    <Text style={{ fontSize: 14, fontFamily: "Montserrat_300Light", fontWeight: "300", color: "#999" }}>Xem thêm</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.toggleRow,
-                  draftFilters.availableNow && styles.toggleRowActive,
-                ]}
-                onPress={() =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    availableNow: !prev.availableNow,
-                  }))
-                }
-              >
-                <Ionicons
-                  name={draftFilters.availableNow ? "checkmark-circle" : "time"}
-                  size={18}
-                  color={draftFilters.availableNow ? "#fff" : TEXT_SEC}
-                />
-                <Text
-                  style={[
-                    styles.toggleText,
-                    draftFilters.availableNow && styles.toggleTextActive,
-                  ]}
-                >
-                  {t("home.filterAvailable")}
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.filterLabel}>{t("home.filterPrice")}</Text>
-              <View style={styles.filterRow}>
-                {PRICE_OPTIONS.map((p) => {
-                  const active = draftFilters.priceRanges.includes(p);
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          priceRanges: toggleInList(prev.priceRanges, p),
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {priceLabelMap[p] || p}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.filterLabel}>{t("home.filterPurpose")}</Text>
-              <View style={styles.filterRow}>
-                {PURPOSE_OPTIONS.map((p) => {
-                  const active = draftFilters.purposes.includes(p);
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          purposes: toggleInList(prev.purposes, p),
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {purposeLabelMap[p] || p}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.filterLabel}>{t("home.filterRating")}</Text>
-              <View style={styles.filterRow}>
-                {RATING_OPTIONS.map((r) => {
-                  const active = draftFilters.ratings.includes(r);
-                  return (
-                    <TouchableOpacity
-                      key={r}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          ratings: toggleRating(prev.ratings, r),
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {r} sao
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.filterLabel}>{t("home.filterSort")}</Text>
-              <View style={styles.filterRow}>
-                {SORT_OPTIONS.map((s) => {
-                  const active = draftFilters.sort === s.key;
-                  return (
-                    <TouchableOpacity
-                      key={s.key}
-                      style={[
-                        styles.filterChip,
-                        active && styles.filterChipActive,
-                      ]}
-                      onPress={() =>
-                        setDraftFilters((prev) => ({
-                          ...prev,
-                          sort: active ? null : s.key,
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {sortLabelMap[s.key] || s.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-        </View>
-
-        {showDatePicker && Platform.OS === "android" && (
-          <DateTimePicker
-            value={tempDate}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            onChange={(event, selectedDate) => {
-              setShowDatePicker(false);
-              if (event.type === "set" && selectedDate) {
-                commitDate(selectedDate);
-              }
-            }}
-            locale="vi"
-          />
-        )}
-
-        {showTimePicker && Platform.OS === "android" && (
-          <DateTimePicker
-            value={tempTime}
-            mode="time"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowTimePicker(false);
-              if (event.type === "set" && selectedDate) {
-                commitTime(selectedDate);
-              }
-            }}
-            locale="vi"
-          />
-        )}
-
-        {showDatePicker && Platform.OS === "ios" && (
-          <Modal transparent animationType="fade">
-            <View style={styles.pickerOverlay}>
-              <View style={styles.pickerCard}>
-                <View style={styles.pickerHeader}>
-                  <TouchableOpacity
-                    onPress={() => setShowDatePicker(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerBtn}>CANCEL</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.pickerTitle}>Chọn ngày</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      commitDate(tempDate);
-                      setShowDatePicker(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerBtnOk}>OK</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={tempDate}
-                  mode="date"
-                  display="inline"
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) setTempDate(selectedDate);
-                  }}
-                  locale="vi"
+                <FlatList
+                  data={[...allRestaurants].sort((a, b) => {
+                    if (a.isFeatured && !b.isFeatured) return -1;
+                    if (!a.isFeatured && b.isFeatured) return 1;
+                    return (a.distance || 999) - (b.distance || 999);
+                  }).slice(0, 10)}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item._id}
+                  contentContainerStyle={styles.hList}
+                  renderItem={({ item }) => (
+                    <RestaurantCardCompact
+                      item={item}
+                      favoriteIds={favoriteIds}
+                      onToggleFav={toggleFav}
+                    />
+                  )}
                 />
               </View>
-            </View>
-          </Modal>
-        )}
+            )}
 
-        {showTimePicker && Platform.OS === "ios" && (
-          <Modal transparent animationType="fade">
-            <View style={styles.pickerOverlay}>
-              <View style={styles.pickerCard}>
-                <View style={styles.pickerHeader}>
-                  <TouchableOpacity
-                    onPress={() => setShowTimePicker(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerBtn}>CANCEL</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.pickerTitle}>Chọn giờ</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      commitTime(tempTime);
-                      setShowTimePicker(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerBtnOk}>OK</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={tempTime}
-                  mode="time"
-                  display="spinner"
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) setTempTime(selectedDate);
-                  }}
-                  locale="vi"
-                />
-              </View>
-            </View>
-          </Modal>
-        )}
-
-        {/* ════ CATEGORIES ════ */}
-        <View style={styles.categoriesGrid}>
-          {CATEGORIES.map((cat) => {
-            return (
-              <TouchableOpacity
-                key={cat.key}
-                style={styles.catItem}
-                onPress={() => {
-                  setActiveCategory(activeCategory === cat.key ? null : cat.key);
-                  router.push({
-                    pathname: "/explore",
-                    params: {
-                      preset: cat.key,
-                      presetLabel: catLabelMap[cat.key] || cat.label,
-                    },
-                  });
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.catIcon, activeCategory === cat.key && styles.catIconActive]}>
-                  <Ionicons name={cat.icon} size={22} color="#fff" />
-                </View>
-                <Text style={styles.catLabel}>{catLabelMap[cat.key] || cat.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {filterCount > 0 && (
-          <View style={styles.filterSummary}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>{t("home.filtering")}</Text>
-              <Text style={styles.summaryCount}>{filterCount} {t("home.filterCount")}</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.summaryRow}
-            >
-              {summaryChips.map((chip, idx) => (
-                <View key={`${chip}-${idx}`} style={styles.summaryChip}>
-                  <Text style={styles.summaryChipText}>{chip}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Khi đang search/filter: ẩn section featured/date/budget, chỉ show kết quả */}
-        {hasActiveFilter ? (
-          <Section title={`${t("home.sectionSearchResults")} (${allList.length})`}>
-            {allList.length === 0 ? (
+            {/* Fallback */}
+            {featured.length === 0 && displayNearby.length === 0 && (
               <View style={styles.emptyBox}>
                 <Text style={{ fontSize: 48 }}>🍽️</Text>
                 <Text style={styles.emptyTitle}>{t("home.emptyTitle")}</Text>
-                <Text style={styles.emptyText}>
-                  {t("home.emptyText")}
-                </Text>
-                <TouchableOpacity
-                  style={styles.clearBtn2}
-                  onPress={clearFilters}
-                >
-                  <Text style={styles.clearBtnText}>{t("home.clearFilter")}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.px20}>
-                {allList.map((r) => (
-                  <RestaurantCardFull
-                    key={r._id}
-                    item={r}
-                    favoriteIds={favoriteIds}
-                    onToggleFav={toggleFav}
-                    {...cardTranslations}
-                  />
-                ))}
+                <Text style={styles.emptyText}>Kéo xuống để tải lại</Text>
               </View>
             )}
-          </Section>
-        ) : (
-          <>
-            {/* ════ NEARBY ════ */}
-            {displayNearby.length > 0 && (
-              <Section title="Nhà hàng gần đây" onViewAll={() => router.push({ pathname: "/(tabs)/explore", params: { preset: "local" } } as any)} viewAllLabel={t("common.viewAll")}>
-                <View style={styles.px20}>
-                  {displayNearby.map((r) => (
-                    <RestaurantCardFull
-                      key={r._id}
-                      item={r}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                      {...cardTranslations}
-                    />
-                  ))}
-                </View>
-              </Section>
-            )}
 
-            {/* ════ FEATURED ════ */}
-            {featured.length > 0 && (
-              <Section title={t("home.sectionFeatured")} onViewAll={() => {}} viewAllLabel={t("common.viewAll")}>
-                <View style={styles.px20}>
-                  {featured.slice(0, 3).map((r) => (
-                    <RestaurantCardFull
-                      key={r._id}
-                      item={r}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                      {...cardTranslations}
-                    />
-                  ))}
+            {/* Đề xuất cho bạn */}
+            {allRestaurants.length > 0 && (
+              <View style={{ marginBottom: 16, paddingTop: 12 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 16, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#000" }}>Đề xuất cho bạn</Text>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={{ fontSize: 14, fontFamily: "Montserrat_300Light", fontWeight: "300", color: "#999" }}>Xem thêm</Text>
+                  </TouchableOpacity>
                 </View>
-              </Section>
-            )}
-
-            {/* ════ HẸN HÒ ════ */}
-            {forDate.length > 0 && (
-              <Section title={t("home.sectionDate")} onViewAll={() => {}} viewAllLabel={t("common.viewAll")}>
                 <FlatList
-                  data={forDate}
+                  data={[...allRestaurants].sort(() => 0.5 - Math.random()).slice(0, 10)}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(item) => item._id}
                   contentContainerStyle={styles.hList}
                   renderItem={({ item }) => (
-                    <RestaurantCardCompact
-                      item={item}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                    />
+                    <RestaurantCardCompact item={item} favoriteIds={favoriteIds} onToggleFav={toggleFav} />
                   )}
                 />
-              </Section>
+              </View>
             )}
 
-            {/* ════ TẤT CẢ ════ */}
-            <Section title={allSectionTitle}>
-              {allList.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={{ fontSize: 48 }}>🍽️</Text>
-                  <Text style={styles.emptyTitle}>{t("home.emptyTitle")}</Text>
-                  <Text style={styles.emptyText}>Kéo xuống để tải lại</Text>
+            {/* Địa điểm hẹn hò */}
+            {allRestaurants.length > 0 && (
+              <View style={{ marginBottom: 16, paddingTop: 12 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 16, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#000" }}>Địa điểm hẹn hò</Text>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={{ fontSize: 14, fontFamily: "Montserrat_300Light", fontWeight: "300", color: "#999" }}>Xem thêm</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                <View style={styles.px20}>
-                  {allList.map((r) => (
-                    <RestaurantCardFull
-                      key={r._id}
-                      item={r}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                      {...cardTranslations}
-                    />
-                  ))}
-                </View>
-              )}
-            </Section>
-
-            {/* ════ QUÁN NGON GIÁ TỐT ════ */}
-            {budgetList.length > 0 && (
-              <Section title={t("home.sectionBudget")} onViewAll={() => {}} viewAllLabel={t("common.viewAll")}>
                 <FlatList
-                  data={budgetList}
+                  data={allRestaurants.slice(0, 10)}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(item) => item._id}
                   contentContainerStyle={styles.hList}
                   renderItem={({ item }) => (
-                    <RestaurantCardCompact
-                      item={item}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                    />
+                    <RestaurantCardCompact item={item} favoriteIds={favoriteIds} onToggleFav={toggleFav} />
                   )}
                 />
-              </Section>
+              </View>
             )}
 
-            {/* ════ YÊU THÍCH ════ */}
-            {favRestaurants.length > 0 && (
-              <Section title={t("home.sectionFavorites")}>
-                <FlatList
-                  data={favRestaurants}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(item) => item._id}
-                  contentContainerStyle={styles.hList}
-                  renderItem={({ item }) => (
-                    <RestaurantCardCompact
-                      item={item}
-                      favoriteIds={favoriteIds}
-                      onToggleFav={toggleFav}
-                    />
-                  )}
-                />
-              </Section>
-            )}
-          </>
-        )}
+          </ScrollView>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        {/* Spacer for nav */}
+        <View style={{ height: 90 }} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -1717,7 +1174,7 @@ const cardFull = StyleSheet.create({
     borderRadius: 999,
     zIndex: 10,
   },
-  distanceText: { fontSize: 11, fontWeight: "700", color: "#fff" },
+  distanceText: { fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
   badgeFeatured: {
     position: "absolute",
     top: 12,
@@ -1746,7 +1203,7 @@ const cardFull = StyleSheet.create({
   overlayBottom: { position: "absolute", bottom: 12, left: 12, right: 52 },
   name: {
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: "#fff",
     marginBottom: 3,
     textShadowColor: "rgba(0,0,0,0.3)",
@@ -1765,7 +1222,7 @@ const cardFull = StyleSheet.create({
     marginBottom: 6,
   },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  ratingNum: { fontSize: 13, fontWeight: "800", color: TEXT },
+  ratingNum: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
   ratingCount: { fontSize: 12, color: TEXT_MUTED },
   cityRow: { flexDirection: "row", alignItems: "center" },
   cityText: { fontSize: 12, color: TEXT_MUTED },
@@ -1815,7 +1272,7 @@ const cardCompact = StyleSheet.create({
     borderRadius: 10,
     maxWidth: 130,
   },
-  cuisineText: { fontSize: 9, fontWeight: "700", color: "#fff" },
+  cuisineText: { fontSize: 9, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
   favBtn: {
     position: "absolute",
     top: 7,
@@ -1828,14 +1285,14 @@ const cardCompact = StyleSheet.create({
     justifyContent: "center",
   },
   info: { padding: 9 },
-  name: { fontSize: 13, fontWeight: "700", color: TEXT, marginBottom: 3 },
+  name: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT, marginBottom: 3 },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
     marginBottom: 3,
   },
-  rating: { fontSize: 11, fontWeight: "700", color: TEXT },
+  rating: { fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
   reviews: { fontSize: 10, color: TEXT_MUTED },
   city: { fontSize: 10, color: TEXT_MUTED },
 });
@@ -1849,8 +1306,8 @@ const sec = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
   },
-  title: { fontSize: 17, fontWeight: "900", color: TEXT },
-  link: { fontSize: 13, fontWeight: "700", color: PRIMARY },
+  title: { fontSize: 17, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
+  link: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: PRIMARY },
 });
 
 const skel = StyleSheet.create({
@@ -1894,17 +1351,9 @@ const styles = StyleSheet.create({
 
   header: {
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 0,
     paddingHorizontal: 20,
-    backgroundColor: "#FFF8F5",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    marginBottom: 4,
-    shadowColor: "#FF6B35",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    elevation: 4,
+    marginBottom: 0,
   },
 
   headerTop: {
@@ -1943,7 +1392,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-  badgeNum: { fontSize: 9, fontWeight: "800", color: "#fff" },
+  badgeNum: { fontSize: 9, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
   notifBadge: {
     position: "absolute",
     top: 2,
@@ -1956,7 +1405,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 4,
   },
-  notifBadgeNum: { fontSize: 10, fontWeight: "800", color: "#fff" },
+  notifBadgeNum: { fontSize: 10, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
 
   // Notification Modal
   notifOverlay: {
@@ -1985,7 +1434,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
-  notifTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
+  notifTitle: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" },
   notifItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -1994,13 +1443,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   notifDot: { width: 10, height: 10, borderRadius: 5 },
-  notifItemTitle: { fontSize: 14, fontWeight: "600", color: "#1A1A1A" },
+  notifItemTitle: { fontSize: 14, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#1A1A1A" },
   notifItemSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
 
   greetingWrap: { marginBottom: 18 },
   greetingName: {
     fontSize: 22,
-    fontWeight: "900",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: TEXT,
     letterSpacing: -0.3,
   },
@@ -2043,7 +1492,7 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
   },
   quickTagActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  quickTagText: { fontSize: 12, fontWeight: "600", color: TEXT_SEC },
+  quickTagText: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT_SEC },
   quickTagTextActive: { color: "#fff" },
 
   // Filter sheet
@@ -2079,7 +1528,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 12,
   },
-  filterTitle: { fontSize: 16, fontWeight: "800", color: TEXT },
+  filterTitle: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
   filterSub: { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
   filterGhostBtn: {
     paddingHorizontal: 12,
@@ -2088,10 +1537,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F3F4F6",
   },
-  filterGhostText: { fontSize: 11, fontWeight: "700", color: TEXT_SEC },
+  filterGhostText: { fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC },
   filterLabel: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: TEXT_MUTED,
     marginBottom: 8,
     textTransform: "uppercase",
@@ -2163,8 +1612,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  peopleBtnText: { fontSize: 14, fontWeight: "700", color: TEXT },
-  peopleCount: { fontSize: 13, fontWeight: "700", color: TEXT },
+  peopleBtnText: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
+  peopleCount: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2178,7 +1627,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   toggleRowActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  toggleText: { fontSize: 12, fontWeight: "600", color: TEXT_SEC },
+  toggleText: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT_SEC },
   toggleTextActive: { color: "#fff" },
   pickerOverlay: {
     flex: 1,
@@ -2203,9 +1652,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 10,
   },
-  pickerTitle: { fontSize: 14, fontWeight: "800", color: TEXT },
-  pickerBtn: { fontSize: 12, fontWeight: "700", color: TEXT_SEC },
-  pickerBtnOk: { fontSize: 12, fontWeight: "800", color: PRIMARY },
+  pickerTitle: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
+  pickerBtn: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC },
+  pickerBtnOk: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: PRIMARY },
   filterActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -2220,14 +1669,14 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     alignItems: "center",
   },
-  resetBtnText: { fontSize: 13, fontWeight: "700", color: TEXT_SEC },
+  resetBtnText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC },
   applyBtn: { flex: 1 },
   applyBtnGradient: {
     paddingVertical: 10,
     borderRadius: 14,
     alignItems: "center",
   },
-  applyBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  applyBtnText: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
   clearBtn: {
     alignSelf: "flex-start",
     paddingHorizontal: 16,
@@ -2262,7 +1711,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  summaryTitle: { fontSize: 13, fontWeight: "800", color: TEXT },
+  summaryTitle: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
   summaryCount: { fontSize: 12, color: TEXT_MUTED, fontWeight: "600" },
   summaryRow: { gap: 8, paddingRight: 6 },
   summaryChip: {
@@ -2273,7 +1722,7 @@ const styles = StyleSheet.create({
     borderColor: "#FFE1D4",
     backgroundColor: "#FFF3ED",
   },
-  summaryChipText: { fontSize: 12, fontWeight: "700", color: PRIMARY },
+  summaryChipText: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: PRIMARY },
 
   // Categories
   categoriesGrid: {
@@ -2297,7 +1746,7 @@ const styles = StyleSheet.create({
   },
   catLabel: {
     fontSize: 9,
-    fontWeight: "600",
+    fontFamily: "Montserrat_500Medium", fontWeight: "500",
     color: TEXT_SEC,
     textAlign: "center",
     lineHeight: 12,
@@ -2314,7 +1763,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold", fontWeight: "700",
     color: TEXT,
     marginTop: 14,
     marginBottom: 6,
