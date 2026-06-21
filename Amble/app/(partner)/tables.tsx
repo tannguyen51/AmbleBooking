@@ -363,7 +363,10 @@ export default function PartnerTablesScreen() {
               const base64 = await FileSystem.readAsStringAsync(img, { encoding: FileSystem.EncodingType.Base64 });
               const res = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "tables");
               if (res.data?.url) uploaded.push(res.data.url);
-            } catch { uploaded.push(img); }
+            } catch (e: any) {
+              console.log("[upload] failed:", e?.message);
+              uploaded.push(img);
+            }
           } else {
             uploaded.push(img);
           }
