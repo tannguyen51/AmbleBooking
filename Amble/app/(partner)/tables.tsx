@@ -128,6 +128,9 @@ export default function PartnerTablesScreen() {
     console.log("[tables] role:", partner?.role, "canManageTables:", canManageTables);
   }
 
+  const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+  const resolveImageUrl = (url: string) => url.startsWith("/uploads/") ? API_URL + url : url;
+
   const getTableTypeLabel = (type: TableType): string => {
     switch (type) {
       case "regular":
@@ -362,7 +365,9 @@ export default function PartnerTablesScreen() {
             try {
               const base64 = await FileSystem.readAsStringAsync(img, { encoding: FileSystem.EncodingType.Base64 });
               const res = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "tables");
-              if (res.data?.url) uploaded.push(res.data.url);
+              if (res.data?.url) {
+                uploaded.push(resolveImageUrl(res.data.url));
+              }
             } catch (e: any) {
               console.log("[upload] failed:", e?.message);
               uploaded.push(img);
@@ -488,7 +493,7 @@ export default function PartnerTablesScreen() {
                 <View style={styles.tableRow}>
                   <View style={styles.tableThumbWrap}>
                     {coverImage ? (
-                      <Image source={{ uri: coverImage }} style={styles.tableThumb} />
+                      <Image source={{ uri: resolveImageUrl(coverImage) }} style={styles.tableThumb} />
                     ) : (
                       <View style={styles.tableThumbPlaceholder}>
                         <Ionicons name="restaurant-outline" size={20} color="#D4A574" />
@@ -728,7 +733,7 @@ export default function PartnerTablesScreen() {
                 >
                   {form.images.map((img) => (
                     <View key={img} style={styles.previewItem}>
-                      <Image source={{ uri: img }} style={styles.previewImg} />
+                      <Image source={{ uri: resolveImageUrl(img) }} style={styles.previewImg} />
                       <TouchableOpacity
                         style={styles.previewRemove}
                         onPress={() => removeImage(img)}
