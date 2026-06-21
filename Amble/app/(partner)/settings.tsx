@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
@@ -240,12 +241,8 @@ export default function PartnerProfileScreen() {
       let finalCover = coverImage;
       if (coverImage && (coverImage.startsWith("file://") || coverImage.startsWith("content://"))) {
         try {
-          const base64 = await fetch(coverImage).then(r => r.blob()).then(b => new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(b);
-          }));
-          const uploadRes = await uploadAPI.uploadImage(base64, "restaurants");
+          const base64 = await FileSystem.readAsStringAsync(coverImage, { encoding: FileSystem.EncodingType.Base64 });
+          const uploadRes = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "restaurants");
           if (uploadRes.data?.url) finalCover = uploadRes.data.url;
         } catch {}
       }

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { LinearGradient } from "expo-linear-gradient";
 import { partnerDashboardAPI, uploadAPI } from "../../services/api";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
@@ -359,12 +360,8 @@ export default function PartnerTablesScreen() {
         for (const img of payload.images) {
           if (img.startsWith("file://") || img.startsWith("content://")) {
             try {
-              const base64 = await fetch(img).then(r => r.blob()).then(b => new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.readAsDataURL(b);
-              }));
-              const res = await uploadAPI.uploadImage(base64, "tables");
+              const base64 = await FileSystem.readAsStringAsync(img, { encoding: FileSystem.EncodingType.Base64 });
+              const res = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "tables");
               if (res.data?.url) uploaded.push(res.data.url);
             } catch { uploaded.push(img); }
           } else {

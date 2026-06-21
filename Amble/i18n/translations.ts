@@ -1023,10 +1023,10 @@ const translations: Translations = {
     "profile.passwordChangeSuccess": "Đổi mật khẩu thành công!",
     "profile.fillRequired": "Vui lòng điền đầy đủ thông tin",
 
-    "chat.headerTitle": "munchmap AI",
+    "chat.headerTitle": "Munchy",
     "chat.headerOnline": "Luôn sẵn sàng hỗ trợ",
-    "chat.inputPlaceholder": "Nhắn munchmap AI...",
-    "chat.welcomeMessage": "Xin chào! Mình là **munchmap AI**.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
+    "chat.inputPlaceholder": "Nhắn Munchy...",
+    "chat.welcomeMessage": "Xin chào! Mình là Munchy.\n\nMình có thể giúp bạn tìm nhà hàng và đặt bàn chỉ trong vài bước.\n\nBạn muốn:\n• Tìm nhà hàng theo sở thích\n• Đặt bàn nhanh qua chat\n\nNhắn gì đó để bắt đầu nhé! 🍽️",
     "chat.errorMessage": "⚠️ Có lỗi xảy ra, bạn thử lại nhé!",
     "chat.resetMessage": "🔄 Đã reset! Bạn muốn tìm gì?",
     "chat.typing": "Đang tìm kiếm...",
