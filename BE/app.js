@@ -93,6 +93,10 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use(express.static(path.join(__dirname, "public")));
+app.get("/privacy-policy", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "privacy-policy.html"));
+});
 app.use("/api/partner/analytics", analyticsRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
 // Health check
