@@ -338,6 +338,14 @@ exports.getBookingFunnel = async (req, res) => {
     funnel.bookingConfirmed = bookingStatuses.filter((b) =>
       ["confirmed", "occupied", "completed"].includes(b.status),
     ).length;
+    // Counts from actual booking statuses (same source for accurate conversion)
+    const confirmedOnly = bookingStatuses.filter((b) =>
+      ["confirmed", "occupied"].includes(b.status),
+    ).length;
+    const completedFromBookings = bookingStatuses.filter((b) =>
+      b.status === "completed",
+    ).length;
+    funnel.bookingCompletedReal = completedFromBookings;
 
     // Funnel conversion rates
     const funnelConversion = {
@@ -367,7 +375,7 @@ exports.getBookingFunnel = async (req, res) => {
           : 0,
       confirmToComplete:
         funnel.bookingConfirmed > 0
-          ? Math.round((funnel.bookingCompleted / funnel.bookingConfirmed) * 100)
+          ? Math.round((completedFromBookings / funnel.bookingConfirmed) * 100)
           : 0,
     };
 
