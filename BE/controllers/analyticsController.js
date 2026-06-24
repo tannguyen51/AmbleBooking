@@ -51,6 +51,8 @@ exports.getOverview = async (req, res) => {
 
     const today = new Date().toISOString().slice(0, 10);
     const { start, end } = getDateRange(req.query.from, req.query.to);
+    const startDate = new Date(start);
+    const endDate = new Date(end + "T23:59:59.999Z");
 
     const [
       totalBookings,
@@ -60,10 +62,7 @@ exports.getOverview = async (req, res) => {
       completedBookings,
     ] = await Promise.all([
       Booking.countDocuments({ ...rFilter,
-        createdAt: {
-          $gte: new Date(start),
-          $lte: new Date(end + "T23:59:59.999Z"),
-        },
+        createdAt: { $gte: startDate, $lte: endDate },
       }),
       Booking.countDocuments({ ...rFilter, "bookingDetails.date": today }),
       Booking.aggregate([
@@ -71,31 +70,79 @@ exports.getOverview = async (req, res) => {
           $match: {
             ...rFilter,
             "payment.status": "paid",
-            createdAt: {
-              $gte: new Date(start),
-              $lte: new Date(end + "T23:59:59.999Z"),
-            },
+            createdAt: { $gte: startDate, $lte: endDate },
           },
         },
         { $group: { _id: null, total: { $sum: "$pricing.totalAmount" } } },
       ]),
       Booking.countDocuments({ ...rFilter,
         status: "cancelled",
-        createdAt: {
-          $gte: new Date(start),
-          $lte: new Date(end + "T23:59:59.999Z"),
-        },
+        createdAt: { $gte: startDate, $lte: endDate },
       }),
       Booking.countDocuments({ ...rFilter,
         status: "completed",
-        createdAt: {
-          $gte: new Date(start),
-          $lte: new Date(end + "T23:59:59.999Z"),
-        },
+        createdAt: { $gte: startDate, $lte: endDate },
       }),
     ]);
 
     const revenue = totalRevenue.length > 0 ? totalRevenue[0].total : 0;
+
+    // ── Additional data for Highlights section ──
+    const [
+      confirmedBookings,
+      totalUsersResult,
+      newUsersResult,
+      peakHourResult,
+      tableTypeResult,
+    ] = await Promise.all([
+      // confirmed/occupied bookings
+      Booking.countDocuments({ ...rFilter,
+        status: { $in: ["confirmed", "occupied"] },
+        createdAt: { $gte: startDate, $lte: endDate },
+      }),
+      // total unique users
+      Booking.distinct("userId", { ...rFilter,
+        createdAt: { $gte: startDate, $lte: endDate },
+      }),
+      // new users (first booking in period)
+      Booking.aggregate([
+        { $match: { ...rFilter, createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: "$userId", firstBooking: { $min: "$createdAt" } } },
+        { $match: { firstBooking: { $gte: startDate } } },
+        { $count: "count" },
+      ]),
+      // peak hour (most booked time slot)
+      Booking.aggregate([
+        { $match: { ...rFilter, "bookingDetails.date": { $gte: start, $lte: end }, status: { $nin: ["cancelled", "declined"] } } },
+        { $group: { _id: "$bookingDetails.time", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      // popular table type
+      Booking.aggregate([
+        { $match: { ...rFilter, createdAt: { $gte: startDate, $lte: endDate }, status: { $nin: ["cancelled", "declined"] } } },
+        {
+          $lookup: { from: "tables", localField: "tableId", foreignField: "_id", as: "table" },
+        },
+        { $unwind: { path: "$table", preserveNullAndEmptyArrays: true } },
+        { $group: { _id: "$table.type", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+    ]);
+
+    const totalUsers = totalUsersResult.length;
+    const newUsersCount = newUsersResult.length > 0 ? newUsersResult[0].count : 0;
+    const peakHour = peakHourResult.length > 0 ? peakHourResult[0]._id || "--" : "--";
+
+    // Map table type to Vietnamese
+    const typeMap = { vip: "VIP", view: "Bàn view", standard: "Standard", regular: "Standard" };
+    let popularTable = "--";
+    if (tableTypeResult.length > 0) {
+      const totalTableBookings = tableTypeResult.reduce((sum, t) => sum + t.count, 0);
+      const top = tableTypeResult[0];
+      const pct = totalTableBookings > 0 ? Math.round((top.count / totalTableBookings) * 100) : 0;
+      popularTable = `${typeMap[top._id] || top._id || "--"} (${pct}%)`;
+    }
 
     return res.json({
       success: true,
@@ -105,6 +152,11 @@ exports.getOverview = async (req, res) => {
         totalRevenue: revenue,
         cancelledBookings,
         completedBookings,
+        confirmedBookings,
+        totalUsers,
+        newUsers: newUsersCount,
+        peakHour,
+        popularTableType: popularTable,
         cancelRate:
           totalBookings > 0
             ? Math.round((cancelledBookings / totalBookings) * 100)
