@@ -361,6 +361,14 @@ exports.getBookingFunnel = async (req, res) => {
         funnel.bookingCompleted > 0
           ? Math.round((funnel.bookingConfirmed / funnel.bookingCompleted) * 100)
           : 0,
+      startToConfirm:
+        funnel.bookingStarted > 0
+          ? Math.round((funnel.bookingConfirmed / funnel.bookingStarted) * 100)
+          : 0,
+      confirmToComplete:
+        funnel.bookingConfirmed > 0
+          ? Math.round((funnel.bookingCompleted / funnel.bookingConfirmed) * 100)
+          : 0,
     };
 
     return res.json({
