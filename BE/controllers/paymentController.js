@@ -395,7 +395,7 @@ exports.createPartnerPayosPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Partner không tồn tại" });
     }
 
-    const plans = { pro: 2000, premium: 1299000 };
+    const plans = { pro: 799000, premium: 1299000 };
     const amount = plans[subscriptionPackage];
     if (!amount) {
       return res.status(400).json({ success: false, message: "Gói không hợp lệ" });

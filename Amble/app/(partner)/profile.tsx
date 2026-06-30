@@ -56,8 +56,8 @@ const SUBSCRIPTION_PLANS: Array<{
   setupFee: string;
   tone: "base" | "premium";
 }> = [
-  { key: "pro", title: "Gói cơ bản (Pro)", subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn", monthlyFee: "2k/tháng", setupFee: "Miễn phí khởi tạo", tone: "base" },
-  { key: "premium", title: "Gói thông dụng (Premium)", subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ", monthlyFee: "1.299k/tháng", setupFee: "Phí khởi tạo 599k/tháng", tone: "premium" },
+  { key: "pro", title: "Gói cơ bản (Pro)", subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn", monthlyFee: "Miễn phí tháng", setupFee: "Phí khởi tạo 799k/tháng", tone: "base" },
+  { key: "premium", title: "Gói thông dụng (Premium)", subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ", monthlyFee: "699k/tháng", setupFee: "Phí khởi tạo 599k/tháng", tone: "premium" },
 ];
 
 const PLAN_BENEFITS = [
