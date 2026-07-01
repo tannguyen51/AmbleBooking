@@ -92,8 +92,9 @@ exports.getRefundPreview = async (req, res) => {
 // ── POST /api/booking/create ──────────────────────────────
 exports.createBooking = async (req, res) => {
   try {
+    const userId = req.user?.id || req.body.userId;
     const {
-      userId,
+      restaurantId,
       restaurantId,
       tableId,
       date,
@@ -151,19 +152,17 @@ exports.createBooking = async (req, res) => {
     }
 
     // ── Atomic lock bàn (R1 fix) ──
-    // Non-PayOS: lock ngay lập tức. PayOS: không lock (để webhook lock)
-    if (paymentMethod !== "payos") {
-      const locked = await Table.findOneAndUpdate(
-        { _id: tableId, status: 'available' },
-        { status: 'reserved', isAvailable: false, currentBookingId: null },
-        { new: false }
-      );
-      if (!locked) {
-        return res.status(409).json({
-          success: false,
-          message: "Bàn này vừa được người khác đặt. Vui lòng chọn bàn khác.",
-        });
-      }
+    // Lock ngay lập tức cho mọi phương thức thanh toán
+    const locked = await Table.findOneAndUpdate(
+      { _id: tableId, status: 'available' },
+      { status: 'reserved', isAvailable: false, currentBookingId: null },
+      { new: false }
+    );
+    if (!locked) {
+      return res.status(409).json({
+        success: false,
+        message: "Bàn này vừa được người khác đặt. Vui lòng chọn bàn khác.",
+      });
     }
 
     const depositAmount = table.pricing.baseDeposit;
@@ -245,12 +244,10 @@ exports.createBooking = async (req, res) => {
       await booking.save();
     }
 
-    // Cập nhật currentBookingId (bàn đã được atomically lock ở trên)
-    if (paymentMethod !== "payos") {
-      await Table.findByIdAndUpdate(tableId, {
-        currentBookingId: booking._id,
-      });
-    }
+    // Cập nhật currentBookingId
+    await Table.findByIdAndUpdate(tableId, {
+      currentBookingId: booking._id,
+    });
 
       try {
         await AnalyticsEvent.create({
@@ -447,6 +444,10 @@ exports.vietqrWebhook = async (req, res) => {
 // ── GET /api/booking/user/:userId ─────────────────────────
 exports.getUserBookings = async (req, res) => {
   try {
+    // Verify token matches requested user
+    if (req.user && req.params.userId !== req.user.id && req.user.id !== req.params.userId) {
+      return res.status(403).json({ success: false, message: "Không có quyền xem dữ liệu này" });
+    }
     const bookings = await Booking.find({ userId: req.params.userId })
       .populate("restaurantId", "name images city address")
       .populate("tableId", "name type images")

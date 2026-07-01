@@ -1,5 +1,5 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -16,14 +16,30 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const userToken = await AsyncStorage.getItem("amble_token");
-  const partnerToken = await AsyncStorage.getItem("amble_partner_token");
+  const userToken = await SecureStore.getItemAsync("amble_token");
+  const partnerToken = await SecureStore.getItemAsync("amble_partner_token");
   const url = config.url || "";
   const isPartnerApi = url.startsWith("/partner/");
   const token = isPartnerApi ? partnerToken : userToken || partnerToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// Response interceptor — xử lý 401 toàn cục
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Token hết hạn hoặc không hợp lệ — xoá token
+      try {
+        await SecureStore.deleteItemAsync("amble_token");
+        await SecureStore.deleteItemAsync("amble_partner_token");
+      } catch (_) {}
+      // App sẽ redirect đến welcome khi store state thay đổi
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ── Auth ────────────────────────────────────────────────
 export const authAPI = {

@@ -10,7 +10,7 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 // POST /api/upload/image — nhận base64, lưu file, trả URL
 router.post("/image", async (req, res) => {
   try {
-    const { image, folder } = req.body; // image: base64 string, folder: "restaurants" | "tables"
+    const { image, folder } = req.body;
     if (!image) {
       return res.status(400).json({ success: false, message: "Thiếu ảnh" });
     }
@@ -20,11 +20,22 @@ router.post("/image", async (req, res) => {
     let ext = "jpg";
     let base64Data = image;
     if (matches) {
-      ext = matches[1] === "png" ? "png" : "jpg";
+      const allowedTypes = ["jpeg", "jpg", "png", "webp", "gif"];
+      if (!allowedTypes.includes(matches[1].toLowerCase())) {
+        return res.status(400).json({ success: false, message: "Định dạng ảnh không hỗ trợ. Chấp nhận: JPEG, PNG, WEBP, GIF" });
+      }
+      ext = matches[1] === "png" ? "png" : matches[1] === "webp" ? "webp" : "jpg";
       base64Data = matches[2];
     }
 
     const buffer = Buffer.from(base64Data, "base64");
+
+    // Giới hạn file 10MB
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE) {
+      return res.status(400).json({ success: false, message: "Ảnh quá lớn. Kích thước tối đa 10MB." });
+    }
+
     const filename = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
     const subDir = folder ? path.join(UPLOADS_DIR, folder) : UPLOADS_DIR;
     if (!fs.existsSync(subDir)) fs.mkdirSync(subDir, { recursive: true });

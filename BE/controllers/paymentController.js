@@ -252,6 +252,7 @@ exports.handlePayosWebhook = async (req, res) => {
         paidAt: new Date(),
       };
       booking.payment.status = "paid";
+      booking.status = "confirmed"; // tự động xác nhận sau khi thanh toán
       await booking.save();
 
       // Lock bàn sau khi thanh toán thành công
@@ -493,6 +494,14 @@ exports.createPartnerUpgradePayosPayment = async (req, res) => {
 exports.partnerPayosWebhook = async (req, res) => {
   try {
     const webhookData = req.body;
+
+    // Verify webhook signature
+    try {
+      await payos.webhooks.verify(webhookData);
+    } catch {
+      return res.status(400).json({ success: false, message: "Chữ ký không hợp lệ" });
+    }
+
     const orderCode = webhookData?.data?.orderCode;
 
     if (!orderCode) {

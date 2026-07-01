@@ -362,7 +362,7 @@ export default function PartnerOrdersScreen() {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="checkmark-circle-outline" size={16} color="#16A34A" />
-                      <Text style={styles.completeBtnTxt}>Hoàn tất</Text>
+                      <Text style={styles.completeBtnTxt}>Check-out</Text>
                     </TouchableOpacity>
                   )}
                 </View>

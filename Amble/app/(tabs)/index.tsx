@@ -965,7 +965,7 @@ export default function HomeScreen() {
             <View style={{ marginTop: 10, marginHorizontal: 16, paddingTop: 5, paddingBottom: 30, overflow: "visible" }}>
               <View style={{ backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 15, height: 48, flexDirection: "row", alignItems: "center", paddingLeft: 18, paddingRight: 3, shadowColor: "#FF8F1F", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 20, elevation: 8, borderWidth: 1.5, borderColor: "rgba(255,143,31,0.35)" }}>
               <TouchableOpacity style={{ flex: 1, justifyContent: "center" }} onPress={() => router.push("/(tabs)/chat")} activeOpacity={0.7}>
-                <Text style={{ fontSize: 16, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#999" }}>
+                <Text style={{ fontSize: 18, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#999" }} numberOfLines={1}>
                   Bạn muốn đi đâu? Hỏi Munchy!
                 </Text>
               </TouchableOpacity>

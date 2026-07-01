@@ -1,14 +1,7 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Image, SafeAreaView, ActivityIndicator, Alert, AppState,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -136,6 +129,14 @@ export default function BookingPaymentScreen() {
       checkStatus(true);
     }, 7000);
     return () => clearInterval(timer);
+  }, [bookingId]);
+
+  // Kiểm tra ngay khi user quay lại app từ app ngân hàng
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") checkStatus(true);
+    });
+    return () => sub.remove();
   }, [bookingId]);
 
   return (

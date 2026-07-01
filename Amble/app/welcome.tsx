@@ -30,7 +30,7 @@ export default function WelcomeScreen() {
       {/* Logo area — top 45% */}
       <View style={styles.logoArea}>
         <MunchMapLogo size="xl" textColor="#FFFFFF" />
-        <Text style={styles.slogan}>ĐI ĂN TIỆN HƠN{"\n"}ĐẶT BÀN XỊN HƠN</Text>
+        <Text style={styles.slogan}>Khám phá món ngon{"\n"}theo cách thông minh hơn</Text>
       </View>
 
       {/* White card — bottom 55% */}

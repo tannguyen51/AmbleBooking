@@ -279,30 +279,30 @@ export default function PartnerDashboard() {
             label={t("partner.dashboard.statsAvailable")}
             value={overview.availableTables}
             total={overview.totalTables}
-            color="#22C55E"
-            bg="#F0FDF4"
+            color="#FF8F1F"
+            bg="#FFF3E0"
           />
           <StatCard
             iconName="ellipse-outline"
             label={t("partner.dashboard.statsBooked")}
             value={overview.bookedTables}
             total={overview.totalTables}
-            color="#EF4444"
-            bg="#FEF2F2"
+            color="#FF8F1F"
+            bg="#FFF3E0"
           />
           <StatCard
             iconName="calendar-outline"
             label={t("partner.dashboard.statsToday")}
             value={overview.todayBookings}
-            color="#3B82F6"
-            bg="#EFF6FF"
+            color="#FF8F1F"
+            bg="#FFF3E0"
           />
           <StatCard
             iconName="time-outline"
             label={t("partner.dashboard.statsPending")}
             value={overview.pendingOrders}
-            color="#F59E0B"
-            bg="#FFFBEB"
+            color="#FF8F1F"
+            bg="#FFF3E0"
             alert={overview.pendingOrders > 0}
           />
         </Animated.View>

@@ -445,7 +445,7 @@ const s = StyleSheet.create({
   badgeSuccess: { backgroundColor: "#DCFCE7" },
   badgeDanger: { backgroundColor: "#FEE2E2" },
   badgeDefault: { backgroundColor: "#F3F4F6" },
-  badgeText: { fontSize: 11, fontWeight: "700", color: "#1A1A1A" },
+  badgeText: { fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" },
 
   // Actions
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },

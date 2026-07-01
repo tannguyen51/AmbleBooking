@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { PartnerBottomNav } from "../../components/partner/PartnerBottomNav";
-import { partnerDashboardAPI, paymentAPI, uploadAPI } from "../../services/api";
+import { partnerAuthAPI, partnerDashboardAPI, paymentAPI, uploadAPI } from "../../services/api";
 import { hasPartnerPermission } from "../../constants/partnerPermissions";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -244,7 +244,7 @@ export default function PartnerProfileScreen() {
           const base64 = await FileSystem.readAsStringAsync(coverImage, { encoding: FileSystem.EncodingType.Base64 });
           const uploadRes = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "restaurants");
           if (uploadRes.data?.url) finalCover = uploadRes.data.url;
-        } catch {}
+        } catch (e: any) { console.warn("[upload] cover failed:", e?.message); }
       }
       if (finalCover && finalCover.startsWith("/uploads/")) {
         finalCover = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app") + finalCover;
@@ -296,7 +296,7 @@ export default function PartnerProfileScreen() {
 
     try {
       setIsSaving(true);
-      // TODO: Gọi API đổi mật khẩu
+      await partnerAuthAPI.changePassword({ currentPassword: oldPassword, newPassword });
       Alert.alert(t("common.success"), t("partner.profile.changePasswordSuccess"));
       setOldPassword("");
       setNewPassword("");

@@ -24,12 +24,12 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "90days", label: "90 ngày" },
 ];
 
-type TabKey = "overview" | "users" | "booking" | "revenue" | "peak";
+type TabKey = "overview" | "users" | "booking" | "cancel" | "peak";
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "overview", label: "Tổng quan", icon: "stats-chart" },
   { key: "users", label: "Người dùng", icon: "people" },
   { key: "booking", label: "Đặt bàn", icon: "calendar" },
-  { key: "revenue", label: "Doanh thu", icon: "cash" },
+  { key: "cancel", label: "Hủy", icon: "close-circle" },
   { key: "peak", label: "Cao điểm", icon: "time" },
 ];
 
@@ -77,12 +77,12 @@ export default function AdminAnalyticsPage() {
           setData((d: any) => ({ ...d, funnel: res.data.data }));
           break;
         }
-        case "revenue": {
+        case "cancel": {
           const [res, prevRes] = await Promise.all([
-            adminAnalyticsAPI.getOverview(undefined, from, to),
-            adminAnalyticsAPI.getOverview(undefined, prevFrom, prevTo),
+            adminAnalyticsAPI.getCancellationMetrics(undefined, from, to),
+            adminAnalyticsAPI.getCancellationMetrics(undefined, prevFrom, prevTo),
           ]);
-          setData((d: any) => ({ ...d, revenue: res.data.data, revenuePrev: prevRes.data.data }));
+          setData((d: any) => ({ ...d, cancel: res.data.data, cancelPrev: prevRes.data.data }));
           break;
         }
         case "peak": {
@@ -114,9 +114,9 @@ export default function AdminAnalyticsPage() {
     const d = data.overview || {};
     const p = data.overviewPrev || {};
     const totalBookings = d.totalBookings ?? "--";
-    const totalRevenue = d.totalRevenue ? `${d.totalRevenue.toLocaleString("vi-VN")}đ` : "--";
+    const totalRevenue = d.totalRevenue ? `${Math.round(d.totalRevenue / 1000)}k` : "--";
     const totalUsers = d.totalUsers ?? "--";
-    const cancelRate = d.cancellationRate != null ? `${d.cancellationRate}%` : "--";
+    const cancelRate = d.cancelRate != null ? `${d.cancelRate}%` : "--";
     const completionRate = d.completionRate != null ? `${d.completionRate}%` : "--";
     const confirmedCount = d.confirmedBookings ?? "--";
     const cancelledCount = d.cancelledBookings ?? "--";
@@ -203,8 +203,8 @@ export default function AdminAnalyticsPage() {
                     />
                   ));
                 })()}
-                <SvgText x={70} y={66} fill={TEXT} fontSize={28} fontWeight="900" textAnchor="middle" fontFamily="Montserrat_700Bold">{totalBookings !== "--" ? totalBookings : "--"}</SvgText>
-                <SvgText x={70} y={82} fill={TEXT_SEC} fontSize={11} fontWeight="600" textAnchor="middle" fontFamily="Montserrat_500Medium">Tổng</SvgText>
+                <SvgText x={70} y={66} fill={TEXT} fontSize={28} fontWeight="500" textAnchor="middle" fontFamily="Montserrat_500Medium">{totalBookings !== "--" ? totalBookings : "--"}</SvgText>
+                <SvgText x={70} y={82} fill={TEXT_SEC} fontSize={11} fontWeight="400" textAnchor="middle" fontFamily="Montserrat_400Regular">Tổng</SvgText>
               </Svg>
             </View>
             {/* Legend */}
@@ -365,8 +365,8 @@ export default function AdminAnalyticsPage() {
                     />
                   ));
                 })()}
-                <SvgText x={70} y={70} fill={TEXT} fontSize={26} fontWeight="900" textAnchor="middle" fontFamily="Montserrat_700Bold">{totalForDonut || "--"}</SvgText>
-                <SvgText x={70} y={86} fill={TEXT_SEC} fontSize={11} fontWeight="600" textAnchor="middle" fontFamily="Montserrat_500Medium">Tổng</SvgText>
+                <SvgText x={70} y={70} fill={TEXT} fontSize={26} fontWeight="500" textAnchor="middle" fontFamily="Montserrat_500Medium">{totalForDonut || "--"}</SvgText>
+                <SvgText x={70} y={86} fill={TEXT_SEC} fontSize={11} fontWeight="400" textAnchor="middle" fontFamily="Montserrat_400Regular">Tổng</SvgText>
               </Svg>
             </View>
             <View style={s.donutLegend}>
@@ -423,27 +423,12 @@ export default function AdminAnalyticsPage() {
     const d = data.funnel?.funnel || {};
     const conv = data.funnel?.funnelConversion || {};
     const views = d.restaurantViews ?? "--";
-    const started = d.bookingStarted ?? "--";
-    const confirmed = d.bookingConfirmed ?? "--";
-    const completed = d.bookingCompleted ?? "--";
+    const completed = d.bookingCompletedReal ?? d.bookingCompleted ?? "--";
     const viewToStart = conv.viewToStart ?? "--";
     const startToConfirm = conv.startToConfirm ?? "--";
     const confirmToComplete = conv.confirmToComplete ?? "--";
     const totalConv = views !== "--" && completed !== "--" && views > 0
       ? Math.round((completed / views) * 100) : "--";
-
-    const funnelSteps = [
-      { key: "views", label: "Lượt xem", value: views, icon: "eye-outline", bg: "#FF8F1F", iconBg: "#fff" },
-      { key: "started", label: "Bắt đầu", value: started, icon: "flag-outline", bg: "#FFB866", iconBg: "#fff" },
-      { key: "confirmed", label: "Xác nhận", value: confirmed, icon: "calendar-outline", bg: "#FFD4A3", iconBg: "#fff" },
-      { key: "completed", label: "Hoàn tất", value: completed, icon: "checkmark-outline", bg: "#FFF3E0", iconBg: "#FF8F1F" },
-    ];
-
-    const conversions = [
-      { label: "Xem → Bắt đầu", value: viewToStart },
-      { label: "Bắt đầu → Xác nhận", value: startToConfirm },
-      { label: "Xác nhận → Hoàn tất", value: confirmToComplete },
-    ];
 
     return (
       <View style={s.tabContent}>
@@ -469,47 +454,22 @@ export default function AdminAnalyticsPage() {
           </View>
         </View>
 
-        {/* Phễu đặt bàn */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Phễu đặt bàn</Text>
-          <View style={s.funnelRow}>
-            {/* Left: Funnel shapes */}
-            <View style={s.funnelShapes}>
-              {funnelSteps.map((step, i) => {
-                const widths = [90, 72, 56, 44];
-                return (
-                  <View key={step.key} style={{ alignItems: "center", marginBottom: i < 3 ? 6 : 0 }}>
-                    <View style={[s.funnelTier, { width: widths[i], backgroundColor: step.bg }]}>
-                      <Ionicons name={step.icon as any} size={14} color={step.iconBg} />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Middle: Values with dotted connectors */}
-            <View style={s.funnelValues}>
-              {funnelSteps.map((step, i) => (
-                <View key={step.key} style={{ alignItems: "center", marginBottom: i < 3 ? 12 : 0 }}>
-                  <Text style={s.funnelValue}>{step.value}</Text>
-                  <Text style={s.funnelLabel}>{step.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Right: Conversion rates */}
-            <View style={s.funnelConv}>
-              {conversions.map((c, i) => (
-                <View key={i} style={{ alignItems: "center", marginBottom: i < 2 ? 18 : 0 }}>
-                  <View style={s.convPill}>
-                    <Text style={s.convPillText}>{c.label}</Text>
-                  </View>
-                  <Text style={s.convRate}>
-                    {typeof c.value === "number" ? `${c.value}%` : "--"}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        {/* Conversion rates */}
+        <View style={s.kpiRow}>
+          <View style={s.kpiCard}>
+            <View style={s.kpiIconCircle}><Ionicons name="arrow-forward-outline" size={18} color={PRIMARY} /></View>
+            <Text style={s.kpiCardLabelLight}>Xem → Bắt đầu</Text>
+            <Text style={s.kpiCardValueLight}>{typeof viewToStart === "number" ? `${viewToStart}%` : "--"}</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <View style={s.kpiIconCircle}><Ionicons name="arrow-forward-outline" size={18} color={PRIMARY} /></View>
+            <Text style={s.kpiCardLabelLight}>Bắt đầu → Xác nhận</Text>
+            <Text style={s.kpiCardValueLight}>{typeof startToConfirm === "number" ? `${startToConfirm}%` : "--"}</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <View style={s.kpiIconCircle}><Ionicons name="arrow-forward-outline" size={18} color={PRIMARY} /></View>
+            <Text style={s.kpiCardLabelLight}>Xác nhận → Hoàn tất</Text>
+            <Text style={s.kpiCardValueLight}>{typeof confirmToComplete === "number" ? `${confirmToComplete}%` : "--"}</Text>
           </View>
         </View>
 
@@ -525,6 +485,214 @@ export default function AdminAnalyticsPage() {
             </Text>
           </View>
         </View>
+
+        {/* Support bar */}
+        <TouchableOpacity style={s.supportBar} onPress={() => setAiChatVisible(true)} activeOpacity={0.7}>
+          <Ionicons name="search-outline" size={18} color="#A0A0A0" style={{ marginRight: 8 }} />
+          <Text style={s.supportPlaceholder}>Bạn cần hỗ trợ gì?</Text>
+          <View style={s.supportBtn}>
+            <Image source={require("../../assets/images/chatbot-speech-bubble.png")} style={{ width: 22, height: 22, tintColor: "#fff" }} resizeMode="contain" />
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // ── Render: Cancel ──
+  const renderCancel = () => {
+    const d = data.cancel || {};
+    const totalCancelled = d.totalCancelled ?? "--";
+    const totalNoShow = d.totalNoShow ?? "--";
+    const cancelRate = d.cancelRate != null ? `${d.cancelRate}%` : "--";
+    const reasons: Array<{ reason: string; count: number }> = d.cancelReasons || [];
+    const maxReason = Math.max(...reasons.map(r => r.count), 1);
+
+    // Map reason names to Vietnamese
+    const reasonNameMap: Record<string, string> = {
+      "customer_cancel": "Khách tự hủy",
+      "admin_override": "Admin can thiệp",
+      "payment_timeout": "Hết thời gian thanh toán",
+      "auto_expired": "Tự động hủy quá hạn",
+      "restaurant_declined": "Nhà hàng từ chối",
+      "Hết thời gian thanh toán": "Hết thời gian thanh toán",
+      "Nhà hàng không xác nhận": "Nhà hàng không xác nhận",
+      "Admin override": "Admin can thiệp",
+      "Tự động hủy do quá hạn": "Tự động hủy quá hạn",
+    };
+    const getReasonLabel = (reason: string) => reasonNameMap[reason] || reason;
+
+    const topReason = reasons[0];
+    const conclusionTitle = topReason
+      ? `Lý do chính: "${getReasonLabel(topReason.reason)}" chiếm ${topReason.count} đơn (${Math.round((topReason.count / (d.totalCancelled || 1)) * 100)}%)`
+      : "Chưa có dữ liệu hủy đơn trong kỳ";
+
+    return (
+      <View style={s.tabContent}>
+        {/* 3 KPI cards */}
+        <View style={s.kpiRow}>
+          <View style={s.kpiCard}>
+            <View style={[s.kpiIconCircle, { backgroundColor: PRIMARY }]}>
+              <Ionicons name="close-outline" size={20} color="#fff" />
+            </View>
+            <Text style={s.kpiCardLabelLight}>Đơn hủy</Text>
+            <Text style={s.kpiCardValueLight}>{totalCancelled}</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <View style={[s.kpiIconCircle, { backgroundColor: PRIMARY }]}>
+              <Ionicons name="person-remove-outline" size={20} color="#fff" />
+            </View>
+            <Text style={s.kpiCardLabelLight}>No-show</Text>
+            <Text style={s.kpiCardValueLight}>{totalNoShow}</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <View style={[s.kpiIconCircle, { backgroundColor: PRIMARY }]}>
+              <Ionicons name="trending-down-outline" size={20} color="#fff" />
+            </View>
+            <Text style={s.kpiCardLabelLight}>Tỉ lệ hủy</Text>
+            <Text style={s.kpiCardValueLight}>{cancelRate}</Text>
+          </View>
+        </View>
+
+        {/* Lý do hủy */}
+        {reasons.length > 0 && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Lý do hủy</Text>
+            {reasons.map((r, i) => {
+              const pct = Math.round((r.count / maxReason) * 100);
+              return (
+                <View key={i} style={s.reasonRow}>
+                  <Text style={s.reasonLabel}>{getReasonLabel(r.reason)}</Text>
+                  <View style={s.reasonBarTrack}>
+                    <View style={[s.reasonBarFill, { width: `${pct}%` }]} />
+                  </View>
+                  <Text style={s.reasonCount}>{r.count}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Kết luận */}
+        <View style={s.card}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+            <View style={s.conclusionIcon}>
+              <Ionicons name="warning-outline" size={28} color={PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardTitle}>Kết luận</Text>
+              <Text style={s.conclusionText}>{conclusionTitle}</Text>
+              {reasons.length > 1 && (
+                <Text style={[s.conclusionText, { marginTop: 8 }]}>
+                  Cần xem xét: "{getReasonLabel(reasons[1]?.reason)}" cũng chiếm {reasons[1]?.count} đơn. Đề xuất cải thiện quy trình để giảm tỉ lệ hủy.
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // ── Render: Peak ──
+  const renderPeak = () => {
+    const d = data.peak || {};
+    const peakHours: Array<{ dayOfWeek: number; hour: number; bookings: number }> = d.peakHours || [];
+    const top5 = peakHours.slice(0, 5);
+    const maxBookings = Math.max(...top5.map(p => p.bookings), 1);
+    const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+    const topSlot = top5[0];
+    const peakTimeLabel = topSlot ? `${dayNames[topSlot.dayOfWeek]} ${String(topSlot.hour).padStart(2, "0")}:00` : "--";
+    const totalPeakBookings = top5.reduce((sum, p) => sum + p.bookings, 0);
+
+    // Bar colors based on rank
+    const barColors = ["#FF8F1F", "#FFB866", "#FFD4A3", "#FFF3E0", "#FFF8F2"];
+
+    // Generate operational insights
+    const insight1 = topSlot
+      ? `Ưu tiên xác nhận đơn vào ${peakTimeLabel} — khung giờ đông khách nhất (${topSlot.bookings} lượt)`
+      : "Chưa có dữ liệu khung giờ cao điểm";
+    const insight2 = peakHours.length > 1
+      ? `Bố trí đủ nhân viên và bàn cho ${dayNames[top5[0]?.dayOfWeek]} — ngày có lượng đặt cao nhất`
+      : "Bố trí nhân sự linh hoạt theo khung giờ đặt đông";
+
+    return (
+      <View style={s.tabContent}>
+        {/* Top 2 KPI cards */}
+        <View style={s.kpiRow}>
+          <View style={s.kpiGridCard}>
+            <View style={s.kpiGridIcon}>
+              <Ionicons name="time-outline" size={20} color={PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.kpiGridLabel}>Khung giờ cao nhất</Text>
+              <Text style={s.kpiGridValue}>{peakTimeLabel}</Text>
+            </View>
+          </View>
+          <View style={s.kpiGridCard}>
+            <View style={s.kpiGridIcon}>
+              <Ionicons name="trending-up-outline" size={20} color={PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.kpiGridLabel}>Tổng lượt đỉnh</Text>
+              <Text style={s.kpiGridValue}>{totalPeakBookings || "--"}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Khung giờ đông khách */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Khung giờ đông khách</Text>
+          {top5.length > 0 ? (
+            <View>
+              {/* Grid lines + bars */}
+              <View style={s.peakChart}>
+                {/* Vertical grid lines */}
+                {[0, 1, 2, 3, 4, 5].map(v => (
+                  <View key={v} style={[s.peakGridLine, { left: `${(v / 5) * 100}%` }]} />
+                ))}
+                {/* Bars */}
+                {top5.map((p, i) => {
+                  const barWidth = Math.round((p.bookings / maxBookings) * 100);
+                  return (
+                    <View key={i} style={s.peakRow}>
+                      <Text style={s.peakTimeLabel}>{dayNames[p.dayOfWeek]} {String(p.hour).padStart(2, "0")}:00</Text>
+                      <View style={s.peakBarWrap}>
+                        <View style={[s.peakBar, { width: `${barWidth}%`, backgroundColor: barColors[i] }]} />
+                      </View>
+                      <Text style={s.peakCount}>{p.bookings}</Text>
+                    </View>
+                  );
+                })}
+                {/* X-axis labels */}
+                <View style={s.peakAxis}>
+                  {[0, 1, 2, 3, 4, 5].map(v => (
+                    <Text key={v} style={s.peakAxisLabel}>{v}</Text>
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : (
+            <Text style={s.emptyHint}>Đang tải dữ liệu...</Text>
+          )}
+        </View>
+
+        {/* Gợi ý vận hành */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Gợi ý vận hành</Text>
+          <View style={s.insightItem}>
+            <View style={s.insightIcon}>
+              <Ionicons name="time-outline" size={16} color={PRIMARY} />
+            </View>
+            <Text style={s.insightText}>{insight1}</Text>
+          </View>
+          <View style={s.insightItem}>
+            <View style={s.insightIcon}>
+              <Ionicons name="restaurant-outline" size={16} color={PRIMARY} />
+            </View>
+            <Text style={s.insightText}>{insight2}</Text>
+          </View>
+        </View>
       </View>
     );
   };
@@ -534,65 +702,9 @@ export default function AdminAnalyticsPage() {
     const tabLabel = TABS.find(t => t.key === tab)?.label || tab;
     let d: any = {};
     switch (tab) {
-      case "revenue": d = data.revenue || {}; break;
-      case "peak": d = data.peak || {}; break;
+      case "cancel": d = data.cancel || {}; break;
     }
     const hasData = Object.keys(d).length > 0 && (d.totalBookings || d.totalUsers || d.totalRevenue);
-
-    if (tab === "peak") {
-      const peakHours = d.peakHours || [];
-      return (
-        <View style={s.tabContent}>
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Giờ cao điểm</Text>
-            {peakHours.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                {peakHours.slice(0, 8).map((p: any, i: number) => {
-                  const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                  return (
-                    <View key={i} style={s.dataRow}>
-                      <Text style={s.dataLabel}>{dayNames[p.dayOfWeek] || p.dayOfWeek} {p.hour}:00</Text>
-                      <Text style={s.dataValue}>{p.bookings} đơn</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <Text style={s.emptyHint}>Đang tải dữ liệu...</Text>
-            )}
-          </View>
-        </View>
-      );
-    }
-
-    if (tab === "revenue") {
-      return (
-        <View style={s.tabContent}>
-          <View style={s.kpiRow}>
-            <View style={s.kpiCard}>
-              <View style={s.kpiIconCircle}><Ionicons name="cash-outline" size={18} color={PRIMARY} /></View>
-              <Text style={s.kpiCardLabel}>Doanh thu</Text>
-              <Text style={s.kpiCardValue}>{d.totalRevenue ? `${d.totalRevenue.toLocaleString("vi-VN")}đ` : "--"}</Text>
-            </View>
-            <View style={s.kpiCard}>
-              <View style={s.kpiIconCircle}><Ionicons name="checkmark-circle-outline" size={18} color={PRIMARY} /></View>
-              <Text style={s.kpiCardLabel}>Đơn hoàn tất</Text>
-              <Text style={s.kpiCardValue}>{d.completedBookings ?? "--"}</Text>
-            </View>
-            <View style={s.kpiCard}>
-              <View style={s.kpiIconCircle}><Ionicons name="close-circle-outline" size={18} color={PRIMARY} /></View>
-              <Text style={s.kpiCardLabel}>Đơn hủy</Text>
-              <Text style={s.kpiCardValue}>{d.cancelledBookings ?? "--"}</Text>
-            </View>
-            <View style={s.kpiCard}>
-              <View style={s.kpiIconCircle}><Ionicons name="trending-up-outline" size={18} color={PRIMARY} /></View>
-              <Text style={s.kpiCardLabel}>Tỉ lệ HT</Text>
-              <Text style={s.kpiCardValue}>{d.completionRate != null ? `${d.completionRate}%` : "--"}</Text>
-            </View>
-          </View>
-        </View>
-      );
-    }
 
     return (
       <View style={s.tabContent}>
@@ -631,6 +743,8 @@ export default function AdminAnalyticsPage() {
     if (activeTab === "overview") return renderOverview();
     if (activeTab === "users") return renderUsers();
     if (activeTab === "booking") return renderBooking();
+    if (activeTab === "cancel") return renderCancel();
+    if (activeTab === "peak") return renderPeak();
     return renderOther(activeTab);
   };
 
@@ -728,8 +842,10 @@ const s = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
   kpiIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  kpiCardLabel: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC, textAlign: "center" },
-  kpiCardValue: { fontSize: 20, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT, marginTop: 2 },
+  kpiCardLabel: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT_SEC, textAlign: "center" },
+  kpiCardValue: { fontSize: 20, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, marginTop: 2 },
+  kpiCardLabelLight: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT_SEC, textAlign: "center" },
+  kpiCardValueLight: { fontSize: 18, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, marginTop: 2 },
 
   // Card
   card: {
@@ -737,7 +853,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: "#EEF0F3",
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  cardTitle: { fontSize: 17, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT, marginBottom: 14 },
+  cardTitle: { fontSize: 17, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT, marginBottom: 14 },
 
   // Donut
   donutRow: { flexDirection: "row", alignItems: "center", gap: 16 },
@@ -745,21 +861,21 @@ const s = StyleSheet.create({
   donutLegend: { flex: 1, gap: 10 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 8 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { fontSize: 14, color: TEXT_SEC, fontFamily: "Montserrat_700Bold", fontWeight: "700", flex: 1 },
-  legendValue: { fontSize: 15, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT },
+  legendLabel: { fontSize: 14, color: TEXT_SEC, fontFamily: "Montserrat_500Medium", fontWeight: "500", flex: 1 },
+  legendValue: { fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT },
   legendDivider: { height: 1, backgroundColor: "#E5E7EB" },
 
   // Highlights
   highlightItem: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
   highlightIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  highlightLabel: { fontSize: 13, color: TEXT_SEC, fontFamily: "Montserrat_700Bold", fontWeight: "700" },
-  highlightValue: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT, marginTop: 2 },
+  highlightLabel: { fontSize: 13, color: TEXT_SEC, fontFamily: "Montserrat_500Medium", fontWeight: "500" },
+  highlightValue: { fontSize: 16, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, marginTop: 2 },
 
   // Support bar
   supportBar: {
     flexDirection: "row", alignItems: "center", backgroundColor: "#FFFFFF",
     borderRadius: 28, paddingHorizontal: 16, paddingRight: 4, height: 48,
-    borderWidth: 1.5, borderColor: PRIMARY,
+    borderWidth: 1.5, borderColor: PRIMARY, marginTop: 30, marginBottom: 12,
   },
   supportPlaceholder: { flex: 1, fontSize: 16, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: "#A0A0A0" },
   supportBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center" },
@@ -767,7 +883,7 @@ const s = StyleSheet.create({
   // Data rows (other tabs)
   dataRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
   dataLabel: { fontSize: 13, color: TEXT_SEC, fontFamily: "Montserrat_400Regular" },
-  dataValue: { fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT },
+  dataValue: { fontSize: 13, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT },
 
   emptyHint: { fontSize: 13, color: TEXT_SEC, fontFamily: "Montserrat_400Regular" },
 
@@ -780,26 +896,48 @@ const s = StyleSheet.create({
   },
   kpiGridIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center" },
   kpiGridLabel: { fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC },
-  kpiGridValue: { fontSize: 22, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT, marginTop: 2 },
+  kpiGridValue: { fontSize: 22, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, marginTop: 2 },
 
   // Insights
   insightItem: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   insightIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center" },
-  insightText: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT, flex: 1 },
+  insightText: { fontSize: 13, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: TEXT, flex: 1 },
 
   // Funnel
   funnelRow: { flexDirection: "row", alignItems: "stretch", gap: 4 },
   funnelShapes: { alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
   funnelTier: { height: 32, borderRadius: 6, alignItems: "center", justifyContent: "center" },
   funnelValues: { flex: 1, alignItems: "center", justifyContent: "space-between", paddingVertical: 2 },
-  funnelValue: { fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: TEXT },
+  funnelValue: { fontSize: 16, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT },
   funnelLabel: { fontSize: 10, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT_SEC },
   funnelConv: { alignItems: "center", justifyContent: "space-between", paddingVertical: 2 },
   convPill: { backgroundColor: "#FFF3E0", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
   convPillText: { fontSize: 9, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: PRIMARY },
-  convRate: { fontSize: 15, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: PRIMARY },
+  convRate: { fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: PRIMARY },
 
   // Drop-off
   dropoffSub: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: TEXT_SEC, marginTop: 2 },
-  dropoffRate: { fontSize: 36, fontFamily: "Montserrat_700Bold", fontWeight: "900", color: PRIMARY },
+  dropoffRate: { fontSize: 36, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: PRIMARY },
+
+  // Reason bars
+  reasonRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  reasonLabel: { fontSize: 12, fontFamily: "Montserrat_400Regular", fontWeight: "400", color: TEXT, width: 130 },
+  reasonBarTrack: { flex: 1, height: 18, backgroundColor: "#FFF3E0", borderRadius: 9, overflow: "hidden" },
+  reasonBarFill: { height: "100%", backgroundColor: PRIMARY, borderRadius: 9 },
+  reasonCount: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, width: 30, textAlign: "right" },
+
+  // Conclusion
+  conclusionIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center" },
+  conclusionText: { fontSize: 13, fontFamily: "Montserrat_400Regular", color: TEXT_SEC, lineHeight: 20 },
+
+  // Peak chart
+  peakChart: { position: "relative", paddingLeft: 70, paddingRight: 30 },
+  peakGridLine: { position: "absolute", top: 0, bottom: 24, width: 1, borderLeftWidth: 1, borderLeftColor: "#E5E7EB", borderStyle: "dotted" },
+  peakRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  peakTimeLabel: { fontSize: 11, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, width: 65, marginLeft: -70 },
+  peakBarWrap: { flex: 1, height: 22, backgroundColor: "#FFF3E0", borderRadius: 6, overflow: "hidden" },
+  peakBar: { height: "100%", borderRadius: 6 },
+  peakCount: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: TEXT, width: 28, textAlign: "right" },
+  peakAxis: { flexDirection: "row", justifyContent: "space-between", paddingLeft: 70, paddingRight: 30, marginTop: 4 },
+  peakAxisLabel: { fontSize: 10, fontFamily: "Montserrat_400Regular", color: "#9CA3AF", textAlign: "center" },
 });

@@ -283,7 +283,7 @@ export default function BookingHistoryScreen() {
       "no_show",
       "declined",
     ].includes(item.status);
-    const canPay = item.payment?.status === "unpaid";
+    const canPay = false; // Hệ thống không còn thanh toán đơn chưa thanh toán
 
     return (
       <View style={c.card}>
@@ -432,7 +432,7 @@ export default function BookingHistoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#FFF3BE" }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <LinearGradient
         colors={["#FFFFFF", "#FFFFFF", "rgba(255,255,255,0)"]}
         locations={[0, 0.5, 1]}

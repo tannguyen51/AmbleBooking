@@ -464,13 +464,11 @@ export default function ChatScreen() {
               })}
             </Text>
           </View>
+        </View>
 
-          </View>
-
-          {/* Quick replies - đã tắt */}
-        {/* Table cards */}
+        {/* Table cards — nằm dưới bubble, căn trái cho AI */}
         {!isUser && item.tableCards && item.tableCards.length > 0 && (
-          <View style={{ marginTop: 8, marginLeft: 36 }}>
+          <View style={{ marginTop: 8, alignSelf: "flex-start" }}>
             {item.tableCards.map((card) => (
               <TableCardItem
                 key={card.tableId}
@@ -785,6 +783,7 @@ const tc = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     width: SW - 68,
+    alignSelf: "flex-start",
   },
   restHeader: {
     flexDirection: "row",

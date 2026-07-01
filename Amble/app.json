@@ -2,7 +2,7 @@
   "expo": {
     "name": "MunchMap",
     "slug": "Amble",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "munchmap",
@@ -20,8 +20,11 @@
     },
     "android": {
       "package": "com.munchmap.app",
-      "versionCode": 1,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "versionCode": 6,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -49,7 +52,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Cho phép MunchMap sử dụng vị trí của bạn để tìm nhà hàng gần đây."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

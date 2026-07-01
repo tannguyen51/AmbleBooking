@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { authAPI, userAPI } from '../services/api';
 
 interface User {
@@ -35,7 +35,9 @@ interface AuthState {
   updateUser: (data: Partial<User>) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+const TOKEN_KEY = 'amble_token';
+
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isLoading: false,
@@ -47,16 +49,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authAPI.login({ email, password });
       const { token, user } = res.data;
 
-      await AsyncStorage.setItem('amble_token', token);
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      // Debug: log full error
-      console.log('[auth:login] error:', error.message);
-      console.log('[auth:login] response:', JSON.stringify(error.response?.data));
-      console.log('[auth:login] status:', error.response?.status);
-      const message =
-        error.response?.data?.message || error.message || 'Login failed. Please try again.';
+      const message = error.response?.data?.message || error.message || 'Login failed.';
       throw new Error(message);
     }
   },
@@ -64,15 +61,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithToken: async (token) => {
     set({ isLoading: true });
     try {
-      await AsyncStorage.setItem('amble_token', token);
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
       const res = await authAPI.getMe();
       set({ user: res.data.user, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      await AsyncStorage.removeItem('amble_token');
-      const message =
-        error.response?.data?.message || 'Google login failed.';
-      throw new Error(message);
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      throw new Error(error.response?.data?.message || 'Google login failed.');
     }
   },
 
@@ -82,30 +77,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authAPI.register(data);
       const { token, user } = res.data;
 
-      await AsyncStorage.setItem('amble_token', token);
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      const message =
-        error.response?.data?.message || 'Registration failed. Please try again.';
+      const message = error.response?.data?.message || 'Registration failed.';
       throw new Error(message);
     }
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem('amble_token');
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
     set({ user: null, token: null, isAuthenticated: false });
   },
 
   loadUser: async () => {
     try {
-      const token = await AsyncStorage.getItem('amble_token');
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token) return;
 
       const res = await authAPI.getMe();
       set({ user: res.data.user, token, isAuthenticated: true });
     } catch {
-      await AsyncStorage.removeItem('amble_token');
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
       set({ user: null, token: null, isAuthenticated: false });
     }
   },
@@ -117,9 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: res.data.user, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      const message = error.response?.data?.message || 'Update failed.';
-      throw new Error(message);
+      throw new Error(error.response?.data?.message || 'Update failed.');
     }
   },
-
 }));

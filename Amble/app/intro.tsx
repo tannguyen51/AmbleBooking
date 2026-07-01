@@ -39,7 +39,7 @@ export default function IntroScreen() {
           <Text style={styles.brand}>Munchmap</Text>
         </View>
 
-        <Text style={styles.headline}>Đi ăn tiện hơn{"\n"}Đặt bàn xịn hơn</Text>
+        <Text style={styles.headline}>Khám phá món ngon{"\n"}theo cách thông minh hơn</Text>
 
         <View style={styles.buttonStack}>
           <TouchableOpacity

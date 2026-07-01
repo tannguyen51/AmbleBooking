@@ -12,9 +12,10 @@ import {
   SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { restaurantAPI } from "../../services/api";
+import { uploadAPI, restaurantAPI } from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -79,10 +80,25 @@ export default function BookingReviewScreen() {
 
     try {
       setSubmitting(true);
+
+      // Upload ảnh lên server trước
+      const uploadedUrls: string[] = [];
+      for (const img of images) {
+        if (img.startsWith("data:") || img.startsWith("file://") || img.startsWith("content://")) {
+          try {
+            const base64 = img.startsWith("data:") ? img : await FileSystem.readAsStringAsync(img, { encoding: FileSystem.EncodingType.Base64 }).then(b => `data:image/jpeg;base64,${b}`);
+            const res = await uploadAPI.uploadImage(base64, "reviews");
+            if (res.data?.url) uploadedUrls.push(res.data.url);
+          } catch { uploadedUrls.push(img); }
+        } else {
+          uploadedUrls.push(img);
+        }
+      }
+
       const res = await restaurantAPI.createReview(restaurantId, {
         rating,
         comment,
-        images,
+        images: uploadedUrls,
         bookingId,
       });
       const earned = res.data?.rewardPoints;

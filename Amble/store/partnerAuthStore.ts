@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { partnerAuthAPI } from '../services/api';
 
 export interface Restaurant {
@@ -55,6 +55,8 @@ interface PartnerAuthState {
   loadPartner: () => Promise<void>;
 }
 
+const TOKEN_KEY = 'amble_partner_token';
+
 export const usePartnerAuthStore = create<PartnerAuthState>((set) => ({
   partner: null,
   restaurant: null,
@@ -71,15 +73,14 @@ export const usePartnerAuthStore = create<PartnerAuthState>((set) => ({
       });
       const { token, partner, restaurant } = res.data;
 
-      await AsyncStorage.setItem('amble_partner_token', token);
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
       // Remove user token to avoid conflicts
-      await AsyncStorage.removeItem('amble_token');
+      await SecureStore.deleteItemAsync('amble_token');
 
       set({ partner, restaurant, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      const message =
-        error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      const message = error.response?.data?.message || 'Đăng nhập thất bại.';
       throw new Error(message);
     }
   },
@@ -90,35 +91,34 @@ export const usePartnerAuthStore = create<PartnerAuthState>((set) => ({
       const res = await partnerAuthAPI.register(data);
       const { token, partner, restaurant } = res.data;
 
-      await AsyncStorage.setItem('amble_partner_token', token);
-      await AsyncStorage.removeItem('amble_token');
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      await SecureStore.deleteItemAsync('amble_token');
 
       set({ partner, restaurant, token, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      const message =
-        error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+      const message = error.response?.data?.message || 'Đăng ký thất bại.';
       throw new Error(message);
     }
   },
 
   logout: async () => {
-  try {
-    await partnerAuthAPI.logout();
-  } catch (e) {}
+    try {
+      await partnerAuthAPI.logout();
+    } catch (e) {}
 
-  await AsyncStorage.removeItem('amble_partner_token');
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
 
-  set({
-    partner: null,
-    restaurant: null,
-    isAuthenticated: false,
-  });
-},
+    set({
+      partner: null,
+      restaurant: null,
+      isAuthenticated: false,
+    });
+  },
 
   loadPartner: async () => {
     try {
-      const token = await AsyncStorage.getItem('amble_partner_token');
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token) return;
 
       const res = await partnerAuthAPI.getMe();
@@ -129,7 +129,7 @@ export const usePartnerAuthStore = create<PartnerAuthState>((set) => ({
         isAuthenticated: true,
       });
     } catch {
-      await AsyncStorage.removeItem('amble_partner_token');
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
       set({ partner: null, restaurant: null, token: null, isAuthenticated: false });
     }
   },
