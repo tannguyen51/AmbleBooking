@@ -247,7 +247,7 @@ export default function PartnerProfileScreen() {
         } catch (e: any) { console.warn("[upload] cover failed:", e?.message); }
       }
       if (finalCover && finalCover.startsWith("/uploads/")) {
-        finalCover = const settingsBaseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, ""); + finalCover;
+        finalCover = ((process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "")) + finalCover;
       }
 
       const sortedDays = DAY_OPTIONS.map((d) => d.key).filter((d) =>
