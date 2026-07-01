@@ -95,7 +95,6 @@ exports.createBooking = async (req, res) => {
     const userId = req.user?.id || req.body.userId;
     const {
       restaurantId,
-      restaurantId,
       tableId,
       date,
       time,
