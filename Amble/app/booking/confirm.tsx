@@ -196,7 +196,7 @@ export default function ConfirmBookingScreen() {
       const booking = res.data.booking;
       if (selectedPayment === "payos") {
         try {
-          const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+          const baseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "");
           const returnUrl = `${baseUrl}/api/payment/payos-return?bookingId=${booking._id}`;
           const cancelUrl = `${baseUrl}/api/payment/payos-cancel-page?bookingId=${booking._id}`;
           const payosRes = await paymentAPI.createPayosPayment({

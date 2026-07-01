@@ -1,3 +1,5 @@
+# Environment files
+.env
 BE/.env
 Amble/.env
 BE/node_modules/

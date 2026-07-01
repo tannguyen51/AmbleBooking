@@ -1,5 +1,5 @@
 import { restaurantApi } from "./restaurantApi";
-import { bookingAPI } from "./api";
+import { API_BASE_URL, bookingAPI } from "./api";
 import type { QuickReply, TableCard } from "../types/chat";
 
 const devLog = {
@@ -57,7 +57,7 @@ export const DEFAULT_SESSION: AISession = {
 
 // ─── Gọi AI qua BE proxy ───────────────────
 
-const BE_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api";
+const BE_URL = API_BASE_URL;
 
 async function callBackendAI(
   systemPrompt: string,

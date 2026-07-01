@@ -1,4 +1,5 @@
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api";
+import { API_BASE_URL } from "./api";
+const BASE_URL = API_BASE_URL;
 
 export const restaurantApi = {
   async searchRestaurants(params: {

@@ -128,7 +128,7 @@ export default function PartnerTablesScreen() {
     console.log("[tables] role:", partner?.role, "canManageTables:", canManageTables);
   }
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+  const API_URL = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "");
   const resolveImageUrl = (url: string) => url.startsWith("/uploads/") ? API_URL + url : url;
 
   const getTableTypeLabel = (type: TableType): string => {

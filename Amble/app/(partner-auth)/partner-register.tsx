@@ -176,7 +176,7 @@ export default function PartnerRegisterScreen() {
       const p = usePartnerAuthStore.getState().partner;
       if (p?._id) {
         try {
-          const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+          const baseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "");
           const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
           const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
           const res = await paymentAPI.createPartnerPayosPayment({

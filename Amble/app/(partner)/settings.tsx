@@ -247,7 +247,7 @@ export default function PartnerProfileScreen() {
         } catch (e: any) { console.warn("[upload] cover failed:", e?.message); }
       }
       if (finalCover && finalCover.startsWith("/uploads/")) {
-        finalCover = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app") + finalCover;
+        finalCover = const settingsBaseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, ""); + finalCover;
       }
 
       const sortedDays = DAY_OPTIONS.map((d) => d.key).filter((d) =>
@@ -568,20 +568,20 @@ export default function PartnerProfileScreen() {
             >
               <Ionicons name="lock-closed-outline" size={18} color="#FF6B35" />
               <Text style={styles.modalBtnText}>{t("partner.profile.changePasswordTitle")}</Text>
-
-              {canManageStaff && (
-              <TouchableOpacity
-                style={styles.modalBtn}
-                onPress={() => {
-                  setShowAccountCenterMenu(false);
-                  router.push('/partner-team');
-                }}
-              >
-                <Ionicons name='people-outline' size={18} color='#FF6B35' />
-                <Text style={styles.modalBtnText}>{t("partner.profile.staffManagement")}</Text>
-              </TouchableOpacity>
-              )}
             </TouchableOpacity>
+
+            {canManageStaff && (
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => {
+                setShowAccountCenterMenu(false);
+                router.push('/partner-team');
+              }}
+            >
+              <Ionicons name='people-outline' size={18} color='#FF6B35' />
+              <Text style={styles.modalBtnText}>{t("partner.profile.staffManagement")}</Text>
+            </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.modalCloseBtn}

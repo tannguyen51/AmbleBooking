@@ -69,10 +69,6 @@ export default function AdminLoginScreen() {
             <TouchableOpacity style={s.loginBtn} onPress={handleLogin} disabled={isLoading} activeOpacity={0.85}>
               {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginText}>Đăng nhập</Text>}
             </TouchableOpacity>
-
-            <TouchableOpacity style={s.forgotBtn} onPress={() => router.push("/admin/forgot-password" as any)}>
-              <Text style={s.forgotText}>Quên mật khẩu?</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -94,6 +90,4 @@ const s = StyleSheet.create({
   input: { backgroundColor: "#FFFFFF", borderRadius: 10, height: 40, paddingHorizontal: 14, fontSize: 16, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#000", borderWidth: 1, borderColor: "#E8E8E8", marginBottom: 16 },
   loginBtn: { backgroundColor: "#FF8F1F", borderRadius: 10, height: 58, alignItems: "center", justifyContent: "center", marginTop: 8 },
   loginText: { fontSize: 20, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" },
-  forgotBtn: { alignItems: "center", marginTop: 12 },
-  forgotText: { fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FF8F1F" },
 });
