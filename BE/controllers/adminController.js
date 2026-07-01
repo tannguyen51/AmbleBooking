@@ -294,6 +294,7 @@ exports.getPartners = async (req, res) => {
       {
         $addFields: {
           restaurantImage: { $arrayElemAt: ["$restaurant.images", 0] },
+          isFeatured: "$restaurant.isFeatured",
         },
       },
       { $sort: { createdAt: -1 } },
