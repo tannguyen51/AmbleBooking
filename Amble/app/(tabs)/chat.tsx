@@ -341,6 +341,8 @@ export default function ChatScreen() {
             setMessages(data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
             if (data.session) setSession(data.session);
           }
+          // Scroll xuống cuối sau khi restore
+          scrollToBottom();
         } catch {}
       }
     });
@@ -571,6 +573,7 @@ export default function ChatScreen() {
           renderItem={renderMessage}
           contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
         {/* Typing indicator */}
