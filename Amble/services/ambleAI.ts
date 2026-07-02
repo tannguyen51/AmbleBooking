@@ -324,8 +324,9 @@ async function fetchTableCards(
           const allTables: any[] = res.data.tables || [];
           devLog.log("[AI]", r.name, "- total tables:", allTables.length);
 
-          // Filter bàn phù hợp — BỎ filter isAvailable vì field này có thể chưa có trong DB cũ
+          // Filter bàn phù hợp
           const matched = allTables.filter((t) => {
+            const availOk = t.isAvailable !== false;
             // Loại bàn: chỉ filter nếu type hợp lệ, không thì bỏ qua (dùng tablePreference thay)
             const validTypes = ["vip", "view", "regular", "standard"];
             const typeOk =
@@ -353,7 +354,7 @@ async function fetchTableCards(
 
             const preferenceOk = tableMatchesPreference(t, draft.tablePreference);
 
-            return typeOk && capOk && activeOk && depositOk && preferenceOk;
+            return typeOk && capOk && activeOk && depositOk && preferenceOk && availOk;
           });
 
           devLog.log("[AI]", r.name, "- matched tables:", matched.length);
@@ -369,7 +370,7 @@ async function fetchTableCards(
               description: t.description || "",
               capacity: t.capacity || { min: 2, max: 6 },
               deposit: t.pricing?.baseDeposit || 0,
-              isAvailable: true,
+              isAvailable: t.isAvailable !== false,
               restaurantId: r._id,
               restaurantName: r.name,
               restaurantImage: r.images?.[0] || "",

@@ -176,22 +176,28 @@ function TableCardItem({
             </View>
           </View>
 
-          {/* Book button */}
-          <TouchableOpacity
-            style={tc.bookBtn}
-            onPress={() => onBook(card)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={["#FFD109", "#FF8F1F"]}
-              style={tc.bookBtnInner}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          {/* Book button — ẩn nếu bàn đã được đặt */}
+          {card.isAvailable !== false ? (
+            <TouchableOpacity
+              style={tc.bookBtn}
+              onPress={() => onBook(card)}
+              activeOpacity={0.85}
             >
-              <Text style={tc.bookBtnText}>{t("chat.selectTable")}</Text>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={["#FFD109", "#FF8F1F"]}
+                style={tc.bookBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={tc.bookBtnText}>{t("chat.selectTable")}</Text>
+                <Ionicons name="arrow-forward" size={14} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <View style={[tc.bookBtn, { backgroundColor: "#F3F4F6", padding: 10, alignItems: "center", borderRadius: 10 }]}>
+              <Text style={{ fontSize: 13, fontFamily: "Montserrat_500Medium", color: "#9CA3AF" }}>Đã có người đặt</Text>
+            </View>
+          )}
         </View>
       </View>
 
