@@ -296,6 +296,7 @@ export default function ChatScreen() {
   const [userContext, setUserContext] = useState("");
   const { user } = useAuthStore();
   const { location } = useLocation();
+  const chatStorageKey = user?._id ? `amble_chat_history_${user._id}` : "amble_chat_history";
 
   // Tạo context cho AI: vị trí GPS + lịch sử đặt bàn
   useEffect(() => {
@@ -330,7 +331,9 @@ export default function ChatScreen() {
 
   // Khôi phục lịch sử chat khi mở app
   useEffect(() => {
-    AsyncStorage.getItem("amble_chat_history").then((saved) => {
+    // Xoá key cũ (không phân biệt user) để tránh rác
+    AsyncStorage.removeItem("amble_chat_history").catch(() => {});
+    AsyncStorage.getItem(chatStorageKey).then((saved) => {
       if (saved) {
         try {
           const data = JSON.parse(saved);
@@ -347,7 +350,7 @@ export default function ChatScreen() {
   useEffect(() => {
     if (messages.length > 1) {
       const save = messages.slice(-50); // Giới hạn 50 tin nhắn gần nhất
-      AsyncStorage.setItem("amble_chat_history", JSON.stringify({ messages: save, session })).catch(() => {});
+      AsyncStorage.setItem(chatStorageKey, JSON.stringify({ messages: save, session })).catch(() => {});
     }
   }, [messages, session]);
 
@@ -550,7 +553,7 @@ export default function ChatScreen() {
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={() => {
-              AsyncStorage.removeItem("amble_chat_history").catch(() => {});
+              AsyncStorage.removeItem(chatStorageKey).catch(() => {});
               setSession(DEFAULT_SESSION);
               setMessages([{ id: `reset-${Date.now()}`, text: t("chat.resetMessage"), sender: "ai", timestamp: new Date() }]);
             }}
