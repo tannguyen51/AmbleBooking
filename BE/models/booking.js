@@ -99,6 +99,7 @@ const bookingSchema = new mongoose.Schema(
     cancellationReason: String,
     walkedInAt: Date,
     completedAt: Date,
+    hiddenByUser: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

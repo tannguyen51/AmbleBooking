@@ -447,7 +447,7 @@ exports.getUserBookings = async (req, res) => {
     if (req.user && req.params.userId !== req.user.id && req.user.id !== req.params.userId) {
       return res.status(403).json({ success: false, message: "Không có quyền xem dữ liệu này" });
     }
-    const bookings = await Booking.find({ userId: req.params.userId })
+    const bookings = await Booking.find({ userId: req.params.userId, hiddenByUser: { $ne: true } })
       .populate("restaurantId", "name images city address")
       .populate("tableId", "name type images")
       .sort({ createdAt: -1 })
@@ -584,7 +584,7 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// DELETE /api/booking/:bookingId — xóa cứng khỏi DB
+// DELETE /api/booking/:bookingId
 exports.deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId);
@@ -600,7 +600,14 @@ exports.deleteBooking = async (req, res) => {
       });
     }
 
-    // Giải phóng bàn nếu còn lock
+    // Đơn completed → soft delete (ẩn khỏi lịch sử, giữ lại cho doanh thu)
+    if (booking.status === "completed") {
+      booking.hiddenByUser = true;
+      await booking.save();
+      return res.json({ success: true, message: "Đã ẩn đơn khỏi lịch sử" });
+    }
+
+    // Đơn cancelled/declined/no_show → xóa cứng + giải phóng bàn
     if (booking.tableId) {
       await Table.findByIdAndUpdate(booking.tableId, {
         isAvailable: true,
