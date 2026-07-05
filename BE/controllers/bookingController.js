@@ -584,7 +584,7 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// DELETE /api/booking/:bookingId
+// DELETE /api/booking/:bookingId — ẩn đơn completed khỏi lịch sử
 exports.deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.bookingId);
@@ -592,32 +592,17 @@ exports.deleteBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking không tồn tại" });
     }
 
-    // Cấm xóa đơn đang active
-    if (["pending", "confirmed", "occupied"].includes(booking.status)) {
+    if (booking.status !== "completed") {
       return res.status(400).json({
         success: false,
-        message: "Không thể xóa đơn đang hoạt động. Vui lòng hủy trước.",
+        message: "Chỉ có thể xóa đơn đã hoàn tất khỏi lịch sử.",
       });
     }
 
-    // Đơn completed → soft delete (ẩn khỏi lịch sử, giữ lại cho doanh thu)
-    if (booking.status === "completed") {
-      booking.hiddenByUser = true;
-      await booking.save();
-      return res.json({ success: true, message: "Đã ẩn đơn khỏi lịch sử" });
-    }
-
-    // Đơn cancelled/declined/no_show → xóa cứng + giải phóng bàn
-    if (booking.tableId) {
-      await Table.findByIdAndUpdate(booking.tableId, {
-        isAvailable: true,
-        currentBookingId: null,
-        status: "available",
-      });
-    }
-
-    await Booking.findByIdAndDelete(req.params.bookingId);
-    return res.json({ success: true, message: "Đã xóa đơn" });
+    // Soft delete: ẩn khỏi lịch sử, giữ nguyên cho doanh thu
+    booking.hiddenByUser = true;
+    await booking.save();
+    return res.json({ success: true, message: "Đã ẩn đơn khỏi lịch sử" });
   } catch (err) {
     console.error("[deleteBooking]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });

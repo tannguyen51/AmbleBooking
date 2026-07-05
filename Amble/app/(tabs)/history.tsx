@@ -283,12 +283,7 @@ export default function BookingHistoryScreen() {
       "pending",
       "confirmed",
     ].includes(item.status);
-    const canDelete = [
-      "completed",
-      "cancelled",
-      "no_show",
-      "declined",
-    ].includes(item.status);
+    const canDelete = item.status === "completed";
     const canPay = false; // Hệ thống không còn thanh toán đơn chưa thanh toán
 
     return (
