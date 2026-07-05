@@ -15,12 +15,12 @@ export function useLocation(): UseLocationResult {
   const [error, setError] = useState<string | null>(null);
 
   const requestLocation = async () => {
-    console.log("[GPS] requestLocation called");
+    if (__DEV__) console.log("[GPS] requestLocation called");
     setLoading(true);
     setError(null);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log("[GPS] permission status:", status);
+      if (__DEV__) console.log("[GPS] permission status:", status);
       if (status !== "granted") {
         setError("Quyền truy cập vị trí bị từ chối");
         setLoading(false);
@@ -30,10 +30,10 @@ export function useLocation(): UseLocationResult {
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Low,
       });
-      console.log("[GPS] got position:", pos.coords.latitude, pos.coords.longitude);
+      if (__DEV__) console.log("[GPS] got position:", pos.coords.latitude, pos.coords.longitude);
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     } catch (e: any) {
-      console.log("[GPS] error:", e?.message);
+      if (__DEV__) console.log("[GPS] error:", e?.message);
       setError("Không thể lấy vị trí. Bật GPS và thử lại.");
     } finally {
       setLoading(false);
