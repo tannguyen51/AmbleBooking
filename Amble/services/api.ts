@@ -179,6 +179,9 @@ export const bookingAPI = {
   getRefundPreview: (bookingId: string) =>
     api.get(`/booking/${bookingId}/refund-preview`),
 
+  // Xóa cứng booking khỏi lịch sử
+  deleteBooking: (bookingId: string) => api.delete(`/booking/${bookingId}`),
+
   // Partner xác nhận booking
   confirm: (bookingId: string) => api.put(`/booking/${bookingId}/confirm`),
 

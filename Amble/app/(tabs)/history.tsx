@@ -195,8 +195,14 @@ export default function BookingHistoryScreen() {
       {
         text: "Xóa",
         style: "destructive",
-        onPress: () => {
-          setBookings((prev) => prev.filter((b) => b._id !== bookingId));
+        onPress: async () => {
+          try {
+            await bookingAPI.deleteBooking(bookingId);
+            setBookings((prev) => prev.filter((b) => b._id !== bookingId));
+          } catch (error: any) {
+            const msg = error?.response?.data?.message || "Không thể xóa đơn";
+            Alert.alert("Lỗi", msg);
+          }
         },
       },
     ]);

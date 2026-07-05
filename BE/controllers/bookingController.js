@@ -584,6 +584,39 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+// DELETE /api/booking/:bookingId — xóa cứng khỏi DB
+exports.deleteBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking không tồn tại" });
+    }
+
+    // Cấm xóa đơn đang active
+    if (["pending", "confirmed", "occupied"].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể xóa đơn đang hoạt động. Vui lòng hủy trước.",
+      });
+    }
+
+    // Giải phóng bàn nếu còn lock
+    if (booking.tableId) {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        isAvailable: true,
+        currentBookingId: null,
+        status: "available",
+      });
+    }
+
+    await Booking.findByIdAndDelete(req.params.bookingId);
+    return res.json({ success: true, message: "Đã xóa đơn" });
+  } catch (err) {
+    console.error("[deleteBooking]", err);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
 // ── Helper: cập nhật trạng thái bàn khi release ─────────
 const updateTableForRelease = async (tableId, nextStatus) => {
   const update = {
