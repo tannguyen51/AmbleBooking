@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
+const cloudinary = require("cloudinary").v2;
 
-const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// POST /api/upload/image — nhận base64, lưu file, trả URL
+// POST /api/upload/image — upload base64 lên Cloudinary
 router.post("/image", async (req, res) => {
   try {
     const { image, folder } = req.body;
@@ -15,39 +16,40 @@ router.post("/image", async (req, res) => {
       return res.status(400).json({ success: false, message: "Thiếu ảnh" });
     }
 
-    // Tách base64 header (data:image/jpeg;base64,...)
+    // Validate định dạng
     const matches = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-    let ext = "jpg";
-    let base64Data = image;
-    if (matches) {
-      const allowedTypes = ["jpeg", "jpg", "png", "webp", "gif"];
-      if (!allowedTypes.includes(matches[1].toLowerCase())) {
-        return res.status(400).json({ success: false, message: "Định dạng ảnh không hỗ trợ. Chấp nhận: JPEG, PNG, WEBP, GIF" });
-      }
-      ext = matches[1] === "png" ? "png" : matches[1] === "webp" ? "webp" : "jpg";
-      base64Data = matches[2];
+    if (!matches) {
+      return res.status(400).json({ success: false, message: "Ảnh không đúng định dạng base64" });
     }
-
-    const buffer = Buffer.from(base64Data, "base64");
+    const allowedTypes = ["jpeg", "jpg", "png", "webp", "gif"];
+    if (!allowedTypes.includes(matches[1].toLowerCase())) {
+      return res.status(400).json({ success: false, message: "Định dạng không hỗ trợ. Chấp nhận: JPEG, PNG, WEBP, GIF" });
+    }
 
     // Giới hạn file 10MB
-    const MAX_SIZE = 10 * 1024 * 1024;
-    if (buffer.length > MAX_SIZE) {
-      return res.status(400).json({ success: false, message: "Ảnh quá lớn. Kích thước tối đa 10MB." });
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, "base64");
+    if (buffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: "Ảnh quá lớn. Tối đa 10MB." });
     }
 
-    const filename = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
-    const subDir = folder ? path.join(UPLOADS_DIR, folder) : UPLOADS_DIR;
-    if (!fs.existsSync(subDir)) fs.mkdirSync(subDir, { recursive: true });
+    // Upload lên Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(image, {
+      folder: folder ? `munchmap/${folder}` : "munchmap",
+      resource_type: "image",
+      transformation: [
+        { quality: "auto", fetch_format: "auto" },
+      ],
+    });
 
-    const filePath = path.join(subDir, filename);
-    fs.writeFileSync(filePath, buffer);
-
-    const url = `/uploads/${folder ? folder + "/" : ""}${filename}`;
-    return res.json({ success: true, url });
+    return res.json({
+      success: true,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+    });
   } catch (e) {
     console.error("[upload/image]", e.message);
-    return res.status(500).json({ success: false, message: "Lỗi upload" });
+    return res.status(500).json({ success: false, message: "Lỗi upload: " + e.message });
   }
 });
 
