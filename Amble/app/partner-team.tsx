@@ -158,8 +158,7 @@ export default function TeamManagementScreen() {
         onPress: async () => {
           try {
             await partnerStaffAPI.deleteStaff(item._id);
-            Alert.alert("Đã xóa", `Đã xóa ${item.ownerName || item.email}`);
-            loadStaff();
+            setMembers((prev) => prev.filter((m) => m._id !== item._id));
           } catch (error: any) {
             Alert.alert("Lỗi", error?.response?.data?.message || "Không thể xóa nhân viên");
           }
