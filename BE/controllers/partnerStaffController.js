@@ -34,7 +34,7 @@ const createTempPassword = () => {
 };
 
 const canSendEmail = () =>
-  Boolean(process.env.SMTP_USER) && Boolean(process.env.SMTP_PASS);
+  Boolean(process.env.BREVO_API_KEY);
 
 const sendCredentialsEmail = async ({ to, fullName, email, password, role }) => {
   const roleLabel = role === "manager" ? "Quản lí" : "Nhân viên";

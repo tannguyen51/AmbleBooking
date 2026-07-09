@@ -118,6 +118,10 @@ export default function PartnerOrdersScreen() {
   const canCheckIn = (status: string) => ["confirmed"].includes(status);
   const canComplete = (status: string) => ["occupied"].includes(status);
   const canDecline = (status: string) => ["pending"].includes(status);
+  const canNoShow = (status: string) => {
+    if (!["owner", "manager"].includes(partner?.role || "")) return false;
+    return ["pending", "confirmed"].includes(status);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -165,6 +169,25 @@ export default function PartnerOrdersScreen() {
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể check-in.");
     }
+  };
+
+  const handleNoShow = async (bookingId: string) => {
+    Alert.alert("Xác nhận No-show", "Khách không đến?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "No-show",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await partnerDashboardAPI.releaseBooking(bookingId, { reason: "no_show" });
+            Alert.alert("Thành công", "Đã đánh dấu No-show.");
+            loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+          } catch (error: any) {
+            Alert.alert("Lỗi", error?.response?.data?.message || "Không thể đánh dấu No-show.");
+          }
+        },
+      },
+    ]);
   };
 
   const handleConfirm = async (bookingId: string) => {
@@ -265,6 +288,7 @@ export default function PartnerOrdersScreen() {
             const canCheckInOrder = canCheckIn(order.status);
             const canCompleteOrder = canComplete(order.status);
             const canDeclineOrder = canDecline(order.status);
+            const canNoShowOrder = canNoShow(order.status);
 
             return (
               <View key={order.id} style={styles.orderCard}>
@@ -333,6 +357,16 @@ export default function PartnerOrdersScreen() {
                     >
                       <Ionicons name="enter-outline" size={16} color="#22C55E" />
                       <Text style={styles.checkInBtnTxt}>Check-in</Text>
+                    </TouchableOpacity>
+                  )}
+                  {canNoShowOrder && (
+                    <TouchableOpacity
+                      style={styles.declineBtn}
+                      onPress={() => handleNoShow(order.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="eye-off-outline" size={16} color="#EF4444" />
+                      <Text style={styles.declineBtnTxt}>No-show</Text>
                     </TouchableOpacity>
                   )}
                   {canReleaseOrder && (
