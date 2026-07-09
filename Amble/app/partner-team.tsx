@@ -145,15 +145,27 @@ export default function TeamManagementScreen() {
     }
   };
 
-  const resendCredentials = async (item: StaffMember) => {
-    try {
-      await partnerStaffAPI.resendCredentials(item._id, { sendMethod: "email" });
-      Alert.alert("Đã gửi lại", `Đã gửi lại thông tin đăng nhập cho ${item.email}`);
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message || "Không thể gửi lại thông tin đăng nhập";
-      Alert.alert("Lỗi", message);
+  const deleteMember = async (item: StaffMember) => {
+    if (!canUpdate) {
+      Alert.alert("Không có quyền", "Bạn không có quyền xóa nhân sự.");
+      return;
     }
+    Alert.alert("Xóa nhân viên", `Xóa ${item.ownerName || item.email}?`, [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await partnerStaffAPI.deleteStaff(item._id);
+            Alert.alert("Đã xóa", `Đã xóa ${item.ownerName || item.email}`);
+            loadStaff();
+          } catch (error: any) {
+            Alert.alert("Lỗi", error?.response?.data?.message || "Không thể xóa nhân viên");
+          }
+        },
+      },
+    ]);
   };
 
 
@@ -251,10 +263,10 @@ export default function TeamManagementScreen() {
 
               <View style={styles.memberActions}>
                 <TouchableOpacity
-                  style={styles.smallBtn}
-                  onPress={() => resendCredentials(item)}
+                  style={[styles.smallBtn, styles.deleteBtn]}
+                  onPress={() => deleteMember(item)}
                 >
-                  <Text style={styles.smallBtnText}>Gửi lại</Text>
+                  <Text style={styles.deleteBtnText}>Xóa</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -355,5 +367,7 @@ const styles = StyleSheet.create({
   smallBtnText: { fontSize: 11, color: "#374151", fontWeight: "700" },
   disableBtn: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
   enableBtn: { borderColor: "#86EFAC", backgroundColor: "#F0FDF4" },
+  deleteBtn: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
+  deleteBtnText: { fontSize: 11, color: "#DC2626", fontWeight: "700" },
   emptyText: { color: "#9CA3AF", textAlign: "center", marginTop: 12, marginBottom: 20 },
 });

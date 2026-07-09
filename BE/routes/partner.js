@@ -22,6 +22,7 @@ const {
   updateStaffMember,
   resendStaffCredentials,
   changeStaffPassword,
+  deleteStaffMember,
 } = require("../controllers/partnerStaffController");
 const {
   releaseBooking,
@@ -75,5 +76,6 @@ router.post(
   resendStaffCredentials,
 );
 router.put("/staff/:staffId/change-password", protectPartner, checkStaffManagementPermission, changeStaffPassword);
+router.delete("/staff/:staffId", protectPartner, checkStaffManagementPermission, deleteStaffMember);
 
 module.exports = router;

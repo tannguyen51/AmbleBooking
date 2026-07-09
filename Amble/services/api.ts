@@ -315,6 +315,8 @@ export const partnerStaffAPI = {
   ) => api.post(`/partner/staff/${staffId}/resend-credentials`, data || {}),
   changePassword: (staffId: string, data: { newPassword: string }) =>
     api.put(`/partner/staff/${staffId}/change-password`, data),
+  deleteStaff: (staffId: string) =>
+    api.delete(`/partner/staff/${staffId}`),
 };
 
 // ── Partner Analytics ──────────────────────────────────

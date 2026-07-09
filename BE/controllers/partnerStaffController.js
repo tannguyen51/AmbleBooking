@@ -356,3 +356,26 @@ exports.changeStaffPassword = async (req, res) => {
     });
   }
 };
+
+exports.deleteStaffMember = async (req, res) => {
+  try {
+    if (!ensureRestaurantScope(req, res)) return;
+    if (!ensureOwnerOrManagerRole(req, res)) return;
+
+    const staff = await Partner.findOne({
+      _id: req.params.staffId,
+      restaurantId: req.partner.restaurantId,
+      role: { $in: ["manager", "staff"] },
+    });
+
+    if (!staff) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên" });
+    }
+
+    await Partner.findByIdAndDelete(req.params.staffId);
+    return res.json({ success: true, message: "Đã xóa nhân viên" });
+  } catch (err) {
+    console.error("[deleteStaffMember]", err);
+    return res.status(500).json({ success: false, message: "Không thể xóa nhân viên" });
+  }
+};
