@@ -2,7 +2,7 @@
   "expo": {
     "name": "MunchMap",
     "slug": "Amble",
-    "version": "1.0.35",
+    "version": "1.0.36",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "munchmap",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.munchmap.app",
-      "versionCode": 40,
+      "versionCode": 42,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"

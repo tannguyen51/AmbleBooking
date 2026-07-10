@@ -613,8 +613,8 @@ export default function PartnerProfileScreen() {
         animationType="slide"
         onRequestClose={() => setShowEditProfile(false)}
       >
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}>
             <View style={styles.modalHeader2}>
               <TouchableOpacity onPress={() => setShowEditProfile(false)}>
                 <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
