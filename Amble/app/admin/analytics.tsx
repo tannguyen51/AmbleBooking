@@ -3,7 +3,7 @@ import {
   View, Text, SafeAreaView, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, RefreshControl, Image,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { adminAnalyticsAPI } from "../../services/api";

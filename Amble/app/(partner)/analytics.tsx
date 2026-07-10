@@ -3,7 +3,7 @@ import {
   View, Text, SafeAreaView, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, RefreshControl,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { analyticsAPI, adminAnalyticsAPI } from "../../services/api";
 // api is resolved via callApi wrapper below
