@@ -53,7 +53,10 @@
           "locationAlwaysAndWhenInUsePermission": "Cho phép MunchMap sử dụng vị trí của bạn để tìm nhà hàng gần đây."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
