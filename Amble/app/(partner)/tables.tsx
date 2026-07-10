@@ -367,10 +367,16 @@ export default function PartnerTablesScreen() {
               const res = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "tables");
               if (res.data?.url) {
                 uploaded.push(resolveImageUrl(res.data.url));
+              } else {
+                Alert.alert("Lỗi", "Không thể upload ảnh. Vui lòng thử lại.");
+                setIsSubmitting(false);
+                return;
               }
             } catch (e: any) {
               console.log("[upload] failed:", e?.message);
-              uploaded.push(img);
+              Alert.alert("Lỗi", "Không thể upload ảnh. Vui lòng thử lại.");
+              setIsSubmitting(false);
+              return;
             }
           } else {
             uploaded.push(img);

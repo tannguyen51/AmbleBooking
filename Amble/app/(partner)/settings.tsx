@@ -239,12 +239,26 @@ export default function PartnerProfileScreen() {
 
       // Upload ảnh nếu là local URI
       let finalCover = coverImage;
+      let uploadFailed = false;
       if (coverImage && (coverImage.startsWith("file://") || coverImage.startsWith("content://"))) {
         try {
           const base64 = await FileSystem.readAsStringAsync(coverImage, { encoding: FileSystem.EncodingType.Base64 });
           const uploadRes = await uploadAPI.uploadImage(`data:image/jpeg;base64,${base64}`, "restaurants");
-          if (uploadRes.data?.url) finalCover = uploadRes.data.url;
-        } catch (e: any) { console.warn("[upload] cover failed:", e?.message); }
+          if (uploadRes.data?.url) {
+            finalCover = uploadRes.data.url;
+            setCoverImage(uploadRes.data.url);
+          } else {
+            uploadFailed = true;
+          }
+        } catch (e: any) {
+          console.warn("[upload] cover failed:", e?.message);
+          uploadFailed = true;
+        }
+      }
+      if (uploadFailed) {
+        Alert.alert("Lỗi", "Không thể upload ảnh bìa. Vui lòng thử lại.");
+        setIsSaving(false);
+        return;
       }
       if (finalCover && finalCover.startsWith("/uploads/")) {
         finalCover = ((process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "")) + finalCover;
