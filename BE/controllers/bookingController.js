@@ -542,16 +542,28 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    if (booking.payment?.status === "paid") {
-      booking.payment.status = "refund_pending";
-      booking.refund = {
-        ...(booking.refund || {}),
-        requestedAt: new Date(),
-        bankName: String(refundAccount?.bankName || "").trim(),
-        accountNumber: String(refundAccount?.accountNumber || "").trim(),
-        accountName: String(refundAccount?.accountName || "").trim(),
-      };
+    // Giải phóng bàn
+    await Table.findByIdAndUpdate(booking.tableId, {
+      isAvailable: true,
+      currentBookingId: null,
+      status: 'available',
+    });
+
+    // Nếu chưa thanh toán → xóa cứng khỏi DB (không lưu vào lịch sử)
+    if (booking.payment?.status !== "paid") {
+      await Booking.findByIdAndDelete(req.params.bookingId);
+      return res.json({ success: true, message: "Đã hủy đặt bàn và giải phóng bàn" });
     }
+
+    // Đã thanh toán → soft cancel + refund
+    booking.payment.status = "refund_pending";
+    booking.refund = {
+      ...(booking.refund || {}),
+      requestedAt: new Date(),
+      bankName: String(refundAccount?.bankName || "").trim(),
+      accountNumber: String(refundAccount?.accountNumber || "").trim(),
+      accountName: String(refundAccount?.accountName || "").trim(),
+    };
     booking.status = "cancelled";
     booking.cancelledAt = new Date();
     booking.cancellationReason = reason || "Người dùng hủy";

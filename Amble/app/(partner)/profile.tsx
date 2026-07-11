@@ -110,6 +110,7 @@ export default function PartnerProfileScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [pwVisible, setPwVisible] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
@@ -404,13 +405,14 @@ export default function PartnerProfileScreen() {
               { icon: "pricetag-outline", label: "Voucher", onPress: openVoucher },
               { icon: "shield-outline", label: "Điều khoản", onPress: openTerms },
               { icon: "help-outline", label: "Hỗ trợ", onPress: openSupport },
+              { icon: "key-outline", label: "Đổi mật khẩu", onPress: () => setShowChangePasswordModal(true) },
               { icon: "exit-outline", label: "Đăng xuất", onPress: handleLogout },
             ].map((item, i) => (
-              <TouchableOpacity key={i} style={[styles.gridItem, i === 6 && { width: "100%", justifyContent: "center" }]} onPress={item.onPress}>
-                <View style={[styles.gridIcon, i === 6 && { backgroundColor: "transparent" }]}>
-                  <Ionicons name={item.icon as any} size={i === 6 ? 22 : 20} color={i === 6 ? "#FF8F1F" : "#FFF"} />
+              <TouchableOpacity key={i} style={[styles.gridItem, i === 7 && { width: "100%", justifyContent: "center" }]} onPress={item.onPress}>
+                <View style={[styles.gridIcon, i === 7 && { backgroundColor: "transparent" }]}>
+                  <Ionicons name={item.icon as any} size={i === 7 ? 22 : 20} color={i === 7 ? "#FF8F1F" : "#FFF"} />
                 </View>
-                <Text style={[styles.gridLabel, i === 6 && { color: "#FF8F1F", fontFamily: "Montserrat_700Bold", fontWeight: "700" }]}>{item.label}</Text>
+                <Text style={[styles.gridLabel, i === 7 && { color: "#FF8F1F", fontFamily: "Montserrat_700Bold", fontWeight: "700" }]}>{item.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -512,6 +514,55 @@ export default function PartnerProfileScreen() {
 
       <PartnerBottomNav pendingCount={pendingCount} />
     
+
+      {/* Change Password Modal */}
+      <Modal visible={showChangePasswordModal} transparent animationType="fade" onRequestClose={() => setShowChangePasswordModal(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, width: "100%", maxWidth: 400 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#1A1A1A" }}>Đổi mật khẩu</Text>
+              <TouchableOpacity onPress={() => setShowChangePasswordModal(false)}>
+                <Ionicons name="close-outline" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+            <TextInput style={styles.input} placeholder="Nhập mật khẩu hiện tại" placeholderTextColor="#9CA3AF" value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry />
+            <Text style={styles.inputLabel}>Mật khẩu mới</Text>
+            <TextInput style={styles.input} placeholder="Nhập mật khẩu mới" placeholderTextColor="#9CA3AF" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+            <Text style={styles.inputLabel}>Xác nhận mật khẩu mới</Text>
+            <TextInput style={styles.input} placeholder="Nhập lại mật khẩu mới" placeholderTextColor="#9CA3AF" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+            <TouchableOpacity
+              style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center", marginTop: 16 }}
+              onPress={async () => {
+                if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+                  Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin.");
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  Alert.alert("Lỗi", "Mật khẩu mới không khớp.");
+                  return;
+                }
+                try {
+                  setIsChangingPassword(true);
+                  await partnerAuthAPI.changePassword({ currentPassword: currentPassword.trim(), newPassword: newPassword.trim() });
+                  Alert.alert("Thành công", "Đổi mật khẩu thành công.");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setShowChangePasswordModal(false);
+                } catch (error: any) {
+                  Alert.alert("Lỗi", error?.response?.data?.message || "Không thể đổi mật khẩu.");
+                } finally {
+                  setIsChangingPassword(false);
+                }
+              }}
+              disabled={isChangingPassword}
+            >
+              {isChangingPassword ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700" }}>Đổi mật khẩu</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Subscription Modal */}
       <Modal visible={showSubscriptionModal} transparent animationType="slide" onRequestClose={() => setShowSubscriptionModal(false)}>

@@ -119,6 +119,24 @@ export default function BookingPaymentScreen() {
     }
   };
 
+  const handleCancel = () => {
+    Alert.alert("Hủy đặt bàn", "Bạn có chắc muốn hủy đặt bàn này?", [
+      { text: "Giữ lại", style: "cancel" },
+      {
+        text: "Hủy",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await bookingAPI.cancel(bookingId);
+            router.replace("/(tabs)/");
+          } catch (error: any) {
+            Alert.alert("Lỗi", error?.response?.data?.message || "Không thể hủy đặt bàn");
+          }
+        },
+      },
+    ]);
+  };
+
   useEffect(() => {
     loadQr();
   }, [bookingId]);
@@ -243,6 +261,9 @@ export default function BookingPaymentScreen() {
       </ScrollView>
 
       <View style={s.bottomBar}>
+        <TouchableOpacity style={s.cancelBtn} onPress={handleCancel} activeOpacity={0.8}>
+          <Text style={s.cancelBtnText}>Hủy đặt bàn</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={s.checkBtn}
           onPress={() => checkStatus(false)}
@@ -367,7 +388,9 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#eee",
   },
-  checkBtn: { borderRadius: 12, overflow: "hidden" },
+  checkBtn: { borderRadius: 12, overflow: "hidden", flex: 1 },
+  cancelBtn: { borderRadius: 12, borderWidth: 1, borderColor: "#FCA5A5", paddingVertical: 14, alignItems: "center", marginBottom: 8 },
+  cancelBtnText: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
   checkBtnInner: {
     flexDirection: "row",
     alignItems: "center",
