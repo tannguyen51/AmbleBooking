@@ -75,12 +75,36 @@ exports.getRefundPreview = async (req, res) => {
     const isPaid = booking.payment?.status === "paid";
     const depositAmount = booking.pricing?.depositAmount || 0;
 
+    if (!isPaid) {
+      return res.json({ success: true, preview: { isPaid: false, refundAmount: 0, refundPercent: 0 } });
+    }
+
+    const now = new Date();
+    const createdAt = new Date(booking.createdAt);
+    const minutesSinceCreate = (now - createdAt) / (1000 * 60);
+    const nextMidnight = new Date(createdAt);
+    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    nextMidnight.setHours(0, 0, 0, 0);
+    const isAfterMidnight = now >= nextMidnight;
+
+    let refundPercent;
+    if (isAfterMidnight) {
+      refundPercent = 0; // Qua ngày hôm sau → mất 100% cọc
+    } else if (minutesSinceCreate <= 15) {
+      refundPercent = 100; // Trong 15 phút → hoàn 100%
+    } else if (minutesSinceCreate <= 60) {
+      refundPercent = 50; // Trong 1 giờ → hoàn 50%
+    } else {
+      refundPercent = 0; // Sau 1 giờ → mất cọc
+    }
+
     return res.json({
       success: true,
       preview: {
-        isPaid,
-        refundAmount: isPaid ? depositAmount : 0,
-        refundPercent: isPaid ? 100 : 0,
+        isPaid: true,
+        refundAmount: Math.round(depositAmount * refundPercent / 100),
+        refundPercent,
+        hoursRemaining: isAfterMidnight ? 0 : Math.max(0, Math.ceil((nextMidnight - now) / (1000 * 60 * 60))),
       },
     });
   } catch (err) {
@@ -555,10 +579,34 @@ exports.cancelBooking = async (req, res) => {
       return res.json({ success: true, message: "Đã hủy đặt bàn và giải phóng bàn" });
     }
 
-    // Đã thanh toán → soft cancel + refund
-    booking.payment.status = "refund_pending";
+    // Đã thanh toán → tính refund theo thời gian
+    const now = new Date();
+    const createdAt = new Date(booking.createdAt);
+    const minutesSinceCreate = (now - createdAt) / (1000 * 60);
+    const nextMidnight = new Date(createdAt);
+    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    nextMidnight.setHours(0, 0, 0, 0);
+    const isAfterMidnight = now >= nextMidnight;
+
+    let refundPercent;
+    if (isAfterMidnight) {
+      refundPercent = 0;
+    } else if (minutesSinceCreate <= 15) {
+      refundPercent = 100;
+    } else if (minutesSinceCreate <= 60) {
+      refundPercent = 50;
+    } else {
+      refundPercent = 0;
+    }
+
+    const depositAmount = booking.pricing?.depositAmount || 0;
+    const refundAmount = Math.round(depositAmount * refundPercent / 100);
+
+    booking.payment.status = refundPercent > 0 ? "refund_pending" : "paid";
     booking.refund = {
       ...(booking.refund || {}),
+      refundPercent,
+      refundAmount,
       requestedAt: new Date(),
       bankName: String(refundAccount?.bankName || "").trim(),
       accountNumber: String(refundAccount?.accountNumber || "").trim(),
