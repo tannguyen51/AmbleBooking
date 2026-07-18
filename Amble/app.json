@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.munchmap.app",
-      "versionCode": 54,
+      "versionCode": 45,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
@@ -43,8 +43,7 @@
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0",
-            "ndkVersion": "28.2.13676358"
+            "buildToolsVersion": "35.0.0"
           }
         }
       ],
