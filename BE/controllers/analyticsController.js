@@ -424,6 +424,11 @@ exports.getTableSelection = async (req, res) => {
       standard: Math.round((typeCount.standard / total) * 100),
     };
 
+    // Table view clicks
+    const totalTableViewClicks = await AnalyticsEvent.countDocuments(
+      buildEventFilter(restaurantId || null, ["table_view_click"], start, end),
+    );
+
     return res.json({
       success: true,
       data: {
@@ -432,6 +437,7 @@ exports.getTableSelection = async (req, res) => {
         standardTableBookings: typeCount.standard,
         totalBookings: bookings.length,
         tableTypeRatio,
+        totalTableViewClicks,
       },
     });
   } catch (err) {
@@ -580,6 +586,23 @@ exports.getAIMetrics = async (req, res) => {
       buildEventFilter(restaurantId || null, ["ai_chat_start", "ai_chat_complete"], start, end),
     );
 
+    // Aggregate common user requests
+    const requestEvents = await AnalyticsEvent.find(
+      buildEventFilter(restaurantId || null, ["ai_user_request"], start, end),
+    ).lean();
+
+    const requestCounts = {};
+    requestEvents.forEach((e) => {
+      const text = (e.metadata?.content || "").toLowerCase().trim();
+      if (!text) return;
+      requestCounts[text] = (requestCounts[text] || 0) + 1;
+    });
+
+    const commonRequests = Object.entries(requestCounts)
+      .map(([text, count]) => ({ text: text.slice(0, 100), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     return res.json({
       success: true,
       data: {
@@ -588,6 +611,7 @@ exports.getAIMetrics = async (req, res) => {
         completedBookings: aiCompletes,
         conversionRate:
           aiStarts > 0 ? Math.round((aiCompletes / aiStarts) * 100) : 0,
+        commonRequests,
       },
     });
   } catch (err) {

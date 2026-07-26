@@ -20,8 +20,6 @@ import {
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ambleAI,
@@ -32,7 +30,7 @@ import type { TableCard, QuickReply } from "@/types/chat";
 import { ChatMessage } from "@/types/chat";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useAuthStore } from "../../store/authStore";
-import { bookingAPI } from "../../services/api";
+import { bookingAPI, recordAnalyticsEvent, chatAPI } from "../../services/api";
 import { useLocation } from "../../hooks/useLocation";
 
 const PRIMARY = "#6F55FF";
@@ -51,6 +49,7 @@ function TableCardItem({
   onBook: (card: TableCard) => void;
 }) {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [showGallery, setShowGallery] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
 
@@ -100,6 +99,7 @@ function TableCardItem({
         onPress={() => {
           setGalleryIdx(0);
           setShowGallery(true);
+          recordAnalyticsEvent(card.restaurantId, "table_view_click", user?._id);
         }}
         activeOpacity={0.9}
       >
@@ -296,7 +296,6 @@ export default function ChatScreen() {
   const [userContext, setUserContext] = useState("");
   const { user } = useAuthStore();
   const { location } = useLocation();
-  const chatStorageKey = user?._id ? `amble_chat_history_${user._id}` : "amble_chat_history";
 
   // Tạo context cho AI: vị trí GPS + lịch sử đặt bàn
   useEffect(() => {
@@ -329,32 +328,30 @@ export default function ChatScreen() {
       .catch(() => setUserContext(parts.join("\n")));
   }, [user?._id, location]);
 
-  // Khôi phục lịch sử chat khi mở app
+  // Khôi phục lịch sử chat từ server (sync theo tài khoản)
   useEffect(() => {
-    // Xoá key cũ (không phân biệt user) để tránh rác
-    AsyncStorage.removeItem("amble_chat_history").catch(() => {});
-    AsyncStorage.getItem(chatStorageKey).then((saved) => {
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          if (data.messages?.length > 0) {
-            setMessages(data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
-            if (data.session) setSession(data.session);
-          }
-          // Scroll xuống cuối sau khi restore
-          scrollToBottom();
-        } catch {}
-      }
-    });
-  }, []);
-
-  // Lưu lịch sử chat mỗi khi có tin nhắn mới
-  useEffect(() => {
-    if (messages.length > 1) {
-      const save = messages.slice(-50); // Giới hạn 50 tin nhắn gần nhất
-      AsyncStorage.setItem(chatStorageKey, JSON.stringify({ messages: save, session })).catch(() => {});
+    if (user?._id) {
+      chatAPI.getHistory().then((res) => {
+        const data = res.data?.data;
+        if (data?.messages?.length > 0) {
+          setMessages(data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+          if (data.session) setSession(data.session);
+        }
+        scrollToBottom();
+      }).catch(() => {});
     }
-  }, [messages, session]);
+  }, [user?._id]);
+
+  // Lưu lịch sử chat lên server
+  useEffect(() => {
+    if (messages.length > 1 && user?._id) {
+      const save = messages.slice(-50);
+      const timer = setTimeout(() => {
+        chatAPI.saveHistory(save, session).catch(() => {});
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, session, user?._id]);
 
   const scrollToBottom = () => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
@@ -555,7 +552,7 @@ export default function ChatScreen() {
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={() => {
-              AsyncStorage.removeItem(chatStorageKey).catch(() => {});
+              if (user?._id) chatAPI.saveHistory([], DEFAULT_SESSION).catch(() => {});
               setSession(DEFAULT_SESSION);
               setMessages([{ id: `reset-${Date.now()}`, text: t("chat.resetMessage"), sender: "ai", timestamp: new Date() }]);
             }}

@@ -299,3 +299,18 @@ exports.getMe = async (req, res) => {
     return res.status(500).json({ success: false, message: "Lỗi máy chủ." });
   }
 };
+
+// ── PUT /api/partner/push-token ─────────────────────────
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+    if (!pushToken) {
+      return res.status(400).json({ success: false, message: "Missing pushToken" });
+    }
+    await Partner.findByIdAndUpdate(req.partner._id, { pushToken });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[partner:pushToken]", err);
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
+  }
+};

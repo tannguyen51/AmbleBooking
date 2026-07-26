@@ -426,20 +426,6 @@ export default function ConfirmBookingScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <View style={s.quickRow}>
-            {vouchers.map((v) => (
-              <TouchableOpacity
-                key={v.code}
-                style={s.quickChip}
-                onPress={() => {
-                  setVoucherInput(v.code);
-                  setVoucherError("");
-                }}
-              >
-                <Text style={s.quickChipTxt}>{v.code}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
           {voucherLoading && (
             <Text style={s.voucherHint}>Đang tải voucher...</Text>
           )}

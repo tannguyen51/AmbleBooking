@@ -1,7 +1,15 @@
-import { Stack } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { usePartnerAuthStore } from '../../store/partnerAuthStore';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 export default function PartnerLayout() {
+  const router = useRouter();
+  const { partner } = usePartnerAuthStore();
+  usePushNotifications(
+    partner?._id,
+    partner ? () => router.push("/(partner)/orders" as any) : undefined,
+  );
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="dashboard" />

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const AnalyticsEvent = require("../models/analyticsEvent");
 
 let reqCounter = 0;
 const nextReqId = () => `ai-${Date.now()}-${++reqCounter}`;
@@ -214,6 +215,18 @@ router.post("/chat", async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "messages required" });
+    }
+
+    // Fire-and-forget: record user request for analytics
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    if (lastUserMsg?.content) {
+      AnalyticsEvent.create({
+        restaurantId: null,
+        event: "ai_user_request",
+        userId: null,
+        sessionId: "",
+        metadata: { content: String(lastUserMsg.content).slice(0, 500) },
+      }).catch(() => {});
     }
 
     const anthropicKey = getAnthropicKey();

@@ -105,6 +105,10 @@ const partnerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    pushToken: {
+      type: String,
+      default: null,
+    },
     // Link to Restaurant document (created after approval)
     restaurantId: {
       type: mongoose.Schema.Types.ObjectId,

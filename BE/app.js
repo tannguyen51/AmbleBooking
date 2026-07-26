@@ -32,6 +32,7 @@ const paymentRoutes = require("./routes/payment");
 const uploadRoutes = require("./routes/upload");
 const analyticsRoutes = require("./routes/analytics");
 const adminAnalyticsRoutes = require("./routes/adminAnalytics");
+const adminVoucherRoutes = require("./routes/adminVoucher");
 const { startBookingCleanupJob } = require("./services/bookingCleanupService");
 const { startSubscriptionExpiryJob } = require("./services/subscriptionExpiryJob");
 const app = express();
@@ -99,6 +100,9 @@ app.get("/privacy-policy", (req, res) => {
 });
 app.use("/api/partner/analytics", analyticsRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
+app.use("/api/admin/vouchers", adminVoucherRoutes);
+app.use("/api/survey", require("./routes/survey"));
+app.use("/api/chat", require("./routes/chat"));
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: " munchmap API is running!" });

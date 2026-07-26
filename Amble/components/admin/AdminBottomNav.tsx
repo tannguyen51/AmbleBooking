@@ -5,8 +5,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 const TABS = [
   { name: "dashboard", label: "Tổng quan", icon: "home-outline" },
-  { name: "partners", label: "Quản lý đối tác", icon: "business-outline" },
+  { name: "partners", label: "Đối tác", icon: "business-outline" },
   { name: "analytics", label: "Phân tích", icon: "stats-chart-outline" },
+  { name: "vouchers", label: "Voucher", icon: "pricetag-outline" },
   { name: "bookings", label: "Doanh thu", icon: "receipt-outline" },
 ];
 

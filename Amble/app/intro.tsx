@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   StatusBar,
   StyleSheet,
@@ -8,12 +8,32 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import MunchMapLogo from "../components/AmbleLogo";
+import SurveyPopup from "../components/SurveyPopup";
 import { useTranslation } from "../i18n/useTranslation";
+
+const SURVEY_KEY = "amble_survey_done";
 
 export default function IntroScreen() {
   const router = useRouter();
   const { t, isEnglish, language } = useTranslation();
+  const [showSurvey, setShowSurvey] = useState(false);
+
+  const handleStart = async () => {
+    const done = await AsyncStorage.getItem(SURVEY_KEY);
+    if (done === "true") {
+      router.push("/welcome");
+    } else {
+      setShowSurvey(true);
+    }
+  };
+
+  const handleSurveyClose = async () => {
+    setShowSurvey(false);
+    await AsyncStorage.setItem(SURVEY_KEY, "true");
+    router.push("/welcome");
+  };
 
   return (
     <View style={styles.root}>
@@ -45,7 +65,7 @@ export default function IntroScreen() {
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.88}
-            onPress={() => router.push("/welcome")}
+            onPress={handleStart}
           >
             <Text style={styles.primaryBtnText}>{t("intro.startExploring")}</Text>
           </TouchableOpacity>
@@ -59,6 +79,8 @@ export default function IntroScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <SurveyPopup visible={showSurvey} onClose={handleSurveyClose} />
     </View>
   );
 }

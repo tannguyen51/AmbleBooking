@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "MunchMap",
-    "slug": "Amble",
-    "version": "1.0.38",
+    "slug": "amblebooking1",
+    "version": "1.0.62",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "munchmap",
@@ -20,7 +20,8 @@
     },
     "android": {
       "package": "com.munchmap.app",
-      "versionCode": 45,
+      "googleServicesFile": "./android/app/google-services.json",
+      "versionCode": 58,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
@@ -57,20 +58,28 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-router",
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "expo-notifications"
     ],
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "experiments": {
       "typedRoutes": true
+    },
+    "notification": {
+      "icon": "./assets/images/icon.png",
+      "color": "#FF8F1F",
+      "androidMode": "default",
+      "androidCollapsedTitle": "MunchMap"
     },
     "extra": {
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "79cd0e80-dc0d-48de-bd50-b418e9102b01"
+        "projectId": "92e2c016-8b2c-4732-9e09-6b824b1ec8fa"
       }
     },
-    "owner": "xuantan51"
+    "owner": "devxuantan"
   }
 }

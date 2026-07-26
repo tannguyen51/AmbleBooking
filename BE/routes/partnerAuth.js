@@ -8,6 +8,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  updatePushToken,
 } = require('../controllers/partnerAuthController');
 const { protectPartner } = require('../middleware/partnerAuth');
 
@@ -18,5 +19,6 @@ router.post('/logout', protectPartner, logout);
 router.put('/change-password', protectPartner, changePassword);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.put('/push-token', protectPartner, updatePushToken);
 
 module.exports = router;

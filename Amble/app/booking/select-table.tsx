@@ -18,8 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { bookingAPI } from "@/services/api";
+import { bookingAPI, recordAnalyticsEvent } from "@/services/api";
 import { useTranslation, type TranslationKey } from "../../i18n/useTranslation";
+import { useAuthStore } from "../../store/authStore";
 
 const PRIMARY = "#FF6B35";
 const GRAD: [string, string] = ["#FF6B35", "#FFD700"];
@@ -174,6 +175,7 @@ export default function SelectTableScreen() {
   }>();
 
   const { t } = useTranslation();
+  const { user } = useAuthStore();
 
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -584,6 +586,7 @@ const next7Days = getNext7Days();
                       setSelectedGroup(fakeGroup);
                       setSelectedTableId(table._id);
                       setStep(3);
+                      recordAnalyticsEvent(restaurantId, "table_view_click", user?._id);
                     }}
                     activeOpacity={0.8}
                   >

@@ -4,7 +4,7 @@ const analyticsEventSchema = new mongoose.Schema({
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
-    required: true,
+    required: false,
   },
   event: {
     type: String,
@@ -16,6 +16,7 @@ const analyticsEventSchema = new mongoose.Schema({
       'add_favorite', 'remove_favorite', 'submit_review', 'add_photo_review',
       'earn_reward', 'use_reward',
       'filter_use', 'ai_recommend_click', 'deposit_warning_view',
+      'ai_user_request', 'table_view_click',
     ],
     required: true,
   },

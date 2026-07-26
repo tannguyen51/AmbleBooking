@@ -56,7 +56,7 @@ export default function AdminLoginScreen() {
             <Text style={s.welcomeSub}>Đăng nhập quản trị viên</Text>
 
             <Text style={s.label}>Email</Text>
-            <TextInput style={s.input} placeholder="admin@amble.vn" placeholderTextColor="#ABABAB" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <TextInput style={s.input} placeholder="account@gmail.com" placeholderTextColor="#ABABAB" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
             <Text style={s.label}>Mật khẩu</Text>
             <View style={{ position: "relative" }}>

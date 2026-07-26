@@ -1,6 +1,9 @@
 const Booking = require("../models/booking");
 const Table = require("../models/table");
 const Restaurant = require("../models/restaurant");
+const Voucher = require("../models/voucher");
+const Partner = require("../models/partner");
+const { sendPushNotification } = require("../services/pushNotificationService");
 const paymentConfig = require("../config/paymentConfig");
 const AnalyticsEvent = require('../models/analyticsEvent');
 
@@ -18,15 +21,38 @@ const generateTransferContent = (bookingRef) => {
   return `${paymentConfig.contentPrefix}-${shortRef}${randomCode}`;
 };
 
-const BOOKING_VOUCHERS = [
-  { code: "AMBLE10", discount: 10, minBill: 50000, isPercent: true },
-  { code: "GENZ2025", discount: 20000, minBill: 100000, isPercent: false },
-  { code: "VIP50", discount: 50000, minBill: 200000, isPercent: false },
-];
-
 // ── GET /api/booking/vouchers ────────────────────────────
 exports.getBookingVouchers = async (req, res) => {
-  return res.json({ success: true, vouchers: BOOKING_VOUCHERS });
+  try {
+    const now = new Date();
+    const vouchers = await Voucher.find({
+      isActive: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    }).lean();
+
+    // Filter by remaining uses (field comparison in-memory)
+    const available = vouchers.filter(
+      (v) => v.maxUses === null || v.currentUses < v.maxUses,
+    );
+
+    const result = available.map((v) => {
+      const userUsed = v.usedBy?.get?.(req.user?.id) || 0;
+      const remainingPerUser = v.maxPerUser ? Math.max(0, v.maxPerUser - userUsed) : null;
+      return {
+        code: v.code,
+        discount: v.discountValue,
+        minBill: v.minBill,
+        isPercent: v.discountType === "percent",
+        isClaimed: v.maxPerUser ? userUsed >= v.maxPerUser : false,
+        remainingPerUser,
+      };
+    });
+
+    return res.json({ success: true, vouchers: result });
+  } catch (err) {
+    console.error("[booking:getBookingVouchers]", err);
+    return res.json({ success: true, vouchers: [] });
+  }
 };
 
 // ── GET /api/booking/tables/:restaurantId ─────────────────
@@ -189,6 +215,22 @@ exports.createBooking = async (req, res) => {
     }
 
     const depositAmount = table.pricing.baseDeposit;
+
+    // Validate per-user voucher limit
+    if (voucherCode) {
+      const voucher = await Voucher.findOne({ code: voucherCode });
+      if (voucher?.maxPerUser && (voucher.usedBy?.get?.(userId) || 0) >= voucher.maxPerUser) {
+        await Table.findOneAndUpdate(
+          { _id: tableId, status: 'reserved' },
+          { status: 'available', isAvailable: true, currentBookingId: null },
+        ).catch(() => {});
+        return res.status(400).json({
+          success: false,
+          message: `Bạn đã dùng voucher ${voucherCode} đủ số lần cho phép`,
+        });
+      }
+    }
+
     const discount = voucherDiscount || 0;
     const totalAmount = Math.max(0, depositAmount - discount);
 
@@ -250,6 +292,18 @@ exports.createBooking = async (req, res) => {
       source: paymentMethod || 'app',
     });
 
+    // Increment voucher usage count
+    if (voucherCode) {
+      try {
+        const inc = {};
+        inc[`usedBy.${userId}`] = 1;
+        await Voucher.findOneAndUpdate(
+          { code: voucherCode },
+          { $inc: { currentUses: 1, ...inc } },
+        );
+      } catch {}
+    }
+
     if (paymentMethod === "bank") {
       const bookingRef = booking.bookingNumber || booking._id.toString();
       const expectedContent = generateTransferContent(bookingRef);
@@ -280,6 +334,27 @@ exports.createBooking = async (req, res) => {
           metadata: { bookingId: booking._id, partySize, tableId, paymentMethod },
         });
       } catch (_) {}
+
+    // Push notification to all staff with pushToken (owner, manager, staff)
+    try {
+      const rest = await Restaurant.findById(restaurantId).select("name");
+      if (rest) {
+        const partners = await Partner.find({ restaurantId }).select("pushToken role");
+        const tokens = partners
+          .map((p) => p.pushToken)
+          .filter((t) => t && t.startsWith("ExponentPushToken"));
+        if (tokens.length > 0) {
+          tokens.forEach((token) => {
+            sendPushNotification(
+              token,
+              "🍽️ Đơn đặt bàn mới",
+              `${rest.name} — ${partySize} khách lúc ${time}`,
+              { type: "new_booking", bookingId: booking._id, restaurantId },
+            );
+          });
+        }
+      }
+    } catch {}
 
     return res.json({
       success: true,

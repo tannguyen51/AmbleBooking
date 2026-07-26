@@ -74,6 +74,7 @@ export const partnerAuthAPI = {
   login: (data: { email: string; password: string }) =>
     api.post("/partner/auth/login", data),
   getMe: () => api.get("/partner/auth/me"),
+  updatePushToken: (pushToken: string) => api.put("/partner/auth/push-token", { pushToken }),
   logout: () => api.post("/partner/auth/logout"),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put("/partner/auth/change-password", data),
@@ -406,6 +407,28 @@ export const adminAnalyticsAPI = {
     if (restaurantId) params.restaurantId = restaurantId;
     return api.get("/admin/analytics/engagement", { params });
   },
+  getSurveyStats: () => api.get("/survey/stats"),
+};
+
+// ── Record analytics event (client-side tracking) ──────
+export const recordAnalyticsEvent = (
+  restaurantId: string,
+  event: string,
+  userId?: string,
+  sessionId?: string,
+  metadata?: Record<string, any>,
+) => {
+  try {
+    api.post("/analytics/event", {
+      restaurantId,
+      event,
+      userId: userId || null,
+      sessionId: sessionId || "",
+      metadata: metadata || {},
+    });
+  } catch (e) {
+    // fire-and-forget, don't block UI
+  }
 };
 
 // ── Admin ──────────────────────────────────────────────
@@ -496,6 +519,20 @@ export const adminAPI = {
   }) => api.post("/admin/routes", data),
   updateRoute: (id: string, data: any) => api.put(`/admin/routes/${id}`, data),
   deleteRoute: (id: string) => api.delete(`/admin/routes/${id}`),
+
+  // ── Vouchers ──
+  getVouchers: (params?: { search?: string; status?: string }) =>
+    api.get("/admin/vouchers", { params }),
+  createVoucher: (data: {
+    code: string;
+    discountType: "percent" | "fixed";
+    discountValue: number;
+    minBill?: number;
+    maxUses?: number;
+    expiresAt?: string;
+  }) => api.post("/admin/vouchers", data),
+  updateVoucher: (id: string, data: any) => api.put(`/admin/vouchers/${id}`, data),
+  deleteVoucher: (id: string) => api.delete(`/admin/vouchers/${id}`),
 };
 
 // ── Routes ──────────────────────────────────────────────
@@ -504,6 +541,18 @@ export const routesAPI = {
     api.get("/routes", { params }),
   getPopular: () => api.get("/routes/popular"),
   getById: (id: string) => api.get(`/routes/${id}`),
+};
+
+// ── Survey ──────────────────────────────────────────────
+export const surveyAPI = {
+  submit: (source: string, userId?: string) =>
+    api.post("/survey", { source, userId, platform: "android" }),
+};
+
+// ── Chat History ─────────────────────────────────────────
+export const chatAPI = {
+  getHistory: () => api.get("/chat/history"),
+  saveHistory: (messages: any[], session: any) => api.put("/chat/history", { messages, session }),
 };
 
 export default api;
