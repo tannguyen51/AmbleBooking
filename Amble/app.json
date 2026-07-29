@@ -20,8 +20,8 @@
     },
     "android": {
       "package": "com.munchmap.app",
-      "googleServicesFile": "./android/app/google-services.json",
-      "versionCode": 58,
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 73,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
@@ -44,7 +44,8 @@
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0"
+            "buildToolsVersion": "35.0.0",
+            "useLegacyPackaging": true
           }
         }
       ],
@@ -60,7 +61,12 @@
       "expo-router",
       "expo-asset",
       "expo-web-browser",
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/notification.wav"]
+        }
+      ]
     ],
     "newArchEnabled": false,
     "experiments": {

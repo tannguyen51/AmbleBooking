@@ -94,7 +94,7 @@ export default function ConfirmBookingScreen() {
   useEffect(() => {
     const loadVouchers = async () => {
       try {
-        const res = await bookingAPI.getVouchers();
+        const res = await bookingAPI.getVouchers(restaurantId);
         setVouchers(res.data?.vouchers || []);
       } catch {
         setVouchers([]);

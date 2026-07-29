@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   View, Text, SafeAreaView, FlatList, TouchableOpacity,
   TextInput, Modal, Alert, ActivityIndicator, RefreshControl,
-  StyleSheet, Switch,
+  ScrollView, StyleSheet, Switch,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -40,6 +40,8 @@ export default function AdminVouchersPage() {
     maxUses: "",
     maxPerUser: "",
     expiresAt: "",
+    allRestaurants: true,
+    restaurantIds: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -63,7 +65,7 @@ export default function AdminVouchersPage() {
 
   const openCreate = () => {
     setEditItem(null);
-    setForm({ code: "", discountType: "percent", discountValue: "", minBill: "", maxUses: "", expiresAt: "" });
+    setForm({ code: "", discountType: "percent", discountValue: "", minBill: "", maxUses: "", maxPerUser: "", expiresAt: "", allRestaurants: true, restaurantIds: "" });
     setModalVisible(true);
   };
 
@@ -77,6 +79,8 @@ export default function AdminVouchersPage() {
       maxUses: item.maxUses ? String(item.maxUses) : "",
       maxPerUser: item.maxPerUser ? String(item.maxPerUser) : "",
       expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : "",
+      allRestaurants: item.allRestaurants !== false,
+      restaurantIds: item.restaurantIds?.map((r: any) => r._id || r).join(", ") || "",
     });
     setModalVisible(true);
   };
@@ -96,6 +100,8 @@ export default function AdminVouchersPage() {
         maxUses: Number(form.maxUses) || null,
         maxPerUser: Number(form.maxPerUser) || null,
         expiresAt: form.expiresAt || null,
+        allRestaurants: form.allRestaurants,
+        restaurantNames: form.allRestaurants ? [] : form.restaurantIds.split(",").map((s) => s.trim()).filter(Boolean),
       };
 
       if (editItem) {
@@ -175,6 +181,12 @@ export default function AdminVouchersPage() {
               </Text>
             </View>
           )}
+          {!item.allRestaurants && item.restaurantIds?.length > 0 && (
+            <View style={s.metaItem}>
+              <Ionicons name="restaurant-outline" size={13} color={TEXT_SEC} />
+              <Text style={s.metaText}>{item.restaurantIds.length} nhà hàng</Text>
+            </View>
+          )}
           <TouchableOpacity onPress={() => handleDelete(item)} style={s.deleteBtn}>
             <Ionicons name="trash-outline" size={16} color="#EF4444" />
           </TouchableOpacity>
@@ -188,9 +200,6 @@ export default function AdminVouchersPage() {
       <LinearGradient colors={["#FF8F1F", "#FFB266"]} style={s.header}>
         <View style={s.headerRow}>
           <Text style={s.headerTitle}>Voucher</Text>
-          <TouchableOpacity style={s.addBtn} onPress={openCreate}>
-            <Ionicons name="add" size={22} color="#fff" />
-          </TouchableOpacity>
         </View>
         <View style={s.searchWrap}>
           <Ionicons name="search-outline" size={16} color="#9CA3AF" />
@@ -238,38 +247,60 @@ export default function AdminVouchersPage() {
 
       <AdminBottomNav />
 
+      {/* FAB - Tạo voucher */}
+      <TouchableOpacity style={s.fab} onPress={openCreate} activeOpacity={0.85}>
+        <Ionicons name="add" size={26} color="#fff" />
+      </TouchableOpacity>
+
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>{editItem ? "Sửa voucher" : "Tạo voucher mới"}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={s.label}>Mã voucher *</Text>
+              <TextInput style={s.input} value={form.code} onChangeText={(v) => setForm({ ...form, code: v })} placeholder="VD: AMBLE10" autoCapitalize="characters" placeholderTextColor="#9CA3AF" editable={!editItem} />
 
-            <Text style={s.label}>Mã voucher *</Text>
-            <TextInput style={s.input} value={form.code} onChangeText={(v) => setForm({ ...form, code: v })} placeholder="VD: AMBLE10" autoCapitalize="characters" placeholderTextColor="#9CA3AF" editable={!editItem} />
+              <Text style={s.label}>Loại giảm giá</Text>
+              <View style={s.typeRow}>
+                <TouchableOpacity style={[s.typeBtn, form.discountType === "percent" && s.typeBtnActive]} onPress={() => setForm({ ...form, discountType: "percent" })}>
+                  <Text style={[s.typeBtnText, form.discountType === "percent" && s.typeBtnTextActive]}>Phần trăm</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.typeBtn, form.discountType === "fixed" && s.typeBtnActive]} onPress={() => setForm({ ...form, discountType: "fixed" })}>
+                  <Text style={[s.typeBtnText, form.discountType === "fixed" && s.typeBtnTextActive]}>Số tiền</Text>
+                </TouchableOpacity>
+              </View>
 
-            <Text style={s.label}>Loại giảm giá</Text>
-            <View style={s.typeRow}>
-              <TouchableOpacity style={[s.typeBtn, form.discountType === "percent" && s.typeBtnActive]} onPress={() => setForm({ ...form, discountType: "percent" })}>
-                <Text style={[s.typeBtnText, form.discountType === "percent" && s.typeBtnTextActive]}>Phần trăm</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.typeBtn, form.discountType === "fixed" && s.typeBtnActive]} onPress={() => setForm({ ...form, discountType: "fixed" })}>
-                <Text style={[s.typeBtnText, form.discountType === "fixed" && s.typeBtnTextActive]}>Số tiền</Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={s.label}>Giá trị {form.discountType === "percent" ? "(%)" : "(VNĐ)"} *</Text>
+              <TextInput style={s.input} value={form.discountValue} onChangeText={(v) => setForm({ ...form, discountValue: v })} keyboardType="numeric" placeholder={form.discountType === "percent" ? "10" : "50000"} placeholderTextColor="#9CA3AF" />
 
-            <Text style={s.label}>Giá trị {form.discountType === "percent" ? "(%)" : "(VNĐ)"} *</Text>
-            <TextInput style={s.input} value={form.discountValue} onChangeText={(v) => setForm({ ...form, discountValue: v })} keyboardType="numeric" placeholder={form.discountType === "percent" ? "10" : "50000"} placeholderTextColor="#9CA3AF" />
+              <Text style={s.label}>Đơn tối thiểu (VNĐ)</Text>
+              <TextInput style={s.input} value={form.minBill} onChangeText={(v) => setForm({ ...form, minBill: v })} keyboardType="numeric" placeholder="0" placeholderTextColor="#9CA3AF" />
 
-            <Text style={s.label}>Đơn tối thiểu (VNĐ)</Text>
-            <TextInput style={s.input} value={form.minBill} onChangeText={(v) => setForm({ ...form, minBill: v })} keyboardType="numeric" placeholder="0" placeholderTextColor="#9CA3AF" />
+              <Text style={s.label}>Giới hạn lượt dùng</Text>
+              <TextInput style={s.input} value={form.maxUses} onChangeText={(v) => setForm({ ...form, maxUses: v })} keyboardType="numeric" placeholder="Không giới hạn" placeholderTextColor="#9CA3AF" />
 
-            <Text style={s.label}>Giới hạn lượt dùng</Text>
-            <TextInput style={s.input} value={form.maxUses} onChangeText={(v) => setForm({ ...form, maxUses: v })} keyboardType="numeric" placeholder="Không giới hạn" placeholderTextColor="#9CA3AF" />
+              <Text style={s.label}>Giới hạn mỗi người</Text>
+              <TextInput style={s.input} value={form.maxPerUser} onChangeText={(v) => setForm({ ...form, maxPerUser: v })} keyboardType="numeric" placeholder="Không giới hạn" placeholderTextColor="#9CA3AF" />
 
-            <Text style={s.label}>Giới hạn mỗi người</Text>
-            <TextInput style={s.input} value={form.maxPerUser} onChangeText={(v) => setForm({ ...form, maxPerUser: v })} keyboardType="numeric" placeholder="Không giới hạn" placeholderTextColor="#9CA3AF" />
+              <Text style={s.label}>Hết hạn (YYYY-MM-DD)</Text>
+              <TextInput style={s.input} value={form.expiresAt} onChangeText={(v) => setForm({ ...form, expiresAt: v })} placeholder="Không hết hạn" placeholderTextColor="#9CA3AF" />
 
-            <Text style={s.label}>Hết hạn (YYYY-MM-DD)</Text>
-            <TextInput style={s.input} value={form.expiresAt} onChangeText={(v) => setForm({ ...form, expiresAt: v })} placeholder="Không hết hạn" placeholderTextColor="#9CA3AF" />
+              <View style={s.toggleRow}>
+                <Text style={s.label}>Áp dụng cho tất cả nhà hàng</Text>
+                <Switch
+                  value={form.allRestaurants}
+                  onValueChange={(v) => setForm({ ...form, allRestaurants: v })}
+                  trackColor={{ false: "#E5E7EB", true: "#FED7AA" }}
+                  thumbColor={form.allRestaurants ? PRIMARY : "#9CA3AF"}
+                />
+              </View>
+              {!form.allRestaurants && (
+                <>
+                  <Text style={s.label}>Tên nhà hàng (cách nhau dấu phẩy)</Text>
+                  <TextInput style={s.input} value={form.restaurantIds} onChangeText={(v) => setForm({ ...form, restaurantIds: v })} placeholder="VD: Garden, Pizza House" placeholderTextColor="#9CA3AF" />
+                </>
+              )}
+            </ScrollView>
 
             <View style={s.modalActions}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setModalVisible(false)}>
@@ -292,6 +323,22 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   headerTitle: { fontSize: 22, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
   addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.25)", justifyContent: "center", alignItems: "center" },
+  fab: {
+    position: "absolute",
+    bottom: 90,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: PRIMARY,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 12, height: 40, marginBottom: 10 },
   searchInput: { flex: 1, fontSize: 13, fontFamily: "Montserrat_400Regular", color: TEXT, marginLeft: 6 },
   filterRow: { flexDirection: "row", gap: 8 },
@@ -327,4 +374,5 @@ const s = StyleSheet.create({
   cancelText: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: TEXT_SEC },
   saveBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: PRIMARY, alignItems: "center" },
   saveText: { fontSize: 14, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#fff" },
+  toggleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
 });

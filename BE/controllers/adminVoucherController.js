@@ -1,4 +1,21 @@
 const Voucher = require("../models/voucher");
+const Restaurant = require("../models/restaurant");
+
+// Helper: resolve restaurant names → IDs
+async function resolveRestaurants(allRestaurants, restaurantIds, restaurantNames) {
+  if (allRestaurants) return { restaurantIds: [], allRestaurants: true };
+  if (restaurantIds && restaurantIds.length > 0) return { restaurantIds, allRestaurants: false };
+
+  // Resolve names → IDs
+  if (restaurantNames && restaurantNames.length > 0) {
+    const names = restaurantNames.map((n) => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i"));
+    const restaurants = await Restaurant.find({ name: { $in: names } }).select("_id");
+    const ids = restaurants.map((r) => r._id);
+    return { restaurantIds: ids, allRestaurants: false };
+  }
+
+  return { restaurantIds: [], allRestaurants: true };
+}
 
 // ── GET /api/admin/vouchers ──────────────────────────
 exports.getVouchers = async (req, res) => {
@@ -20,7 +37,7 @@ exports.getVouchers = async (req, res) => {
 // ── POST /api/admin/vouchers ─────────────────────────
 exports.createVoucher = async (req, res) => {
   try {
-    const { code, discountType, discountValue, minBill, maxUses, expiresAt, maxPerUser } = req.body;
+    const { code, discountType, discountValue, minBill, maxUses, expiresAt, maxPerUser, allRestaurants, restaurantIds, restaurantNames } = req.body;
 
     if (!code || !discountType || discountValue === undefined) {
       return res.status(400).json({ success: false, message: "Thiếu thông tin: code, discountType, discountValue" });
@@ -31,6 +48,8 @@ exports.createVoucher = async (req, res) => {
       return res.status(400).json({ success: false, message: "Mã voucher đã tồn tại" });
     }
 
+    const resolved = await resolveRestaurants(allRestaurants, restaurantIds, restaurantNames);
+
     const voucher = await Voucher.create({
       code: code.toUpperCase(),
       discountType,
@@ -39,6 +58,8 @@ exports.createVoucher = async (req, res) => {
       maxUses: maxUses || null,
       expiresAt: expiresAt || null,
       maxPerUser: maxPerUser || null,
+      allRestaurants: resolved.allRestaurants,
+      restaurantIds: resolved.restaurantIds,
     });
 
     return res.status(201).json({ success: true, data: voucher });

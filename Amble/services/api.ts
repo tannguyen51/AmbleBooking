@@ -131,7 +131,7 @@ export const bookingAPI = {
     api.get(`/booking/tables/${restaurantId}`),
 
   // Voucher danh mục cho flow đặt bàn
-  getVouchers: () => api.get("/booking/vouchers"),
+  getVouchers: (restaurantId?: string) => api.get("/booking/vouchers", { params: { restaurantId } }),
 
   // Tạo booking (1 bước: create + confirm + pay)
   create: (data: {

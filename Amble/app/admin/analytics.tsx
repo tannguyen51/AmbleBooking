@@ -550,7 +550,7 @@ export default function AdminAnalyticsPage() {
                 <View style={s.surveyBarBg}>
                   <View style={[s.surveyBarFill, { width: `${s.pct}%` }]} />
                 </View>
-                <Text style={s.surveyPct}>{s.pct}%</Text>
+                <Text style={s.surveyPct}>{s.count} ({s.pct}%)</Text>
               </View>
             ))
           )}

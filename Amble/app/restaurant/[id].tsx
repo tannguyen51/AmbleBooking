@@ -192,6 +192,8 @@ export default function DetailScreen() {
   const [draftRating, setDraftRating] = useState(5);
   const [draftComment, setDraftComment] = useState("");
   const [draftImages, setDraftImages] = useState<string[]>([]);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const REVIEWS_SHOWN = showAllReviews ? reviews.length : 3;
   const [submittingReview, setSubmittingReview] = useState(false);
 
   // ── Fetch từ BE: GET /api/restaurants/:id ─────────────────
@@ -790,7 +792,7 @@ export default function DetailScreen() {
               <Text style={s.emptyReviewText}>{t("restaurant.noReviews")}</Text>
             ) : (
               <View style={s.reviewList}>
-                {reviews.map((review) => (
+                {reviews.slice(0, REVIEWS_SHOWN).map((review) => (
                   <View key={review._id} style={s.reviewCard}>
                     <View style={s.reviewHeader}>
                       <Text style={s.reviewName}>
@@ -807,6 +809,9 @@ export default function DetailScreen() {
                         ))}
                       </View>
                     </View>
+                    <Text style={s.reviewDate}>
+                      {review.createdAt ? new Date(review.createdAt).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric", year: "numeric" }) : ""}
+                    </Text>
                     {review.comment ? (
                       <Text style={s.reviewComment}>{review.comment}</Text>
                     ) : null}
@@ -827,6 +832,14 @@ export default function DetailScreen() {
                     ) : null}
                   </View>
                 ))}
+                {reviews.length > 3 && (
+                  <TouchableOpacity style={s.showMoreReviews} onPress={() => setShowAllReviews(!showAllReviews)}>
+                    <Text style={s.showMoreReviewsText}>
+                      {showAllReviews ? "Thu gọn" : `Xem tất cả ${reviews.length} đánh giá`}
+                    </Text>
+                    <Ionicons name={showAllReviews ? "chevron-up" : "chevron-down"} size={14} color={PRIMARY} />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -1178,6 +1191,8 @@ const s = StyleSheet.create({
   },
   reviewLoadingText: { fontSize: 12, color: TEXT_MUTED },
   emptyReviewText: { fontSize: 13, color: TEXT_MUTED },
+  showMoreReviews: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 12, marginTop: 4 },
+  showMoreReviewsText: { fontSize: 13, fontWeight: "700", color: PRIMARY },
   reviewList: { gap: 12 },
   reviewCard: {
     backgroundColor: SURFACE,
@@ -1198,6 +1213,7 @@ const s = StyleSheet.create({
     color: TEXT,
   },
   reviewStars: { flexDirection: "row", gap: 2 },
+  reviewDate: { fontSize: 11, color: TEXT_MUTED, marginTop: 4 },
   reviewComment: { fontSize: 13, color: TEXT_SEC, lineHeight: 20 },
   reviewImages: { gap: 8 },
   reviewImage: {

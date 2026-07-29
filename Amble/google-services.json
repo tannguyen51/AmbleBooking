@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "94503732514",
+    "project_id": "munchmap-28436",
+    "storage_bucket": "munchmap-28436.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94503732514:android:f6ed80487cf3114876917b",
+        "android_client_info": {
+          "package_name": "com.munchmap.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBANhkEkLplLZ7GO_eXcKIQjLPOO7QasDY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

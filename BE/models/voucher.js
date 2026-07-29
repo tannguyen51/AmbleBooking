@@ -47,6 +47,14 @@ const voucherSchema = new mongoose.Schema(
       of: Number,
       default: {},
     },
+    restaurantIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
+      default: null,
+    },
+    allRestaurants: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true },
 );

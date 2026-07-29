@@ -21,17 +21,26 @@ const generateTransferContent = (bookingRef) => {
   return `${paymentConfig.contentPrefix}-${shortRef}${randomCode}`;
 };
 
-// ── GET /api/booking/vouchers ────────────────────────────
+// ── GET /api/booking/vouchers?restaurantId= ────────────────
 exports.getBookingVouchers = async (req, res) => {
   try {
     const now = new Date();
-    const vouchers = await Voucher.find({
+    const restaurantId = req.query.restaurantId || null;
+
+    const filter = {
       isActive: true,
       $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-    }).lean();
+    };
+
+    const vouchers = await Voucher.find(filter).lean();
+
+    // Filter by restaurant (allRestaurants=true hoặc có restaurantId trong danh sách)
+    const validForRestaurant = vouchers.filter(
+      (v) => v.allRestaurants || (restaurantId && v.restaurantIds?.some((r) => r.toString() === restaurantId)),
+    );
 
     // Filter by remaining uses (field comparison in-memory)
-    const available = vouchers.filter(
+    const available = validForRestaurant.filter(
       (v) => v.maxUses === null || v.currentUses < v.maxUses,
     );
 
