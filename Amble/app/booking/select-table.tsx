@@ -110,13 +110,16 @@ const getNext7Days = () => {
   const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
   const now = new Date();
 
-  for (let i = 0; i < 7; i++) {
+  // Cho phép chọn 3 ngày trước + hôm nay + 7 ngày sau
+  for (let i = -3; i < 7; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
 
     let dayLabel = "";
     if (i === 0) {
       dayLabel = "Hôm nay";
+    } else if (i < 0) {
+      dayLabel = `${-i} ngày trước`;
     } else {
       dayLabel = weekdays[d.getDay()];
     }
@@ -369,7 +372,6 @@ const next7Days = getNext7Days();
               value={date}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
-              minimumDate={new Date()}
               onChange={(event, selectedDate) => {
                 if (Platform.OS === "android") setShowDatePicker(false);
                 if (selectedDate) setDate(selectedDate);
