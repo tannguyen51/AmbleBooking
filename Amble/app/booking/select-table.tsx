@@ -315,6 +315,15 @@ const next7Days = getNext7Days();
       const [h, m] = timeStr.split(":").map(Number);
       const slotDate = new Date(date);
       slotDate.setHours(h, m, 0, 0);
+
+      // Nếu chọn ngày quá khứ → cho phép chọn giờ tự do
+      // Nếu chọn hôm nay → chặn giờ đã qua
+      const isToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+      if (!isToday) return false;
+
       return slotDate.getTime() < now.getTime();
     };
 
