@@ -243,8 +243,8 @@ exports.createBooking = async (req, res) => {
     const discount = voucherDiscount || 0;
     const totalAmount = Math.max(0, depositAmount - discount);
 
-    // ── Generate bookingNumber tại đây để tránh lỗi validation ──
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    // ── Generate bookingNumber từ ngày đặt bàn (không phải ngày hiện tại) ──
+    const dateStr = (date || new Date().toISOString().slice(0, 10)).replace(/-/g, "");
     const random = Math.floor(1000 + Math.random() * 9000);
     const bookingNumber = `BK-${dateStr}-${random}`;
 

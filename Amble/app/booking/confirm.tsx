@@ -22,7 +22,7 @@ import { useAuthStore } from "@/store/authStore";
 const PRIMARY = "#FF6B35";
 
 //type PaymentId = "momo" | "zalopay" | "bank" | "credit";
-type PaymentId = "bank" | "payos";
+type PaymentId = "payos";
 const PAYMENT_METHODS: {
   id: PaymentId;
   name: string;
@@ -31,7 +31,7 @@ const PAYMENT_METHODS: {
   //{ id: "momo", name: "MoMo", icon: "wallet-outline" },
   //{ id: "zalopay", name: "ZaloPay", icon: "phone-portrait-outline" },
   { id: "payos", name: "PayOS", icon: "card-outline" },
-  { id: "bank", name: "Chuyển khoản", icon: "business-outline" },
+  //{ id: "bank", name: "Chuyển khoản", icon: "business-outline" },
   //{ id: "credit", name: "Thẻ tín dụng", icon: "card-outline" },
 ];
 
@@ -236,25 +236,6 @@ export default function ConfirmBookingScreen() {
           setLoading(false);
           return;
         }
-      }
-
-      if (selectedPayment === "bank") {
-        router.push({
-          pathname: "/booking/payment" as any,
-          params: {
-            bookingId: booking._id,
-            bookingNumber: booking.bookingNumber,
-            restaurantId,
-            restaurantName,
-            restaurantImage: tableImage,
-            tableName,
-            date: bookingData.date,
-            time: bookingData.time,
-            partySize: bookingData.partySize,
-            deposit: total.toString(),
-          },
-        });
-        return;
       }
 
       router.push({

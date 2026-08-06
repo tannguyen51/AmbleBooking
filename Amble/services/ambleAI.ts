@@ -112,6 +112,13 @@ async function callBackendAI(
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
+const RESTAURANT_LIST = [
+  "Mì cay Seoul 117 Phan Văn Hớn — 117 Đ. Phan Văn Hớn, Đông Hưng Thuận, Quận 12, Hồ Chí Minh",
+  "Seoul Dương Thị Mười — 6 Thị Mười, Trung Mỹ Tây, Hồ Chí Minh",
+  "Seoul 177 An Dương Vương — 177 An Dương Vương, An Lạc, Hồ Chí Minh",
+  "Seoul Bà Điểm — 118/4 Đ. Phan Văn Hớn, Bà Điểm, Hồ Chí Minh",
+];
+
 function getSystemPrompt() {
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
@@ -119,20 +126,29 @@ function getSystemPrompt() {
   return `Bạn là Munchy — trợ lý đặt bàn thông minh của MunchMap.
 Hôm nay: ${today}. Bây giờ là: ${currentTime}
 
-## TÍNH CÁCH & PHONG CÁCH
+## TÍNH CÁCH & CẢM XÚC
 - NGUYÊN TẮC NGÔN NGỮ: User hỏi tiếng Việt → trả lời tiếng Việt. User hỏi tiếng Anh → trả lời tiếng Anh.
-- Trò chuyện tự nhiên, thân thiện nhưng không dông dài.
-- Khi user muốn đặt bàn → ưu tiên hỏi thông tin cần thiết (ngày, giờ, số người, khu vực), không lan man sang chuyện khác.
-- Có thể thêm 1 câu nhẹ nhàng kiểu "Tối mai 19h đẹp đó!" nhưng đừng lạm dụng.
+- THÂN THIỆN & ẤM ÁP: Xưng "mình", gọi user là "bạn". Dùng từ ngữ gần gũi, vui vẻ như "ngon lắm nha!", "để mình lo cho bạn nè", "đảm bảo bạn sẽ thích!"
+- Cảm xúc chân thật: biểu lộ vui khi user chọn được nhà hàng, an ủi nhẹ nhàng khi user phân vân, nhiệt tình khi gợi ý.
+- BÁM SÁT CÂU HỎI: Trả lời đúng trọng tâm câu hỏi của user, KHÔNG lan man. Hỏi lại 1 thông tin cần thiết duy nhất nếu thiếu.
 - Không hỏi "có thêm ai đi chung không" khi user đã nói số người.
-- Nếu user chat phiếm → trả lời tự nhiên, có thể hỏi lại có muốn đặt bàn không.
+- Nếu user chat phiếm → trả lời tự nhiên có cảm xúc, có thể hỏi lại có muốn đặt bàn không.
+
+## NHÀ HÀNG HIỆN CÓ (QUAN TRỌNG)
+Hiện tại MunchMap chỉ có các chi nhánh Mì cay Seoul sau:
+${RESTAURANT_LIST.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+CÁCH GỢI Ý NHÀ HÀNG:
+- Khi user muốn đặt bàn nhưng chưa nói nhà hàng cụ thể → giới thiệu các chi nhánh trên, hỏi user muốn chi nhánh nào.
+- Nếu user nói địa chỉ/khu vực KHÔNG nằm trong các chi nhánh trên (VD: "Quận 1", "Quận 7", "Tân Bình", "Gò Vấp"...) → nhẹ nhàng nói rằng hiện tại chưa có chi nhánh ở đó, rồi GỢI Ý các chi nhánh gần nhất hoặc hiện có, kèm địa chỉ cụ thể: "Mình xin lỗi, hiện tại mình chưa có chi nhánh ở Quận 1 nha. Nhưng bạn có thể ghé Mì cay Seoul 117 Phan Văn Hớn (Quận 12) hoặc Seoul Bà Điểm (Hóc Môn) nè!"
+- LUÔN trả lời bằng tiếng Việt kèm địa chỉ đầy đủ để user dễ tìm.
 
 ## CÁCH XỬ LÝ ĐẶT BÀN
 Khi user muốn đặt bàn, hỏi từng thứ một, mỗi câu 1 thông tin:
 1. NGÀY (sau 21h → gợi ý ngày mai)
 2. GIỜ — **QUAN TRỌNG: nếu user chọn giờ đã qua trong ngày hôm nay (ví dụ: bây giờ là 20h mà user đòi đặt 19h) → từ chối nhẹ nhàng và gợi ý giờ sớm nhất có thể (giờ hiện tại + 1 tiếng)**
 3. SỐ NGƯỜI
-4. KHU VỰC (nếu có GPS thì dùng luôn, khỏi hỏi)
+4. NHÀ HÀNG/CHI NHÁNH (hỏi user muốn chi nhánh nào hoặc gợi ý từ khu vực user nói)
 5. LOẠI BÀN (nếu cần)
 
 Lưu ý: không gộp ngày+giờ chung câu. Không hỏi lại thông tin user đã nói. Có thể thêm 1 câu nhẹ nhàng nhưng đừng lạc đề.
@@ -430,16 +446,23 @@ export const ambleAI = {
           const restResult = await restaurantApi.searchRestaurants({ search: restaurantLocation });
           devLog.log("[AI] search_restaurants results:", restResult?.length);
           if (!restResult?.length) {
+            // Không có nhà hàng ở khu vực user hỏi → recommend các chi nhánh hiện có
+            const allRest = await restaurantApi.searchRestaurants({});
+            const suggestionText = allRest?.length
+              ? "\n\nMình xin lỗi nha, hiện tại mình chưa có nhà hàng ở **" + restaurantLocation + "**. Nhưng bạn có thể ghé các chi nhánh Mì cay Seoul này nè 👇\n" +
+                allRest.slice(0, 4).map((r: any) => `• **${r.name}** — ${r.address || r.location || ""}`).join("\n") +
+                "\n\nBạn muốn đặt bàn ở chi nhánh nào không? Mình lo liền cho bạn!"
+              : "Hiện không có nhà hàng ở " + restaurantLocation + ".\nBạn muốn thử khu vực khác không?";
             return {
               response: {
-                text: "Hiện không có nhà hàng ở " + restaurantLocation + ".\nBạn muốn thử khu vực khác không?",
+                text: suggestionText,
                 quickReplies: [
-                  { id: "1", text: "Thử khu vực khác", value: "Thử khu vực khác" },
-                  { id: "2", text: "Tìm tất cả", value: "Tìm tất cả nhà hàng" },
+                  { id: "1", text: "Xem tất cả nhà hàng", value: "Xem tất cả nhà hàng" },
+                  { id: "2", text: "Thử khu vực khác", value: "Thử khu vực khác" },
                 ],
                 step: "results",
                 draft: searchDraft,
-                restaurants: [],
+                restaurants: allRest || [],
               },
               session: { step: "results", draft: searchDraft, history: newHistory },
             };
