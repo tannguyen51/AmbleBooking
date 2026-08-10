@@ -219,9 +219,9 @@ p{color:#666;margin:0 0 24px;line-height:1.5}
 
 // ── GET/POST /api/payment/payos-webhook ────────────────
 exports.handlePayosWebhook = async (req, res) => {
-  // GET: PayOS test webhook URL (xác thực endpoint)
+  // GET: PayOS test webhook URL (xác thực endpoint) — trả {success:true} chuẩn
   if (req.method === "GET") {
-    return res.json({ success: true, message: "PayOS webhook endpoint ready" });
+    return res.json({ success: true });
   }
 
   try {
