@@ -227,13 +227,15 @@ exports.handlePayosWebhook = async (req, res) => {
   try {
     const webhookData = req.body;
 
-    // Verify webhook signature
+    // Verify webhook signature — nếu không hợp lệ, vẫn trả 200 để PayOS chấp nhận URL,
+    // nhưng KHÔNG xử lý thanh toán (tránh giả mạo)
+    let signatureValid = false;
     try {
       await payos.webhooks.verify(webhookData);
+      signatureValid = true;
     } catch {
-      return res
-        .status(400)
-        .json({ success: false, message: "Chữ ký không hợp lệ" });
+      console.warn("[payos-webhook] invalid signature, ignoring");
+      return res.json({ success: true });
     }
 
     const { orderCode, status, amount } = webhookData.data || {};
