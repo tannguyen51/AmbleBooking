@@ -40,6 +40,16 @@ exports.createPayosPayment = async (req, res) => {
         .json({ success: false, message: "Booking không tồn tại" });
     }
 
+    // Nếu booking đã có payment link PayOS → trả lại link cũ, không tạo mới
+    if (booking.payment?.payosPaymentLinkId && booking.payment?.payosCheckoutUrl) {
+      return res.json({
+        success: true,
+        checkoutUrl: booking.payment.payosCheckoutUrl,
+        paymentLinkId: booking.payment.payosPaymentLinkId,
+        orderCode: booking.payment.payosOrderCode,
+      });
+    }
+
     const amount = booking.pricing?.totalAmount || 0;
     if (amount <= 0) {
       return res
@@ -74,6 +84,7 @@ exports.createPayosPayment = async (req, res) => {
       method: "payos",
       payosOrderCode: orderCode,
       payosPaymentLinkId: paymentLink.id,
+      payosCheckoutUrl: paymentLink.checkoutUrl,
       payosStatus: paymentLink.status,
       amount,
     };
