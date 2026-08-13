@@ -260,7 +260,8 @@ exports.adjustUserRewards = async (req, res) => {
 exports.getPartners = async (req, res) => {
   try {
     const { status, search, isActive } = req.query;
-    const filter = {};
+    // Chỉ hiện tài khoản chủ nhà hàng (owner) trong mục Đối tác, ẩn manager/staff
+    const filter = { role: "owner" };
 
     if (status === "pending") {
       filter.subscriptionStatus = { $in: ["pending", "paid_pending"] };
