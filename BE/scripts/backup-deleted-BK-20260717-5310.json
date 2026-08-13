@@ -1,0 +1,47 @@
+{
+  "_id": "6a5a1636443892087dfcf90b",
+  "bookingNumber": "BK-20260717-5310",
+  "userId": "6a50e6ee93fafbe5459e4b7b",
+  "restaurantId": "6a50b07893fafbe5459e4161",
+  "tableId": "6a57b81d443892087dfced44",
+  "bookingDetails": {
+    "date": "2026-07-17",
+    "time": "20:30",
+    "partySize": 4,
+    "purpose": "casual",
+    "specialRequests": ""
+  },
+  "pricing": {
+    "depositAmount": 200000,
+    "voucherDiscount": 0,
+    "totalAmount": 200000
+  },
+  "status": "completed",
+  "payment": {
+    "status": "paid",
+    "method": "payos",
+    "paidAt": "2026-07-17T11:47:30.256Z",
+    "amount": 200000,
+    "payosOrderCode": 89208790,
+    "payosStatus": "PAID"
+  },
+  "source": "payos",
+  "customerInfo": {
+    "name": "",
+    "phone": "",
+    "email": ""
+  },
+  "refund": {
+    "refundPercent": 0,
+    "refundAmount": 0,
+    "bankName": "",
+    "accountNumber": "",
+    "accountName": ""
+  },
+  "hiddenByUser": false,
+  "createdAt": "2026-07-17T11:47:02.979Z",
+  "updatedAt": "2026-07-18T10:45:01.935Z",
+  "__v": 0,
+  "confirmedAt": "2026-07-17T11:51:51.368Z",
+  "completedAt": "2026-07-18T10:45:01.934Z"
+}

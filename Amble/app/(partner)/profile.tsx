@@ -115,7 +115,8 @@ export default function PartnerProfileScreen() {
   const [pwVisible, setPwVisible] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
-  const currentPlan = partner?.subscriptionPackage === "premium" ? "premium" : "pro";
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const currentPlan: SubscriptionPlan = partner?.subscriptionPackage === "premium" ? "premium" : "pro";
 
   const getExpiryText = (expiry: string | null | undefined): string | null => {
     if (!expiry) return null;
@@ -327,6 +328,52 @@ export default function PartnerProfileScreen() {
   const openSubscription = () => {
     setSelectedPlan(partner?.subscriptionPackage === "premium" ? "premium" : "pro");
     setShowSubscriptionModal(true);
+  };
+
+  const handleUpgrade = async () => {
+    if (!partner?._id) return;
+
+    if (selectedPlan === currentPlan) {
+      setShowSubscriptionModal(false);
+      return;
+    }
+
+    if (!(currentPlan === "pro" && selectedPlan === "premium")) {
+      setShowSubscriptionModal(false);
+      Alert.alert("Lưu ý", "Vui lòng liên hệ bộ phận hỗ trợ để hạ gói đăng ký.");
+      return;
+    }
+
+    setIsUpgrading(true);
+    try {
+      const baseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app/api").replace(/\/api$/, "");
+      const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
+      const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
+
+      const res = await paymentAPI.createPartnerUpgradePayosPayment({
+        partnerId: partner._id,
+        fromPackage: currentPlan,
+        toPackage: selectedPlan,
+        returnUrl,
+        cancelUrl,
+      });
+      const checkoutUrl = res.data?.checkoutUrl || "";
+
+      setShowSubscriptionModal(false);
+      if (!checkoutUrl) {
+        Alert.alert("Lỗi", "Không tạo được link thanh toán. Vui lòng thử lại.");
+        return;
+      }
+      router.push({
+        pathname: "/(partner-auth)/partner-payment" as any,
+        params: { checkoutUrl },
+      });
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Không thể tạo link thanh toán";
+      Alert.alert("Lỗi", message);
+    } finally {
+      setIsUpgrading(false);
+    }
   };
 
   const openTerms = () => {
@@ -609,14 +656,15 @@ export default function PartnerProfileScreen() {
                   const active = selectedPlan === plan.key;
                   const isCurrent = (partner?.subscriptionPackage || "pro") === plan.key;
                   return (
-                    <TouchableOpacity key={plan.key} activeOpacity={0.9}
+                    <TouchableOpacity key={plan.key} activeOpacity={isCurrent ? 1 : 0.9} disabled={isCurrent}
                       style={{
                         borderWidth: 2,
                         borderColor: active ? (plan.tone === "premium" ? "#7C3AED" : "#FF8F1F") : "#E8E8E8",
                         borderRadius: 15, padding: 16,
-                        backgroundColor: active ? (plan.tone === "premium" ? "#F3E8FF" : "#FFF7ED") : "#FFFFFF"
+                        backgroundColor: active ? (plan.tone === "premium" ? "#F3E8FF" : "#FFF7ED") : "#FFFFFF",
+                        opacity: isCurrent ? 0.75 : 1
                       }}
-                      onPress={() => setSelectedPlan(plan.key)}
+                      onPress={() => !isCurrent && setSelectedPlan(plan.key)}
                     >
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <View style={{ flex: 1 }}>
@@ -656,8 +704,8 @@ export default function PartnerProfileScreen() {
               
               <View style={{ marginTop: 16 }}>
 
-                <TouchableOpacity style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center" }} onPress={() => { setShowSubscriptionModal(false); router.push("/(partner-auth)/partner-payment"); }}>
-                  <Text style={{ fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" }}>Nâng cấp ngay</Text>
+                <TouchableOpacity style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center", opacity: selectedPlan === currentPlan ? 0.5 : 1 }} onPress={handleUpgrade} disabled={isUpgrading || selectedPlan === currentPlan}>
+                  {isUpgrading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" }}>{currentPlan === "premium" && selectedPlan === "pro" ? "Liên hệ hỗ trợ" : "Nâng cấp ngay"}</Text>}
                 </TouchableOpacity>
               </View>
             </ScrollView>

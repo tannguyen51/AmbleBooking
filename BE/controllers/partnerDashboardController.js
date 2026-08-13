@@ -215,7 +215,7 @@ exports.getOrders = async (req, res) => {
       id: booking._id,
       bookingNumber: booking.bookingNumber,
       status: booking.status,
-      userName: booking.userId?.fullName || "Khách hàng",
+      userName: booking.customerInfo?.name || booking.userId?.fullName || "Khách hàng",
       userPhone: booking.userId?.phone || "",
       tableNumber: booking.tableId?.name || "Bàn",
       tableType: booking.tableId?.type || "regular",
