@@ -29,6 +29,7 @@ const {
   checkInBooking,
   completeBooking,
   declineBooking,
+  partnerDeleteBooking,
 } = require("../controllers/bookingController");
 
 // Dashboard routes
@@ -59,6 +60,7 @@ router.post("/bookings/:bookingId/release", protectPartner, releaseAccess, relea
 router.post("/bookings/:bookingId/check-in", protectPartner, checkPermission('orders', 'checkin'), checkInBooking);
 router.post("/bookings/:bookingId/decline", protectPartner, checkPermission('orders', 'decline'), declineBooking);
 router.post("/bookings/:bookingId/complete", protectPartner, checkPermission('orders', 'complete'), completeBooking);
+router.delete("/bookings/:bookingId", protectPartner, releaseAccess, partnerDeleteBooking);
 
 // Restaurant profile routes
 router.get("/restaurant-profile", protectPartner, checkPermission('restaurant', 'read'), getRestaurantProfile);

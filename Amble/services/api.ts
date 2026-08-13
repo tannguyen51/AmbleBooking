@@ -228,6 +228,7 @@ export const partnerDashboardAPI = {
   getRevenue: (period?: string) => api.get("/partner/dashboard/revenue", { params: { period } }),
   getOrders: (status = "all") =>
     api.get("/partner/orders", { params: { status } }),
+  deleteBooking: (bookingId: string) => api.delete(`/partner/bookings/${bookingId}`),
   getTables: () => api.get("/partner/tables"),
   createTable: (data: {
     name: string;

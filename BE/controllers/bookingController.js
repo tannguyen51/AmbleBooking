@@ -812,6 +812,47 @@ exports.releaseBooking = async (req, res) => {
   }
 };
 
+// ── DELETE /api/partner/bookings/:bookingId ─────────────
+// Xóa đơn vĩnh viễn khỏi hệ thống. Chỉ Owner/Manager (check ở route).
+exports.partnerDeleteBooking = async (req, res) => {
+  try {
+    const restaurantId = req.partner.restaurantId;
+    const booking = await Booking.findById(req.params.bookingId);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking không tồn tại' });
+    }
+
+    if (!restaurantId || booking.restaurantId.toString() !== String(restaurantId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Không có quyền xóa đơn của nhà hàng khác.',
+      });
+    }
+
+    // Giải phóng bàn nếu đơn vẫn đang giữ bàn
+    if (booking.tableId) {
+      await Table.findByIdAndUpdate(booking.tableId, {
+        isAvailable: true,
+        currentBookingId: null,
+        status: 'available',
+      }).catch(() => {});
+    }
+
+    const bookingNumber = booking.bookingNumber;
+    await Booking.findByIdAndDelete(booking._id);
+
+    return res.json({
+      success: true,
+      bookingNumber,
+      message: `Đã xóa đơn ${bookingNumber} khỏi hệ thống`,
+    });
+  } catch (err) {
+    console.error('[partnerDeleteBooking]', err);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
 // ── POST /api/booking/:bookingId/check-in ───────────────
 exports.checkInBooking = async (req, res) => {
   try {

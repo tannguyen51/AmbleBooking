@@ -126,6 +126,7 @@ export default function PartnerOrdersScreen() {
     if (!["owner", "manager"].includes(partner?.role || "")) return false;
     return ["pending", "confirmed"].includes(status);
   };
+  const canDeleteOrder = ["owner", "manager"].includes(partner?.role || "");
 
   useFocusEffect(
     useCallback(() => {
@@ -220,6 +221,29 @@ export default function PartnerOrdersScreen() {
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể hoàn tất.");
     }
+  };
+
+  const handleDelete = (order: PartnerOrder) => {
+    Alert.alert(
+      "Xóa đơn",
+      `Bạn có chắc muốn xóa vĩnh viễn đơn ${order.bookingNumber}? Thao tác này không thể hoàn tác.`,
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Xóa",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await partnerDashboardAPI.deleteBooking(order.id);
+              Alert.alert("Thành công", `Đã xóa đơn ${order.bookingNumber}`);
+              loadOrders(orderStatusParam(activeFilter));
+            } catch (error: any) {
+              Alert.alert("Lỗi", error?.response?.data?.message || "Không thể xóa đơn.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleDecline = async (bookingId: string) => {
@@ -418,6 +442,16 @@ export default function PartnerOrdersScreen() {
                       <Text style={styles.completeBtnTxt}>Check-out</Text>
                     </TouchableOpacity>
                   )}
+                  {canDeleteOrder && (
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => handleDelete(order)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                      <Text style={styles.deleteBtnTxt}>Xóa</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             );
@@ -533,4 +567,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
   },
   completeBtnTxt: { fontSize: 12, fontWeight: "800", color: "#16A34A" },
+  deleteBtn: {
+    flex: 1, height: 36, borderRadius: 10, borderWidth: 1, borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
+  },
+  deleteBtnTxt: { fontSize: 12, fontWeight: "800", color: "#EF4444" },
 });
