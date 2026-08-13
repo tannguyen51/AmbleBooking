@@ -174,6 +174,19 @@ exports.createBooking = async (req, res) => {
     // Chuẩn hóa time về HH:MM để so sánh string an toàn
     const normalizedTime = time?.padStart(5, '0').slice(0, 5) || time;
 
+    // Chỉ cho phép đặt bàn tương lai (bỏ luồng đặt bàn quá khứ)
+    const bookingDateTime = new Date(date + 'T' + normalizedTime);
+    if (Number.isNaN(bookingDateTime.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thời gian đặt bàn không hợp lệ" });
+    }
+    if (bookingDateTime.getTime() < Date.now()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Không thể đặt bàn ở thời điểm trong quá khứ. Vui lòng chọn thời điểm tương lai." });
+    }
+
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant)
       return res

@@ -110,19 +110,12 @@ const getNext7Days = () => {
   const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
   const now = new Date();
 
-  // Cho phép chọn 3 ngày trước + hôm nay + 7 ngày sau
-  for (let i = -3; i < 7; i++) {
+  // Chỉ cho phép đặt bàn tương lai: hôm nay + 7 ngày sau
+  for (let i = 0; i < 7; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
 
-    let dayLabel = "";
-    if (i === 0) {
-      dayLabel = "Hôm nay";
-    } else if (i < 0) {
-      dayLabel = `${-i} ngày trước`;
-    } else {
-      dayLabel = weekdays[d.getDay()];
-    }
+    const dayLabel = i === 0 ? "Hôm nay" : weekdays[d.getDay()];
 
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -316,8 +309,7 @@ const next7Days = getNext7Days();
       const slotDate = new Date(date);
       slotDate.setHours(h, m, 0, 0);
 
-      // Nếu chọn ngày quá khứ → cho phép chọn giờ tự do
-      // Nếu chọn hôm nay → chặn giờ đã qua
+      // Chỉ chặn giờ đã qua khi đặt hôm nay; các ngày tương lai được chọn giờ tự do
       const isToday =
         date.getDate() === now.getDate() &&
         date.getMonth() === now.getMonth() &&
@@ -381,6 +373,11 @@ const next7Days = getNext7Days();
               value={date}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
+              minimumDate={(() => {
+                const d = new Date();
+                d.setHours(0, 0, 0, 0);
+                return d;
+              })()}
               onChange={(event, selectedDate) => {
                 if (Platform.OS === "android") setShowDatePicker(false);
                 if (selectedDate) setDate(selectedDate);

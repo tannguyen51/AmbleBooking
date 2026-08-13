@@ -64,7 +64,9 @@ exports.getDashboard = async (req, res) => {
       success: true,
       stats: {
         totalUsers,
-        activeUsers,
+        // TẠM THỜI: hiển thị số "user đang hoạt động" = 103 theo yêu cầu.
+        // Bỏ dòng này khi DB đã được làm sạch (khi đó dùng giá trị thật `activeUsers` bên trên).
+        activeUsers: 103,
         partnersPending,
         partnersActive,
         restaurantsActive,
