@@ -12,19 +12,22 @@ const PRIMARY = "#FF6B35";
 
 export default function PartnerPaymentScreen() {
   const router = useRouter();
-  const { checkoutUrl } = useLocalSearchParams<{ checkoutUrl: string }>();
+  const { checkoutUrl, mode } = useLocalSearchParams<{ checkoutUrl?: string; mode?: string }>();
   const { partner } = usePartnerAuthStore();
   const [status, setStatus] = useState<"opening" | "waiting" | "paid" | "failed">("opening");
   const [isCheckingDirect, setIsCheckingDirect] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heavyRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const onPaid = async (subStatus: string) => {
     // Cập nhật store để _layout.tsx đọc được subscriptionStatus mới
     await usePartnerAuthStore.getState().loadPartner();
     setStatus("paid");
     if (timerRef.current) clearInterval(timerRef.current);
+    if (heavyRef.current) clearInterval(heavyRef.current);
+    const isActive = subStatus === "active";
     setTimeout(() => {
-      if (subStatus === "active") {
+      if (isActive) {
         router.replace("/dashboard");
       } else {
         router.replace("/(partner-auth)/partner-pending");
@@ -32,39 +35,59 @@ export default function PartnerPaymentScreen() {
     }, 1500);
   };
 
-  // Poll nhẹ: chỉ gọi getMe(), không tốn PayOS rate limit
+  // Tín hiệu "thanh toán thật sự xong" lấy từ checkPartnerPaymentStatus
+  const isPaidSignal = (d: any): boolean =>
+    d?.payosStatus === "PAID" ||
+    d?.paymentType === "upgrade" ||
+    d?.paymentType === "permanent" ||
+    // Không còn payment pending (payosStatus undefined) và webhook đã set active → đã xử lý xong
+    (d?.payosStatus === undefined && (d?.subscriptionStatus === "active" || d?.subscriptionStatus === "paid_pending"));
+
+  const verifyPayos = useCallback(async (partnerId: string) => {
+    const res = await paymentAPI.checkPartnerPaymentStatus(partnerId);
+    const d = res.data || {};
+    if (isPaidSignal(d)) {
+      onPaid(d.subscriptionStatus === "paid_pending" ? "paid_pending" : d.subscriptionStatus || "active");
+    }
+  }, []);
+
+  // Poll nhẹ mỗi 3 giây
   const checkStatus = useCallback(async () => {
+    if (isCheckingDirect) return;
     try {
       const res = await partnerAuthAPI.getMe();
       const p = res.data?.partner;
-      if (p?.subscriptionStatus === "paid_pending" || p?.subscriptionStatus === "active") {
-        onPaid(p?.subscriptionStatus);
+      if (!p?._id) return;
+      if (mode === "upgrade") {
+        // Nâng cấp/gia hạn: đối tác đã active sẵn từ trước → chỉ tin khi PayOS xác nhận payment
+        setIsCheckingDirect(true);
+        try {
+          await verifyPayos(p._id);
+        } finally {
+          setIsCheckingDirect(false);
+        }
+      } else {
+        // Đăng ký: chỉ hoàn tất khi webhook đổi status khỏi "pending"
+        if (p.subscriptionStatus === "active" || p.subscriptionStatus === "paid_pending") {
+          onPaid(p.subscriptionStatus);
+        }
       }
     } catch {}
-  }, []);
+  }, [mode, verifyPayos, isCheckingDirect]);
 
-  // Check nặng: gọi cả PayOS API trực tiếp — chỉ dùng khi user bấm nút hoặc app từ background về
+  // Check nặng: gọi PayOS trực tiếp — đúng mọi trường hợp (dùng khi bấm nút / app từ background về)
   const checkStatusDirect = useCallback(async () => {
     if (isCheckingDirect) return;
     setIsCheckingDirect(true);
     try {
       const res = await partnerAuthAPI.getMe();
       const p = res.data?.partner;
-      if (p?.subscriptionStatus === "paid_pending" || p?.subscriptionStatus === "active") {
-        onPaid(p?.subscriptionStatus);
-        return;
-      }
-      if (p?._id) {
-        const payosCheck = await paymentAPI.checkPartnerPaymentStatus(p._id);
-        const subStatus = payosCheck.data?.subscriptionStatus;
-        if (subStatus === "active" || subStatus === "paid_pending") {
-          onPaid(subStatus);
-        }
-      }
+      if (!p?._id) return;
+      await verifyPayos(p._id);
     } catch {} finally {
       setIsCheckingDirect(false);
     }
-  }, [isCheckingDirect]);
+  }, [isCheckingDirect, verifyPayos]);
 
   // Mở PayOS khi vào screen
   useEffect(() => {
@@ -83,8 +106,13 @@ export default function PartnerPaymentScreen() {
     // Lần đầu check kỹ (có fallback PayOS)
     checkStatusDirect();
 
-    // Poll nhẹ mỗi 3 giây (chỉ getMe)
+    // Poll nhẹ mỗi 3 giây
     timerRef.current = setInterval(checkStatus, 3000);
+
+    // Check nặng định kỳ (xác nhận từ PayOS) — phòng trường hợp check nhẹ bỏ sót
+    heavyRef.current = setInterval(() => {
+      if (!isCheckingDirect) checkStatusDirect();
+    }, 10000);
 
     // Khi app quay lại foreground → check kỹ
     const onAppStateChange = (nextState: AppStateStatus) => {
@@ -96,6 +124,7 @@ export default function PartnerPaymentScreen() {
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (heavyRef.current) clearInterval(heavyRef.current);
       sub.remove();
     };
   }, [status]);
@@ -159,10 +188,11 @@ export default function PartnerPaymentScreen() {
         {status === "waiting" && (
           <TouchableOpacity
             style={s.cancelBtn}
-            onPress={async () => {
-              const { logout } = usePartnerAuthStore.getState();
-              await logout();
-              router.replace("/welcome");
+            onPress={() => {
+              if (timerRef.current) clearInterval(timerRef.current);
+              if (heavyRef.current) clearInterval(heavyRef.current);
+              setStatus("failed");
+              router.replace("/dashboard");
             }}
           >
             <Text style={s.cancelText}>Huỷ thanh toán và quay lại</Text>

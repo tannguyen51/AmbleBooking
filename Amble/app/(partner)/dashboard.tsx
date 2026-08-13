@@ -81,7 +81,7 @@ export default function PartnerDashboard() {
   const [revenueData, setRevenueData] = useState<{ totalRevenue: number; breakdown: Array<{ label: string; total: number; count: number }> } | null>(null);
   const [revenuePeriod, setRevenuePeriod] = useState<"week" | "month">("month");
 
-  const pkg = PACKAGE_CONFIG[partner?.subscriptionPackage || "basic"];
+  const pkg = PACKAGE_CONFIG[partner?.subscriptionPackage || "basic"] || PACKAGE_CONFIG.basic;
   const occupancyRate =
     overview.totalTables > 0
       ? Math.round((overview.bookedTables / overview.totalTables) * 100)

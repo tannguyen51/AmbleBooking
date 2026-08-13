@@ -359,7 +359,7 @@ export default function PartnerProfileScreen() {
       }
       router.push({
         pathname: "/(partner-auth)/partner-payment" as any,
-        params: { checkoutUrl },
+        params: { checkoutUrl, mode: "upgrade" },
       });
     } catch (error: any) {
       const message = error?.response?.data?.message || "Không thể tạo link thanh toán";
