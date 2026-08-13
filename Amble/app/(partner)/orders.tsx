@@ -18,7 +18,7 @@ import ReleaseModal from "../../components/partner/ReleaseModal";
 import { usePartnerAuthStore } from "../../store/partnerAuthStore";
 import { timeAgo } from "../../utils/timeAgo";
 
-type OrderStatus = "all" | "booked" | "cancelled" | "no_show";
+type OrderStatus = "all" | "booked" | "completed" | "no_show";
 
 interface PartnerOrder {
   id: string;
@@ -74,7 +74,7 @@ const FILTER_CONFIG = [
   { key: "all" as OrderStatus, label: "Tất cả", icon: "apps-outline" },
   { key: "booked" as OrderStatus, label: "Đã đặt", icon: "calendar-outline" },
   { key: "no_show" as OrderStatus, label: "No-show", icon: "close-circle-outline" },
-  { key: "cancelled" as OrderStatus, label: "Đã hủy", icon: "trash-outline" },
+  { key: "completed" as OrderStatus, label: "Hoàn thành", icon: "checkmark-done-outline" },
 ];
 
 export default function PartnerOrdersScreen() {
@@ -84,6 +84,10 @@ export default function PartnerOrdersScreen() {
   const [counts, setCounts] = useState<OrderCounts>(EMPTY_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+
+  // Tab "Hoàn thành"/"No-show" tải theo status riêng; các tab còn lại tải toàn bộ
+  const orderStatusParam = (filter: OrderStatus) =>
+    filter === "completed" || filter === "no_show" ? filter : "all";
 
   // Release modal state
   const [releaseModalVisible, setReleaseModalVisible] = useState(false);
@@ -126,20 +130,28 @@ export default function PartnerOrdersScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
-      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+      loadOrders(orderStatusParam(activeFilter));
     }, [activeFilter])
   );
 
   const displayedOrders = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
-    let filtered = orders;
+    // Ẩn hoàn toàn các đơn đã hủy
+    const base = orders.filter((o) => o.status !== "cancelled");
+    let filtered = base;
     if (activeFilter === "booked") {
-      filtered = orders.filter((o) => !["cancelled", "no_show"].includes(o.status));
+      filtered = base.filter((o) => !["cancelled", "no_show"].includes(o.status));
     } else if (activeFilter === "no_show") {
-      filtered = orders.filter((o) => o.status === "no_show");
-    } else if (activeFilter === "cancelled") {
-      filtered = orders.filter((o) => o.status === "cancelled");
+      filtered = base.filter((o) => o.status === "no_show");
+    } else if (activeFilter === "completed") {
+      filtered = base.filter((o) => o.status === "completed");
     }
+    // Sắp xếp từ gần nhất đến xa nhất (theo ngày + giờ đặt)
+    filtered = [...filtered].sort((a, b) => {
+      const da = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
+      const db = new Date(`${b.date}T${b.time || "00:00"}`).getTime();
+      return db - da;
+    });
     if (!keyword) return filtered;
     return filtered.filter((o) =>
       o.bookingNumber.toLowerCase().includes(keyword) ||
@@ -165,7 +177,7 @@ export default function PartnerOrdersScreen() {
     try {
       await partnerDashboardAPI.checkInBooking(bookingId);
       Alert.alert("Thành công", "Khách đã check-in.");
-      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+      loadOrders(orderStatusParam(activeFilter));
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể check-in.");
     }
@@ -181,7 +193,7 @@ export default function PartnerOrdersScreen() {
           try {
             await partnerDashboardAPI.releaseBooking(bookingId, { reason: "no_show" });
             Alert.alert("Thành công", "Đã đánh dấu No-show.");
-            loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+            loadOrders(orderStatusParam(activeFilter));
           } catch (error: any) {
             Alert.alert("Lỗi", error?.response?.data?.message || "Không thể đánh dấu No-show.");
           }
@@ -194,7 +206,7 @@ export default function PartnerOrdersScreen() {
     try {
       await bookingAPI.confirm(bookingId);
       Alert.alert("Thành công", "Đã xác nhận đơn đặt bàn.");
-      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+      loadOrders(orderStatusParam(activeFilter));
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể xác nhận.");
     }
@@ -204,7 +216,7 @@ export default function PartnerOrdersScreen() {
     try {
       await partnerDashboardAPI.completeBooking(bookingId);
       Alert.alert("Thành công", "Bàn đã được giải phóng.");
-      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+      loadOrders(orderStatusParam(activeFilter));
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể hoàn tất.");
     }
@@ -214,7 +226,7 @@ export default function PartnerOrdersScreen() {
     try {
       await partnerDashboardAPI.declineBooking(bookingId);
       Alert.alert("Thành công", "Đã từ chối booking.");
-      loadOrders(activeFilter === "cancelled" ? "cancelled" : "all");
+      loadOrders(orderStatusParam(activeFilter));
     } catch (error: any) {
       Alert.alert("Lỗi", error?.response?.data?.message || "Không thể từ chối.");
     }
@@ -262,6 +274,13 @@ export default function PartnerOrdersScreen() {
               <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
                 {tab.label}
               </Text>
+              {tab.key === "completed" && counts.completed > 0 && (
+                <View style={[styles.countBadge, isActive && styles.countBadgeActive]}>
+                  <Text style={[styles.countBadgeText, isActive && styles.countBadgeTextActive]}>
+                    {counts.completed}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -413,7 +432,7 @@ export default function PartnerOrdersScreen() {
         visible={releaseModalVisible}
         booking={selectedBooking}
         onClose={() => setReleaseModalVisible(false)}
-        onSuccess={() => loadOrders(activeFilter === "cancelled" ? "cancelled" : "all")}
+        onSuccess={() => loadOrders(orderStatusParam(activeFilter))}
       />
     </SafeAreaView>
   );
@@ -459,6 +478,14 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: "700", color: "#475467",
   },
   filterTextActive: { color: "#FFFFFF" },
+  countBadge: {
+    marginLeft: 6, minWidth: 18, height: 18, borderRadius: 9,
+    paddingHorizontal: 5, backgroundColor: "#E4E7EC",
+    alignItems: "center", justifyContent: "center",
+  },
+  countBadgeActive: { backgroundColor: "#FF6B35" },
+  countBadgeText: { fontSize: 10, fontWeight: "800", color: "#475467" },
+  countBadgeTextActive: { color: "#FFFFFF" },
   listWrap: { flex: 1 },
   listContent: { paddingHorizontal: 18, paddingTop: 6, gap: 10, paddingBottom: 24 },
   centerBox: { alignItems: "center", justifyContent: "center", paddingVertical: 36, gap: 8 },
