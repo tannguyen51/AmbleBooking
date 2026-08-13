@@ -60,6 +60,7 @@ exports.register = async (req, res) => {
       });
     }
 
+    const subscriptionPackageVal = subscriptionPackage || "basic";
     const partner = await Partner.create({
       ownerName,
       email,
@@ -69,8 +70,9 @@ exports.register = async (req, res) => {
       restaurantAddress: restaurantAddress || "",
       restaurantCity: restaurantCity || "",
       cuisine: cuisine || "",
-      subscriptionPackage: subscriptionPackage || "pro",
+      subscriptionPackage: subscriptionPackageVal,
       subscriptionStatus: "pending",
+      isPermanent: subscriptionPackageVal === "basic",
       role: "owner",
     });
 
@@ -134,6 +136,19 @@ exports.login = async (req, res) => {
     }
 
     if (!partner.isActive) {
+      // Tài khoản hết hạn: vẫn cấp token để vào màn gia hạn (isActive sẽ mở khóa sau khi thanh toán)
+      if (partner.subscriptionStatus === "expired") {
+        const token = signToken(partner._id);
+        partner.password = undefined;
+        const restaurant = await Restaurant.findOne({ partnerId: partner._id });
+        return res.status(200).json({
+          success: true,
+          message: "Tài khoản đã hết hạn, vui lòng gia hạn thêm.",
+          token,
+          partner,
+          restaurant,
+        });
+      }
       return res.status(401).json({
         success: false,
         message: "Tài khoản đã bị vô hiệu hóa.",

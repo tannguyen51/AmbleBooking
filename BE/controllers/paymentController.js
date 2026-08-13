@@ -58,7 +58,7 @@ exports.createPayosPayment = async (req, res) => {
     }
 
     const orderCode = Number(String(booking._id).replace(/\D/g, "").slice(-8));
-    const description = `Amble ${booking.bookingNumber || "Booking"}`;
+    const description = `MunchMap ${booking.bookingNumber || "Booking"}`;
 
     const paymentData = {
       orderCode,
@@ -409,10 +409,14 @@ exports.createPartnerPayosPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Partner không tồn tại" });
     }
 
-    const plans = { pro: 799000, premium: 1299000 };
+    const plans = { basic: 799000, standard: 699000 };
     const amount = plans[subscriptionPackage];
     if (!amount) {
       return res.status(400).json({ success: false, message: "Gói không hợp lệ" });
+    }
+
+    if (subscriptionPackage === "basic") {
+      await Partner.findByIdAndUpdate(partnerId, { isPermanent: true });
     }
 
     const orderCode = Number(String(partner._id).replace(/\D/g, "").slice(-8) + String(Date.now()).slice(-4));
@@ -450,13 +454,13 @@ exports.createPartnerPayosPayment = async (req, res) => {
 // ── POST /api/payment/partner/upgrade/create-payos ─────
 exports.createPartnerUpgradePayosPayment = async (req, res) => {
   try {
-    const { partnerId, fromPackage, toPackage, returnUrl, cancelUrl } = req.body;
-    if (!partnerId || !fromPackage || !toPackage || !returnUrl || !cancelUrl) {
+    const { partnerId, toPackage, returnUrl, cancelUrl } = req.body;
+    if (!partnerId || !toPackage || !returnUrl || !cancelUrl) {
       return res.status(400).json({ success: false, message: "Thiếu thông tin" });
     }
 
-    if (fromPackage !== "pro" || toPackage !== "premium") {
-      return res.status(400).json({ success: false, message: "Chỉ hỗ trợ nâng cấp từ Pro lên Premium" });
+    if (!["basic", "standard"].includes(toPackage)) {
+      return res.status(400).json({ success: false, message: "Gói không hợp lệ" });
     }
 
     const partner = await Partner.findById(partnerId);
@@ -464,20 +468,22 @@ exports.createPartnerUpgradePayosPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Partner không tồn tại" });
     }
 
-    if (partner.subscriptionPackage !== "pro") {
-      return res.status(400).json({ success: false, message: "Partner hiện không ở gói Pro" });
-    }
-
-    const amount = 699000; // Phí tháng gói Premium
+    // toPackage "standard": nâng cấp/gia hạn gói Standard 1 tháng (699k)
+    // toPackage "basic": mua quyền vĩnh viễn tài khoản (799k)
+    const amount = toPackage === "standard" ? 699000 : 799000;
+    const paymentType = toPackage === "standard" ? "upgrade" : "permanent";
+    const description =
+      toPackage === "standard" ? "Nang cap/Gia han Standard" : "Kich hoat goi Basic (vinh vien)";
+    const itemName =
+      toPackage === "standard" ? "Gói Standard (1 tháng)" : "Gói Basic (vĩnh viễn)";
 
     const orderCode = Number(String(partner._id).replace(/\D/g, "").slice(-8) + String(Date.now()).slice(-4));
-    const description = `Nang cap Premium`;
 
     const paymentData = {
       orderCode,
       amount,
       description: description.slice(0, 25),
-      items: [{ name: "Nang cap goi Premium", quantity: 1, price: amount }],
+      items: [{ name: itemName, quantity: 1, price: amount }],
       returnUrl,
       cancelUrl,
       signature: "",
@@ -489,17 +495,17 @@ exports.createPartnerUpgradePayosPayment = async (req, res) => {
       partnerId,
       subscriptionPackage: toPackage,
       amount,
-      paymentType: "upgrade",
+      paymentType,
       status: "pending",
       payosOrderCode: orderCode,
       payosPaymentLinkId: paymentLink.id,
       payosStatus: paymentLink.status,
     });
 
-    return res.json({ success: true, checkoutUrl: paymentLink.checkoutUrl, paymentLinkId: paymentLink.id });
+    return res.json({ success: true, checkoutUrl: paymentLink.checkoutUrl, paymentLinkId: paymentLink.id, paymentType });
   } catch (err) {
     console.error("[createPartnerUpgradePayosPayment]", err);
-    return res.status(500).json({ success: false, message: err.message || "Lỗi tạo thanh toán nâng cấp" });
+    return res.status(500).json({ success: false, message: err.message || "Lỗi tạo thanh toán" });
   }
 };
 
@@ -533,26 +539,43 @@ exports.partnerPayosWebhook = async (req, res) => {
       await payment.save();
 
       if (payment.paymentType === "upgrade") {
-        // Nâng cấp gói: set Premium, gia hạn 1 tháng
-        const nextExpiry = new Date();
-        nextExpiry.setMonth(nextExpiry.getMonth() + 1);
+        // Nâng cấp/gia hạn Standard: +30 ngày (cộng dồn nếu còn hạn)
+        const partner = await Partner.findById(payment.partnerId);
+        const base =
+          partner?.subscriptionExpiry &&
+          new Date(partner.subscriptionExpiry).getTime() > Date.now()
+            ? new Date(partner.subscriptionExpiry).getTime()
+            : Date.now();
+        const nextExpiry = new Date(base + 30 * 24 * 3600 * 1000);
 
         await Partner.findByIdAndUpdate(payment.partnerId, {
-          subscriptionPackage: "premium",
+          subscriptionStatus: "active",
+          isActive: true,
+          subscriptionPackage: "standard",
           subscriptionExpiry: nextExpiry,
         });
 
-        const partnerData = await Partner.findById(payment.partnerId);
-        if (partnerData?.restaurantId) {
-          await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
-            subscriptionPackage: "premium",
+        if (partner?.restaurantId) {
+          await Restaurant.findByIdAndUpdate(partner.restaurantId, {
+            subscriptionPackage: "standard",
           });
         }
-      } else {
-        // Thanh toán khởi tạo: chờ admin duyệt
+      } else if (payment.paymentType === "permanent") {
+        // Mua quyền vĩnh viễn: mở khóa + vĩnh viễn, giữ package/expiry hiện tại
         await Partner.findByIdAndUpdate(payment.partnerId, {
-          subscriptionStatus: "paid_pending",
+          subscriptionStatus: "active",
+          isActive: true,
+          isPermanent: true,
+        });
+      } else {
+        // Thanh toán khởi tạo: tự động active (bỏ admin duyệt)
+        const isBasic = payment.subscriptionPackage === "basic";
+        await Partner.findByIdAndUpdate(payment.partnerId, {
+          subscriptionStatus: "active",
+          isActive: true,
           subscriptionPackage: payment.subscriptionPackage,
+          subscriptionExpiry: isBasic ? null : new Date(Date.now() + 30 * 24 * 3600 * 1000),
+          isPermanent: isBasic,
         });
 
         const partnerData = await Partner.findById(payment.partnerId);
@@ -594,7 +617,7 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       return res.json({
         success: true,
         subscriptionStatus: partner?.subscriptionStatus || "pending",
-        subscriptionPackage: partner?.subscriptionPackage || "pro",
+        subscriptionPackage: partner?.subscriptionPackage || "basic",
       });
     }
 
@@ -610,12 +633,12 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
         } catch (e2) {
           console.error("[checkPartnerPaymentStatus] Cả paymentLinkId và orderCode đều không tìm thấy:", e2?.message);
           const partner = await Partner.findById(partnerId);
-          return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "NOT_FOUND" });
+          return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "basic", payosStatus: "NOT_FOUND" });
         }
       } else {
         console.error("[checkPartnerPaymentStatus] Lỗi tra PayOS:", e?.message);
         const partner = await Partner.findById(partnerId);
-        return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "ERROR" });
+        return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "basic", payosStatus: "ERROR" });
       }
     }
 
@@ -626,28 +649,48 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       await payment.save();
 
       if (payment.paymentType === "upgrade") {
-        // Nâng cấp gói: set Premium, gia hạn 1 tháng
-        const nextExpiry = new Date();
-        nextExpiry.setMonth(nextExpiry.getMonth() + 1);
+        // Nâng cấp/gia hạn Standard: +30 ngày (cộng dồn nếu còn hạn)
+        const partner = await Partner.findById(partnerId);
+        const base =
+          partner?.subscriptionExpiry &&
+          new Date(partner.subscriptionExpiry).getTime() > Date.now()
+            ? new Date(partner.subscriptionExpiry).getTime()
+            : Date.now();
+        const nextExpiry = new Date(base + 30 * 24 * 3600 * 1000);
 
         await Partner.findByIdAndUpdate(partnerId, {
-          subscriptionPackage: "premium",
+          subscriptionStatus: "active",
+          isActive: true,
+          subscriptionPackage: "standard",
           subscriptionExpiry: nextExpiry,
         });
 
-        const partnerData = await Partner.findById(partnerId);
-        if (partnerData?.restaurantId) {
-          await Restaurant.findByIdAndUpdate(partnerData.restaurantId, {
-            subscriptionPackage: "premium",
+        if (partner?.restaurantId) {
+          await Restaurant.findByIdAndUpdate(partner.restaurantId, {
+            subscriptionPackage: "standard",
           });
         }
 
-        return res.json({ success: true, subscriptionStatus: "active", subscriptionPackage: "premium", paymentType: "upgrade" });
+        return res.json({ success: true, subscriptionStatus: "active", subscriptionPackage: "standard", paymentType: "upgrade" });
       }
 
+      if (payment.paymentType === "permanent") {
+        await Partner.findByIdAndUpdate(partnerId, {
+          subscriptionStatus: "active",
+          isActive: true,
+          isPermanent: true,
+        });
+        return res.json({ success: true, subscriptionStatus: "active", subscriptionPackage: payment.subscriptionPackage, paymentType: "permanent", isPermanent: true });
+      }
+
+      // Thanh toán khởi tạo: tự động active (bỏ admin duyệt)
+      const isBasic = payment.subscriptionPackage === "basic";
       await Partner.findByIdAndUpdate(partnerId, {
-        subscriptionStatus: "paid_pending",
+        subscriptionStatus: "active",
+        isActive: true,
         subscriptionPackage: payment.subscriptionPackage,
+        subscriptionExpiry: isBasic ? null : new Date(Date.now() + 30 * 24 * 3600 * 1000),
+        isPermanent: isBasic,
       });
 
       const partnerData = await Partner.findById(partnerId);
@@ -657,7 +700,7 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
         });
       }
 
-      return res.json({ success: true, subscriptionStatus: "paid_pending", subscriptionPackage: payment.subscriptionPackage });
+      return res.json({ success: true, subscriptionStatus: "active", subscriptionPackage: payment.subscriptionPackage });
     }
 
     if (payosResult?.status === "CANCELLED") {
@@ -665,23 +708,23 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
       payment.payosStatus = "CANCELLED";
       await payment.save();
       const partner = await Partner.findById(partnerId);
-      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "CANCELLED" });
+      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "basic", payosStatus: "CANCELLED" });
     }
 
     const partner = await Partner.findById(partnerId);
     return res.json({
       success: true,
       subscriptionStatus: partner?.subscriptionStatus || "pending",
-      subscriptionPackage: partner?.subscriptionPackage || "pro",
+      subscriptionPackage: partner?.subscriptionPackage || "basic",
       payosStatus: payosResult?.status || "unknown",
     });
   } catch (err) {
     console.error("[checkPartnerPaymentStatus]", err);
     try {
       const partner = await Partner.findById(partnerId);
-      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "pro", payosStatus: "SERVER_ERROR" });
+      return res.json({ success: true, subscriptionStatus: partner?.subscriptionStatus || "pending", subscriptionPackage: partner?.subscriptionPackage || "basic", payosStatus: "SERVER_ERROR" });
     } catch {
-      return res.json({ success: true, subscriptionStatus: "pending", subscriptionPackage: "pro", payosStatus: "SERVER_ERROR" });
+      return res.json({ success: true, subscriptionStatus: "pending", subscriptionPackage: "basic", payosStatus: "SERVER_ERROR" });
     }
   }
 };

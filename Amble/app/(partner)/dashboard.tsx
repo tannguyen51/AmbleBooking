@@ -62,8 +62,7 @@ const DEFAULT_OVERVIEW: DashboardOverview = {
 
 const PACKAGE_CONFIG = {
   basic: { label: "Basic", color: "#6B7280", bg: "#F9FAFB" },
-  pro: { label: "Pro", color: "#3B82F6", bg: "#EFF6FF" },
-  premium: { label: "Premium", color: "#9333EA", bg: "#FAF5FF" },
+  standard: { label: "Standard", color: "#9333EA", bg: "#FAF5FF" },
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────────

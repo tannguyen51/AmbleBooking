@@ -70,7 +70,7 @@ interface Restaurant {
   closeTime: string;
   hasParking: boolean;
   isFeatured: boolean;
-  subscriptionPackage: "basic" | "pro" | "premium";
+  subscriptionPackage: "basic" | "standard";
   distance?: number;
   lat?: number;
   lng?: number;
@@ -224,7 +224,7 @@ const RestaurantCardFull = React.memo(
               <Text style={cardFull.badgeText}>{badgeFeaturedText}</Text>
             </LinearGradient>
           )}
-          {!item.isFeatured && item.subscriptionPackage === "premium" && (
+          {!item.isFeatured && item.subscriptionPackage === "standard" && (
             <LinearGradient
               colors={["#9333EA", "#6366F1"]}
               style={cardFull.badgeFeatured}

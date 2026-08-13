@@ -3,7 +3,7 @@ const Restaurant = require("../models/restaurant");
 
 /**
  * Kiểm tra subscription hết hạn mỗi giờ.
- * Partner premium quá 1 tháng sẽ tự động revert về pro.
+ * Partner standard quá 1 tháng sẽ tự động revert về basic.
  */
 function startSubscriptionExpiryJob() {
   const check = async () => {
@@ -11,7 +11,7 @@ function startSubscriptionExpiryJob() {
       const now = new Date();
 
       const expiredPartners = await Partner.find({
-        subscriptionPackage: "premium",
+        subscriptionPackage: "standard",
         subscriptionExpiry: { $ne: null, $lte: now },
       });
 
@@ -24,18 +24,24 @@ function startSubscriptionExpiryJob() {
 
       await Partner.updateMany(
         { _id: { $in: ids } },
-        { $set: { subscriptionPackage: "pro", subscriptionExpiry: null } }
+        { $set: { subscriptionPackage: "basic", subscriptionExpiry: null } }
       );
 
       if (restaurantIds.length > 0) {
         await Restaurant.updateMany(
           { _id: { $in: restaurantIds } },
-          { $set: { subscriptionPackage: "pro" } }
+          { $set: { subscriptionPackage: "basic" } }
         );
       }
 
+      // Tài khoản tạm (chưa mua quyền vĩnh viễn): khóa account
+      const tempLocked = await Partner.updateMany(
+        { _id: { $in: ids }, isPermanent: { $ne: true } },
+        { $set: { subscriptionStatus: "expired", isActive: false } }
+      );
+
       console.log(
-        `[subscriptionExpiry] Reverted ${ids.length} expired premium partner(s) to pro`
+        `[subscriptionExpiry] Reverted ${ids.length} expired standard partner(s) to basic; locked ${tempLocked.modifiedCount} temporary account(s)`
       );
     } catch (err) {
       console.error("[subscriptionExpiry] Job error:", err.message);

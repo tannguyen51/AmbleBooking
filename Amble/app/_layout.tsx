@@ -69,6 +69,7 @@ function RootLayout() {
       pathname.startsWith("/partner-reset") ||
       pathname.startsWith("/partner-payment") ||
       pathname.startsWith("/partner-pending") ||
+      pathname.startsWith("/partner-renew") ||
       pathname.startsWith("/(partner-auth)");
     const inPartnerGroup =
       pathname.includes("/dashboard") ||
@@ -86,7 +87,8 @@ function RootLayout() {
       pathname.includes("/partner-forgot") ||
       pathname.includes("/partner-reset") ||
       pathname.includes("/partner-payment") ||
-      pathname.includes("/partner-pending");
+      pathname.includes("/partner-pending") ||
+      pathname.includes("/partner-renew");
     const inAdminGroup = pathname.startsWith("/admin");
     const onAdminLogin = pathname.startsWith("/admin/login");
     const onWelcome = pathname === "/welcome";
@@ -130,6 +132,19 @@ function RootLayout() {
         const isReset = pathname.includes("/partner-reset");
         if (!isPending && !isPayment && !isLogin && !isForgot && !isReset) {
           router.replace("/(partner-auth)/partner-pending");
+        }
+        return;
+      }
+
+      // Tài khoản hết hạn → chỉ cho phép ở màn gia hạn, payment, login, forgot
+      if (subStatus === "expired") {
+        const isRenew = pathname.includes("/partner-renew");
+        const isPayment = pathname.includes("/partner-payment");
+        const isLogin = pathname.includes("/partner-login");
+        const isForgot = pathname.includes("/partner-forgot");
+        const isReset = pathname.includes("/partner-reset");
+        if (!isRenew && !isPayment && !isLogin && !isForgot && !isReset) {
+          router.replace("/(partner-auth)/partner-renew" as any);
         }
         return;
       }

@@ -35,6 +35,18 @@ const protectPartner = async (req, res, next) => {
     }
 
     if (!partner.isActive) {
+      // Tài khoản hết hạn (chưa gia hạn): chỉ cho phép các endpoint thanh toán/gia hạn
+      if (partner.subscriptionStatus === "expired") {
+        if (req.originalUrl && req.originalUrl.includes("/payment/partner/")) {
+          req.partner = partner;
+          return next();
+        }
+        return res.status(423).json({
+          success: false,
+          code: "ACCOUNT_EXPIRED",
+          message: "Tài khoản đã hết hạn, vui lòng gia hạn thêm.",
+        });
+      }
       return res
         .status(401)
         .json({ success: false, message: "Tài khoản đã bị vô hiệu hóa." });

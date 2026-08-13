@@ -136,7 +136,7 @@ export default function AdminBookingsScreen() {
               <TouchableOpacity style={s.restCard} onPress={() => selectRestaurant(item._id, item.name)} activeOpacity={0.7}>
                 <View style={s.restImgWrap}>
                   {item.images?.[0] ? <Image source={{ uri: item.images[0] }} style={s.restImg} /> : <Ionicons name="restaurant-outline" size={22} color="#FF8F1F" />}
-                  {item.isActive && item.subscriptionPackage === "premium" && (
+                  {item.isActive && item.subscriptionPackage === "standard" && (
                     <View style={s.crownBadge}><Ionicons name="diamond" size={10} color="#fff" /></View>
                   )}
                 </View>

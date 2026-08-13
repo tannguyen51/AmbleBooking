@@ -202,10 +202,10 @@ export default function AdminRestaurantsScreen() {
               {item.images?.[0] ? (
                 <View style={styles.coverWrap}>
                   <Image source={{ uri: item.images[0] }} style={styles.coverImage} />
-                  {item.isActive && item.subscriptionPackage === "premium" && (
+                  {item.isActive && item.subscriptionPackage === "standard" && (
                     <View style={styles.crownBadge}>
                       <Ionicons name="diamond" size={14} color="#fff" />
-                      <Text style={styles.crownBadgeText}>Premium</Text>
+                      <Text style={styles.crownBadgeText}>Standard</Text>
                     </View>
                   )}
                 </View>
@@ -223,8 +223,8 @@ export default function AdminRestaurantsScreen() {
                 {item.isFeatured ? <Badge label={t("admin.restaurants.featured")} tone="info" /> : null}
                 {item.isActive && item.subscriptionPackage && item.subscriptionPackage !== "basic" ? (
                   <Badge
-                    label={item.subscriptionPackage === "premium" ? "Premium" : "Pro"}
-                    tone={item.subscriptionPackage === "premium" ? "info" : "default"}
+                    label={item.subscriptionPackage === "standard" ? "Standard" : "Basic"}
+                    tone={item.subscriptionPackage === "standard" ? "info" : "default"}
                   />
                 ) : null}
               </View>

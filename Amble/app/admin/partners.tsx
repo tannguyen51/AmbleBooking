@@ -202,7 +202,7 @@ export default function AdminPartnersScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={s.list}
           renderItem={({ item }) => {
-            const countdown = item.subscriptionPackage === "premium" ? getExpiryCountdown(item.subscriptionExpiry) : null;
+            const countdown = item.subscriptionPackage === "standard" ? getExpiryCountdown(item.subscriptionExpiry) : null;
             return (
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -218,7 +218,7 @@ export default function AdminPartnersScreen() {
                         <Text style={s.restImgLetter}>{(item.restaurantName || "N")[0]}</Text>
                       </View>
                     )}
-                    {item.subscriptionPackage === "premium" && (
+                    {item.subscriptionPackage === "standard" && (
                       <View style={s.crownBadgeSmall}>
                         <Ionicons name="diamond" size={10} color="#fff" />
                       </View>

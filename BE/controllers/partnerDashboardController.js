@@ -28,11 +28,11 @@ async function geocodeAddress(address, city, restaurantId) {
   }
 }
 const SUBSCRIPTION_PLANS = {
-  pro: {
+  basic: {
     label: "Gói cơ bản",
     monthlyFee: 0,
   },
-  premium: {
+  standard: {
     label: "Gói thông dụng",
     monthlyFee: 699000,
   },
@@ -929,7 +929,7 @@ exports.upgradeSubscription = async (req, res) => {
     return res.json({
       success: true,
       message:
-        requestedPackage === "premium"
+        requestedPackage === "standard"
           ? "Thanh toán thành công. Nhà hàng đã được nâng cấp lên gói thông dụng."
           : "Đã cập nhật gói cơ bản.",
       payment: {

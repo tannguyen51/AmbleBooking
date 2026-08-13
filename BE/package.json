@@ -1,7 +1,7 @@
 {
   "name": "be",
   "version": "1.0.0",
-  "description": "Amble App Backend API",
+  "description": "MunchMap App Backend API",
   "main": "app.js",
   "scripts": {
     "start": "node ./bin/www",

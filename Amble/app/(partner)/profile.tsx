@@ -47,7 +47,7 @@ const CUISINE_OPTIONS = [
 ];
 
 
-type SubscriptionPlan = "pro" | "premium";
+type SubscriptionPlan = "basic" | "standard";
 
 const SUBSCRIPTION_PLANS: Array<{
   key: SubscriptionPlan;
@@ -55,20 +55,20 @@ const SUBSCRIPTION_PLANS: Array<{
   subtitle: string;
   monthlyFee: string;
   setupFee: string;
-  tone: "base" | "premium";
+  tone: "base" | "standard";
 }> = [
-  { key: "pro", title: "Gói cơ bản (Pro)", subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn", monthlyFee: "Miễn phí tháng", setupFee: "Phí khởi tạo 799k/tháng", tone: "base" },
-  { key: "premium", title: "Gói thông dụng (Premium)", subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ", monthlyFee: "699k/tháng", setupFee: "Phí khởi tạo 599k/tháng", tone: "premium" },
+  { key: "basic", title: "Gói cơ bản (Basic)", subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn", monthlyFee: "Miễn phí tháng", setupFee: "Phí khởi tạo 799k/tháng", tone: "base" },
+  { key: "standard", title: "Gói thông dụng (Standard)", subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ", monthlyFee: "699k/tháng", setupFee: "Khởi tạo free", tone: "standard" },
 ];
 
 const PLAN_BENEFITS = [
-  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
-  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
-  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", premium: "Có" },
-  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
-  { feature: "Hiển thị trong danh sách nhà hàng trên Amble", core: "Có", premium: "Có" },
-  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
-  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", premium: "Có" },
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", standard: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", standard: "Có" },
+  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", standard: "Có" },
+  { feature: "Dashboard vận hành", core: "Cơ bản", standard: "Nâng cao" },
+  { feature: "Hiển thị trong danh sách nhà hàng trên MunchMap", core: "Có", standard: "Có" },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", standard: "Có" },
+  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", standard: "Có" },
 ];
 
 const FALLBACK_COVER =
@@ -114,9 +114,9 @@ export default function PartnerProfileScreen() {
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [pwVisible, setPwVisible] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("basic");
   const [isUpgrading, setIsUpgrading] = useState(false);
-  const currentPlan: SubscriptionPlan = partner?.subscriptionPackage === "premium" ? "premium" : "pro";
+  const currentPlan: SubscriptionPlan = partner?.subscriptionPackage === "standard" ? "standard" : "basic";
 
   const getExpiryText = (expiry: string | null | undefined): string | null => {
     if (!expiry) return null;
@@ -326,21 +326,14 @@ export default function PartnerProfileScreen() {
   };
 
   const openSubscription = () => {
-    setSelectedPlan(partner?.subscriptionPackage === "premium" ? "premium" : "pro");
+    setSelectedPlan(partner?.subscriptionPackage === "standard" ? "standard" : "basic");
     setShowSubscriptionModal(true);
   };
 
   const handleUpgrade = async () => {
     if (!partner?._id) return;
-
-    if (selectedPlan === currentPlan) {
+    if (selectedPlan === currentPlan && currentPlan === "basic") {
       setShowSubscriptionModal(false);
-      return;
-    }
-
-    if (!(currentPlan === "pro" && selectedPlan === "premium")) {
-      setShowSubscriptionModal(false);
-      Alert.alert("Lưu ý", "Vui lòng liên hệ bộ phận hỗ trợ để hạ gói đăng ký.");
       return;
     }
 
@@ -445,17 +438,17 @@ export default function PartnerProfileScreen() {
         <View style={[styles.card, { paddingVertical: 10, backgroundColor: "#F5F3FF" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: currentPlan === "premium" ? "#F3E8FF" : "#FFF3ED", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name={currentPlan === "premium" ? "sparkles-outline" : "diamond-outline"} size={18} color={currentPlan === "premium" ? "#7C3AED" : "#FF8F1F"} />
+              <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: currentPlan === "standard" ? "#F3E8FF" : "#FFF3ED", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name={currentPlan === "standard" ? "sparkles-outline" : "diamond-outline"} size={18} color={currentPlan === "standard" ? "#7C3AED" : "#FF8F1F"} />
               </View>
               <View>
                 <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887" }}>Gói đang sử dụng</Text>
                 <Text style={{ fontSize: 15, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020", marginTop: 2 }}>
-                  {currentPlan === "premium" ? "Gói Premium" : "Gói Pro"}
+                  {currentPlan === "standard" ? "Gói Standard" : "Gói Basic"}
                 </Text>
               </View>
             </View>
-            {currentPlan === "premium" && getExpiryText(partner?.subscriptionExpiry) ? (
+            {currentPlan === "standard" && getExpiryText(partner?.subscriptionExpiry) ? (
               <View style={{ backgroundColor: "#FFF3ED", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
                 <Text style={{ fontSize: 11, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F" }}>{getExpiryText(partner?.subscriptionExpiry)}</Text>
               </View>
@@ -466,7 +459,7 @@ export default function PartnerProfileScreen() {
             )}
           </View>
           <Text style={{ fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887", marginTop: 6 }}>
-            {currentPlan === "premium" ? "Ưu tiên hiển thị, đề xuất và nổi bật trên trang chủ" : "Quản lý đặt bàn cơ bản, miễn phí tháng đầu"}
+            {currentPlan === "standard" ? "Ưu tiên hiển thị, đề xuất và nổi bật trên trang chủ" : "Quản lý đặt bàn cơ bản, miễn phí tháng đầu"}
           </Text>
         </View>
 
@@ -654,24 +647,26 @@ export default function PartnerProfileScreen() {
               <View style={{ gap: 10 }}>
                 {SUBSCRIPTION_PLANS.map((plan) => {
                   const active = selectedPlan === plan.key;
-                  const isCurrent = (partner?.subscriptionPackage || "pro") === plan.key;
+                  const isCurrent = (partner?.subscriptionPackage || "basic") === plan.key;
+                  // Card Basic đang dùng: không có hành động (đã ở gói thấp nhất). Card Standard đang dùng vẫn chọn được để gia hạn.
+                  const isLockedCard = isCurrent && plan.key === "basic";
                   return (
-                    <TouchableOpacity key={plan.key} activeOpacity={isCurrent ? 1 : 0.9} disabled={isCurrent}
+                    <TouchableOpacity key={plan.key} activeOpacity={isLockedCard ? 1 : 0.9} disabled={isLockedCard}
                       style={{
                         borderWidth: 2,
-                        borderColor: active ? (plan.tone === "premium" ? "#7C3AED" : "#FF8F1F") : "#E8E8E8",
+                        borderColor: active ? (plan.tone === "standard" ? "#7C3AED" : "#FF8F1F") : "#E8E8E8",
                         borderRadius: 15, padding: 16,
-                        backgroundColor: active ? (plan.tone === "premium" ? "#F3E8FF" : "#FFF7ED") : "#FFFFFF",
-                        opacity: isCurrent ? 0.75 : 1
+                        backgroundColor: active ? (plan.tone === "standard" ? "#F3E8FF" : "#FFF7ED") : "#FFFFFF",
+                        opacity: isLockedCard ? 0.75 : 1
                       }}
-                      onPress={() => !isCurrent && setSelectedPlan(plan.key)}
+                      onPress={() => !isLockedCard && setSelectedPlan(plan.key)}
                     >
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>{plan.title}</Text>
                           <Text style={{ fontSize: 12, color: "#898887", marginTop: 4 }}>{plan.subtitle}</Text>
                         </View>
-                        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: active ? (plan.tone === "premium" ? "#7C3AED" : "#FF8F1F") : "#D1D5DB", alignItems: "center", justifyContent: "center" }}>
+                        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: active ? (plan.tone === "standard" ? "#7C3AED" : "#FF8F1F") : "#D1D5DB", alignItems: "center", justifyContent: "center" }}>
                           {active && <Ionicons name="checkmark" size={14} color="#FF8F1F" />}
                         </View>
                       </View>
@@ -690,23 +685,31 @@ export default function PartnerProfileScreen() {
                 <Text style={{ fontSize: 16, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020", marginBottom: 12 }}>So sánh gói</Text>
                 <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F3F4F6", paddingBottom: 8, marginBottom: 8 }}>
                   <Text style={{ flex: 1, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#202020" }}>Tính năng</Text>
-                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#898887", textAlign: "center" }}>Pro</Text>
-                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>Premium</Text>
+                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#898887", textAlign: "center" }}>Basic</Text>
+                  <Text style={{ width: 70, fontSize: 13, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>Standard</Text>
                 </View>
                 {PLAN_BENEFITS.map((b, i) => (
                   <View key={i} style={{ flexDirection: "row", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#F9FAFB" }}>
                     <Text style={{ flex: 1, fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#202020" }}>{b.feature}</Text>
                     <Text style={{ width: 70, fontSize: 12, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#898887", textAlign: "center" }}>{b.core}</Text>
-                    <Text style={{ width: 70, fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>{b.premium}</Text>
+                    <Text style={{ width: 70, fontSize: 12, fontFamily: "Montserrat_700Bold", fontWeight: "700", color: "#FF8F1F", textAlign: "center" }}>{b.standard}</Text>
                   </View>
                 ))}
               </View>
-              
-              <View style={{ marginTop: 16 }}>
 
-                <TouchableOpacity style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center", opacity: selectedPlan === currentPlan ? 0.5 : 1 }} onPress={handleUpgrade} disabled={isUpgrading || selectedPlan === currentPlan}>
-                  {isUpgrading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" }}>{currentPlan === "premium" && selectedPlan === "pro" ? "Liên hệ hỗ trợ" : "Nâng cấp ngay"}</Text>}
-                </TouchableOpacity>
+              <View style={{ marginTop: 16 }}>
+                {(() => {
+                  const isDisabled = selectedPlan === currentPlan && currentPlan === "basic";
+                  const label =
+                    selectedPlan === "standard"
+                      ? (currentPlan === "standard" ? "Gia hạn (699k)" : "Nâng cấp lên Standard (699k)")
+                      : "Nâng cấp lên Basic (799k)";
+                  return (
+                    <TouchableOpacity style={{ backgroundColor: "#FF8F1F", borderRadius: 12, height: 48, alignItems: "center", justifyContent: "center", opacity: isDisabled ? 0.5 : 1 }} onPress={handleUpgrade} disabled={isUpgrading || isDisabled}>
+                      {isUpgrading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontFamily: "Montserrat_500Medium", fontWeight: "500", color: "#FFFFFF" }}>{label}</Text>}
+                    </TouchableOpacity>
+                  );
+                })()}
               </View>
             </ScrollView>
           </View>

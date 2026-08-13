@@ -65,7 +65,7 @@ const partnersData = [
       restaurantAddress: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1',
       restaurantCity: 'Hồ Chí Minh',
       cuisine: 'Âu – Việt Fusion',
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -93,7 +93,7 @@ const partnersData = [
       rating: 4.8,
       reviewCount: 328,
       isFeatured: true,
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       lat: 10.7769,
       lng: 106.7009,
       facebook: 'facebook.com/theRooftopSaigon',
@@ -111,7 +111,7 @@ const partnersData = [
       restaurantAddress: '45 Nam Kỳ Khởi Nghĩa, Quận 3',
       restaurantCity: 'Hồ Chí Minh',
       cuisine: 'Nhật Bản',
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -139,7 +139,7 @@ const partnersData = [
       rating: 4.7,
       reviewCount: 215,
       isFeatured: true,
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       lat: 10.7831,
       lng: 106.6968,
       instagram: 'instagram.com/sakuragarden.vn',
@@ -199,7 +199,7 @@ const partnersData = [
       restaurantAddress: '78 Phan Xích Long, Bình Thạnh',
       restaurantCity: 'Hồ Chí Minh',
       cuisine: 'Bistro – Pháp',
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -227,7 +227,7 @@ const partnersData = [
       rating: 4.6,
       reviewCount: 189,
       isFeatured: true,
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       lat: 10.8031,
       lng: 106.7139,
       instagram: 'instagram.com/bistrosaigon',
@@ -244,7 +244,7 @@ const partnersData = [
       restaurantAddress: '15 Nguyễn Thị Thập, Quận 7',
       restaurantCity: 'Hồ Chí Minh',
       cuisine: 'Nướng Hàn Quốc',
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -272,7 +272,7 @@ const partnersData = [
       rating: 4.4,
       reviewCount: 302,
       isFeatured: true,
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       lat: 10.7301,
       lng: 106.7181,
       facebook: 'facebook.com/kbbqkingdom',
@@ -289,7 +289,7 @@ const partnersData = [
       restaurantAddress: '200 Trường Sa, Ngũ Hành Sơn',
       restaurantCity: 'Đà Nẵng',
       cuisine: 'Hải Sản – Á Đông',
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -317,7 +317,7 @@ const partnersData = [
       rating: 4.9,
       reviewCount: 156,
       isFeatured: true,
-      subscriptionPackage: 'premium',
+      subscriptionPackage: 'standard',
       lat: 16.0397,
       lng: 108.2672,
       facebook: 'facebook.com/gardenterracedanang',
@@ -334,7 +334,7 @@ const partnersData = [
       restaurantAddress: '90 Lý Tự Trọng, Quận 1',
       restaurantCity: 'Hồ Chí Minh',
       cuisine: 'Nướng – Lẩu Việt',
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       subscriptionStatus: 'active',
       role: 'owner',
     },
@@ -362,7 +362,7 @@ const partnersData = [
       rating: 4.3,
       reviewCount: 412,
       isFeatured: false,
-      subscriptionPackage: 'pro',
+      subscriptionPackage: 'basic',
       lat: 10.7743,
       lng: 106.7014,
       facebook: 'facebook.com/beplauhong',
@@ -466,13 +466,13 @@ async function seedDatabase() {
     console.log('   admin@munchmap.com         / admin123456');
     console.log('');
     console.log('🏪 Partner Accounts:');
-    console.log('   partner@rooftop.vn      / demo123      (Premium)');
-    console.log('   owner@sakuragarden.vn   / sakura123    (Pro)');
+    console.log('   partner@rooftop.vn      / demo123      (Standard)');
+    console.log('   owner@sakuragarden.vn   / sakura123    (Basic)');
     console.log('   owner@phobohol.vn       / phobo123     (Basic)');
-    console.log('   owner@bistrosaigon.vn   / bistro123    (Pro)');
-    console.log('   owner@kbbqkingdom.vn    / kbbq123      (Premium)');
-    console.log('   owner@gardenterrace.vn  / garden123    (Premium)');
-    console.log('   owner@beplauhong.vn     / nuong123     (Pro)');
+    console.log('   owner@bistrosaigon.vn   / bistro123    (Basic)');
+    console.log('   owner@kbbqkingdom.vn    / kbbq123      (Standard)');
+    console.log('   owner@gardenterrace.vn  / garden123    (Standard)');
+    console.log('   owner@beplauhong.vn     / nuong123     (Basic)');
     console.log('   owner@cafesuaviet.vn    / cafe123      (Basic)');
     console.log('══════════════════════════════════════════════════\n');
 

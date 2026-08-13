@@ -34,7 +34,7 @@ const restaurantSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     subscriptionPackage: {
       type: String,
-      enum: ["basic", "pro", "premium"],
+      enum: ["basic", "standard"],
       default: "basic",
     },
     lat: { type: Number, default: 0 },

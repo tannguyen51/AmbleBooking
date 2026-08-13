@@ -51,7 +51,7 @@ const CUISINE_OPTIONS = [
 const FALLBACK_COVER =
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800";
 
-type SubscriptionPlan = "pro" | "premium";
+type SubscriptionPlan = "basic" | "standard";
 
 const SUBSCRIPTION_PLANS: Array<{
   key: SubscriptionPlan;
@@ -59,34 +59,34 @@ const SUBSCRIPTION_PLANS: Array<{
   subtitle: string;
   monthlyFee: string;
   setupFee: string;
-  tone: "base" | "premium";
+  tone: "base" | "standard";
 }> = [
   {
-    key: "pro",
-    title: "Gói cơ bản (Pro)",
+    key: "basic",
+    title: "Gói cơ bản (Basic)",
     subtitle: "Dành cho nhà hàng mới bắt đầu nhận đặt bàn",
     monthlyFee: "Miễn phí tháng",
     setupFee: "Phí khởi tạo 799k/tháng",
     tone: "base",
   },
   {
-    key: "premium",
-    title: "Gói thông dụng (Premium)",
+    key: "standard",
+    title: "Gói thông dụng (Standard)",
     subtitle: "Tăng độ phủ và được ưu tiên hiển thị trên trang chủ",
     monthlyFee: "699k/tháng",
-    setupFee: "Phí khởi tạo 599k/tháng",
-    tone: "premium",
+    setupFee: "Khởi tạo free",
+    tone: "standard",
   },
 ];
 
 const PLAN_BENEFITS = [
-  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
-  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
-  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", premium: "Có" },
-  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
-  { feature: "Hiển thị trong danh sách nhà hàng trên Amble", core: "Có", premium: "Có" },
-  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
-  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", premium: "Có" },
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", standard: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", standard: "Có" },
+  { feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống", core: "Có", standard: "Có" },
+  { feature: "Dashboard vận hành", core: "Cơ bản", standard: "Nâng cao" },
+  { feature: "Hiển thị trong danh sách nhà hàng trên MunchMap", core: "Có", standard: "Có" },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", standard: "Có" },
+  { feature: "Đưa nhà hàng lên mục xu hướng / nổi bật", core: "—", standard: "Có" },
 ];
 
 const PRIMARY = "#FF6B35";
@@ -105,7 +105,7 @@ export default function PartnerProfileScreen() {
 
   // Subscription upgrade
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("basic");
   const [isUpgradePaying, setIsUpgradePaying] = useState(false);
   const [upgradeCheckoutUrl, setUpgradeCheckoutUrl] = useState<string | null>(null);
   const [upgradePaymentStatus, setUpgradePaymentStatus] = useState<"idle" | "paying" | "checking" | "success" | "failed">("idle");
@@ -325,17 +325,17 @@ export default function PartnerProfileScreen() {
   };
 
   const currentPlan: SubscriptionPlan =
-    partner?.subscriptionPackage === "premium" ? "premium" : "pro";
+    partner?.subscriptionPackage === "standard" ? "standard" : "basic";
 
   const openSubscription = () => {
-    setSelectedPlan(currentPlan);
+    setSelectedPlan(currentPlan === "standard" ? "standard" : "basic");
     setUpgradePaymentStatus("idle");
     setUpgradeCheckoutUrl(null);
     setShowSubscriptionModal(true);
   };
 
   const handleUpgrade = async () => {
-    if (selectedPlan === currentPlan) return;
+    if (selectedPlan === currentPlan && currentPlan === "basic") return;
     if (!partner?._id) return;
 
     try {
@@ -349,7 +349,7 @@ export default function PartnerProfileScreen() {
       const res = await paymentAPI.createPartnerUpgradePayosPayment({
         partnerId: partner._id,
         fromPackage: currentPlan,
-        toPackage: "premium",
+        toPackage: selectedPlan,
         returnUrl,
         cancelUrl,
       });
@@ -372,15 +372,14 @@ export default function PartnerProfileScreen() {
     try {
       const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
       const subStatus = res.data?.subscriptionStatus;
-      const pkg = res.data?.subscriptionPackage;
-      // After upgrade, status stays "active" and package becomes "premium"
-      if (pkg === "premium" || res.data?.paymentType === "upgrade") {
+      // Gia hạn/nâng cấp thành công → status "active", package "standard" (hoặc paymentType permanent/basic)
+      if (res.data?.paymentType === "upgrade" || res.data?.paymentType === "permanent" || subStatus === "active") {
         setUpgradePaymentStatus("success");
         if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
         await usePartnerAuthStore.getState().loadPartner();
         setTimeout(() => {
           setShowSubscriptionModal(false);
-          Alert.alert("Thành công", "Nhà hàng đã được nâng cấp lên gói Premium trong 1 tháng.");
+          Alert.alert("Thành công", "Cập nhật gói thanh toán thành công.");
         }, 500);
       }
     } catch {}
@@ -502,8 +501,8 @@ export default function PartnerProfileScreen() {
               <Text style={styles.menuItemText}>{t("partner.profile.subscription")}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: currentPlan === "premium" ? "#B45309" : "#059669" }}>
-                {currentPlan === "premium" ? "Premium" : "Pro"}
+              <Text style={{ fontSize: 12, fontWeight: "700", color: currentPlan === "standard" ? "#B45309" : "#059669" }}>
+                {currentPlan === "standard" ? "Standard" : "Basic"}
               </Text>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </View>
@@ -1010,7 +1009,8 @@ export default function PartnerProfileScreen() {
                 {SUBSCRIPTION_PLANS.map((plan) => {
                   const active = selectedPlan === plan.key;
                   const isCurrent = currentPlan === plan.key;
-                  const premium = plan.tone === "premium";
+                  const premium = plan.tone === "standard";
+                  const isLocked = isCurrent && plan.key === "basic";
 
                   return (
                     <TouchableOpacity
@@ -1019,9 +1019,11 @@ export default function PartnerProfileScreen() {
                         subStyles.planCard,
                         active && subStyles.planCardActive,
                         premium && active && subStyles.planCardPremium,
+                        isLocked && { opacity: 0.7 },
                       ]}
-                      onPress={() => setSelectedPlan(plan.key)}
-                      activeOpacity={0.8}
+                      onPress={() => !isLocked && setSelectedPlan(plan.key)}
+                      activeOpacity={isLocked ? 1 : 0.8}
+                      disabled={isLocked}
                     >
                       <View style={subStyles.planHeader}>
                         <View style={{ flex: 1 }}>
@@ -1058,10 +1060,10 @@ export default function PartnerProfileScreen() {
                     Tính năng
                   </Text>
                   <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featureHeaderText]}>
-                    Pro
+                    Basic
                   </Text>
                   <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featureHeaderText]}>
-                    Premium
+                    Standard
                   </Text>
                 </View>
                 {PLAN_BENEFITS.map((benefit) => (
@@ -1073,7 +1075,7 @@ export default function PartnerProfileScreen() {
                       {benefit.core}
                     </Text>
                     <Text style={[subStyles.featureCell, subStyles.featurePlanCell, subStyles.featurePremiumValue]}>
-                      {benefit.premium}
+                      {benefit.standard}
                     </Text>
                   </View>
                 ))}
@@ -1097,10 +1099,10 @@ export default function PartnerProfileScreen() {
               <TouchableOpacity
                 style={[
                   subStyles.payBtn,
-                  (selectedPlan === currentPlan || isUpgradePaying) && subStyles.payBtnDisabled,
+                  ((selectedPlan === currentPlan && currentPlan === "basic") || isUpgradePaying) && subStyles.payBtnDisabled,
                 ]}
                 onPress={handleUpgrade}
-                disabled={isUpgradePaying || selectedPlan === currentPlan}
+                disabled={isUpgradePaying || (selectedPlan === currentPlan && currentPlan === "basic")}
               >
                 {isUpgradePaying ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -1108,9 +1110,11 @@ export default function PartnerProfileScreen() {
                   <>
                     <Ionicons name="card-outline" size={17} color="#fff" />
                     <Text style={subStyles.payBtnText}>
-                      {selectedPlan === currentPlan
+                      {selectedPlan === currentPlan && currentPlan === "basic"
                         ? "Đang sử dụng gói này"
-                        : "Thanh toán 699k/tháng"}
+                        : selectedPlan === "standard"
+                          ? (currentPlan === "standard" ? "Gia hạn 699k/tháng" : "Nâng cấp lên Standard 699k/tháng")
+                          : "Nâng cấp lên Basic (799k)"}
                     </Text>
                   </>
                 )}

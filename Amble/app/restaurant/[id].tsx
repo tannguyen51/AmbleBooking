@@ -64,7 +64,7 @@ interface Restaurant {
   openDays: string[];
   hasParking: boolean;
   isFeatured: boolean;
-  subscriptionPackage: "basic" | "pro" | "premium";
+  subscriptionPackage: "basic" | "standard";
   lat: number;
   lng: number;
   facebook: string;

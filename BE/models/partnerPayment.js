@@ -8,13 +8,13 @@ const partnerPaymentSchema = new mongoose.Schema({
   },
   subscriptionPackage: {
     type: String,
-    enum: ["pro", "premium"],
+    enum: ["basic", "standard"],
     required: true,
   },
   amount: { type: Number, required: true },
   paymentType: {
     type: String,
-    enum: ["initial", "upgrade"],
+    enum: ["initial", "upgrade", "permanent"],
     default: "initial",
   },
   status: {

@@ -69,7 +69,7 @@ export const partnerAuthAPI = {
     restaurantAddress?: string;
     restaurantCity?: string;
     cuisine?: string;
-    subscriptionPackage?: "basic" | "pro" | "premium";
+    subscriptionPackage?: "basic" | "standard";
   }) => api.post("/partner/auth/register", data),
   login: (data: { email: string; password: string }) =>
     api.post("/partner/auth/login", data),
@@ -216,7 +216,7 @@ export const paymentAPI = {
     api.post(`/payment/payos-cancel/${bookingId}`),
   createPartnerPayosPayment: (data: { partnerId: string; subscriptionPackage: string; returnUrl: string; cancelUrl: string }) =>
     api.post("/payment/partner/create-payos", data),
-  createPartnerUpgradePayosPayment: (data: { partnerId: string; fromPackage: string; toPackage: string; returnUrl: string; cancelUrl: string }) =>
+  createPartnerUpgradePayosPayment: (data: { partnerId: string; fromPackage: string; toPackage: "basic" | "standard"; returnUrl: string; cancelUrl: string }) =>
     api.post("/payment/partner/upgrade/create-payos", data),
   checkPartnerPaymentStatus: (partnerId: string) =>
     api.post("/payment/partner/check-status", { partnerId }),
@@ -256,7 +256,7 @@ export const partnerDashboardAPI = {
   getNotifications: () => api.get("/partner/notifications"),
   getRestaurantProfile: () => api.get("/partner/restaurant-profile"),
   upgradeSubscription: (data: {
-    package: "pro" | "premium";
+    package: "basic" | "standard";
     paymentMethod?: "in_app" | "bank_transfer" | "payos";
   }) => api.post("/partner/subscription/upgrade", data),
   updateRestaurantProfile: (data: {
@@ -465,7 +465,7 @@ export const adminAPI = {
   getPartnerById: (id: string) => api.get(`/admin/partners/${id}`),
   approvePartner: (
     id: string,
-    data?: { subscriptionPackage?: "basic" | "pro" | "premium"; subscriptionExpiry?: string; note?: string },
+    data?: { subscriptionPackage?: "basic" | "standard"; subscriptionExpiry?: string; note?: string },
   ) => api.put(`/admin/partners/${id}/approve`, data || {}),
   rejectPartner: (id: string, reason: string) =>
     api.put(`/admin/partners/${id}/reject`, { reason }),

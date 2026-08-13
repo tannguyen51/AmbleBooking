@@ -27,7 +27,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 const PARTNER_GRAD: [string, string] = ["#FF6B35", "#FFD700"];
 
 type Step = "account" | "restaurant" | "package";
-type PartnerPackage = "pro" | "premium";
+type PartnerPackage = "basic" | "standard";
 
 const PACKAGE_OPTIONS: Array<{
   key: PartnerPackage;
@@ -36,47 +36,47 @@ const PACKAGE_OPTIONS: Array<{
   setupFee: string;
   monthlyFee: string;
   description: string;
-  tone: "base" | "premium";
+  tone: "base" | "standard";
 }> = [
   {
-    key: "pro",
+    key: "basic",
     title: "Gói cơ bản",
-    label: "Pro",
-    setupFee: "799k/tháng",
+    label: "Basic",
+    setupFee: "799k",
     monthlyFee: "Miễn phí tháng",
-    description: "Phù hợp nhà hàng mới bắt đầu nhận đặt bàn trên Amble.",
+    description: "Phù hợp nhà hàng mới bắt đầu nhận đặt bàn trên MunchMap.",
     tone: "base",
   },
   {
-    key: "premium",
+    key: "standard",
     title: "Gói thông dụng",
-    label: "Premium",
-    setupFee: "599k/tháng",
+    label: "Standard",
+    setupFee: "Miễn phí",
     monthlyFee: "699k/tháng",
     description: "Được ưu tiên hiển thị trên trang chủ để tăng lượt tiếp cận.",
-    tone: "premium",
+    tone: "standard",
   },
 ];
 
 const PLAN_BENEFITS = [
-  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", premium: "Có" },
-  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", premium: "Có" },
+  { feature: "Quản lý đặt bàn trực tuyến", core: "Có", standard: "Có" },
+  { feature: "Quản lý thông tin khách đặt bàn", core: "Có", standard: "Có" },
   {
     feature: "Theo dõi lịch đặt bàn và tình trạng bàn trống",
     core: "Có",
-    premium: "Có",
+    standard: "Có",
   },
-  { feature: "Dashboard vận hành", core: "Cơ bản", premium: "Nâng cao" },
+  { feature: "Dashboard vận hành", core: "Cơ bản", standard: "Nâng cao" },
   {
-    feature: "Hiển thị trong danh sách nhà hàng trên Amble",
+    feature: "Hiển thị trong danh sách nhà hàng trên MunchMap",
     core: "Có",
-    premium: "Có",
+    standard: "Có",
   },
-  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", premium: "Có" },
+  { feature: "Ưu tiên hiển thị trong khung đề xuất", core: "—", standard: "Có" },
   {
     feature: "Đưa nhà hàng lên mục xu hướng / nổi bật",
     core: "—",
-    premium: "Có",
+    standard: "Có",
   },
   
 ];
@@ -97,7 +97,7 @@ export default function PartnerRegisterScreen() {
     restaurantAddress: "",
     restaurantCity: "",
     cuisine: "",
-    subscriptionPackage: "pro" as PartnerPackage,
+    subscriptionPackage: "basic" as PartnerPackage,
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -365,14 +365,14 @@ export default function PartnerRegisterScreen() {
               <View style={styles.packageNotice}>
                 <Ionicons name="gift-outline" size={18} color="#C2410C" />
                 <Text style={styles.packageNoticeText}>
-                  Tháng đầu free phí khởi tạo cho cả 2 gói. Tháng sau áp dụng phí khởi tạo bình thường.
+                  Gói Basic: miễn phí tháng đầu, phí khởi tạo 799k. Gói Standard: miễn phí khởi tạo, 699k/tháng.
                 </Text>
               </View>
 
               <View style={styles.packageList}>
                 {PACKAGE_OPTIONS.map((option) => {
                   const active = form.subscriptionPackage === option.key;
-                  const premium = option.tone === "premium";
+                  const premium = option.tone === "standard";
 
                   return (
                     <TouchableOpacity
@@ -447,10 +447,10 @@ export default function PartnerRegisterScreen() {
                     Tính năng
                   </Text>
                   <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
-                    Pro Plan
+                    Basic Plan
                   </Text>
                   <Text style={[styles.featureCell, styles.featurePlanCell, styles.featureHeaderText]}>
-                    Premium Plan
+                    Standard Plan
                   </Text>
                 </View>
                 {PLAN_BENEFITS.map((benefit) => (
@@ -462,7 +462,7 @@ export default function PartnerRegisterScreen() {
                       {benefit.core}
                     </Text>
                     <Text style={[styles.featureCell, styles.featurePlanCell, styles.featurePremiumValue]}>
-                      {benefit.premium}
+                      {benefit.standard}
                     </Text>
                   </View>
                 ))}

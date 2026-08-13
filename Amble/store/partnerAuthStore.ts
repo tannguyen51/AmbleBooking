@@ -11,7 +11,7 @@ export interface Restaurant {
   address: string;
   phone: string;
   description: string;
-  subscriptionPackage: 'basic' | 'pro' | 'premium';
+  subscriptionPackage: 'basic' | 'standard';
   rating: number;
   reviewCount: number;
   isFeatured: boolean;
@@ -26,9 +26,10 @@ export interface PartnerUser {
   phone: string;
   restaurantName: string;
   restaurantId: string | null;
-  subscriptionPackage: 'basic' | 'pro' | 'premium';
+  subscriptionPackage: 'basic' | 'standard';
   subscriptionStatus: 'pending' | 'paid_pending' | 'active' | 'expired' | 'cancelled';
   subscriptionExpiry: string | null;
+  isPermanent: boolean;
   role: 'owner' | 'manager' | 'staff';
 }
 
@@ -49,7 +50,7 @@ interface PartnerAuthState {
     restaurantAddress?: string;
     restaurantCity?: string;
     cuisine?: string;
-    subscriptionPackage?: 'basic' | 'pro' | 'premium';
+    subscriptionPackage?: 'basic' | 'standard';
   }) => Promise<void>;
   logout: () => Promise<void>;
   loadPartner: () => Promise<void>;

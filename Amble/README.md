@@ -1,4 +1,4 @@
-# Amble Mobile App
+# MunchMap Mobile App
 
 ## Environments
 

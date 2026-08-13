@@ -19,7 +19,7 @@ export interface FavoriteRestaurant {
   closeTime?: string;
   hasParking?: boolean;
   isFeatured?: boolean;
-  subscriptionPackage?: "basic" | "pro" | "premium";
+  subscriptionPackage?: "basic" | "standard";
 }
 
 interface FavoritesState {

@@ -29,12 +29,12 @@ function fuzzyRegex(str) {
   return new RegExp(pattern, 'i');
 }
 
-function prioritizePremium(restaurants) {
+function prioritizeStandard(restaurants) {
   return restaurants.sort((a, b) => {
-    const premiumRank =
-      Number(b.subscriptionPackage === 'premium') -
-      Number(a.subscriptionPackage === 'premium');
-    if (premiumRank) return premiumRank;
+    const standardRank =
+      Number(b.subscriptionPackage === 'standard') -
+      Number(a.subscriptionPackage === 'standard');
+    if (standardRank) return standardRank;
 
     const featuredRank = Number(b.isFeatured) - Number(a.isFeatured);
     if (featuredRank) return featuredRank;
@@ -104,7 +104,7 @@ exports.getFeatured = async (req, res) => {
     })
       .sort({ isFeatured: -1, rating: -1 })
       .lean();
-    return res.json({ success: true, restaurants: prioritizePremium(restaurants) });
+    return res.json({ success: true, restaurants: prioritizeStandard(restaurants) });
   } catch (err) {
     console.error('[getFeatured]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -155,7 +155,7 @@ exports.getAll = async (req, res) => {
       .sort({ isFeatured: -1, rating: -1 })
       .lean();
 
-    return res.json({ success: true, restaurants: prioritizePremium(restaurants) });
+    return res.json({ success: true, restaurants: prioritizeStandard(restaurants) });
   } catch (err) {
     console.error('[getAll]', err);
     return res.status(500).json({ success: false, message: 'Lỗi server' });

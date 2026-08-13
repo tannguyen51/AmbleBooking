@@ -164,9 +164,9 @@ export default function AdminPartnerDetailScreen() {
               value={`${partner.subscriptionStatus} • ${partner.isActive ? "Active" : "Locked"}`}
             />
             <InfoRow label="Gói" value={partner.subscriptionPackage} />
-            {partner.subscriptionPackage === "premium" && getExpiryCountdown(partner.subscriptionExpiry) ? (
+            {partner.subscriptionPackage === "standard" && getExpiryCountdown(partner.subscriptionExpiry) ? (
               <InfoRow
-                label="Hạn Premium"
+                label="Hạn Standard"
                 value={getExpiryCountdown(partner.subscriptionExpiry)!}
               />
             ) : null}

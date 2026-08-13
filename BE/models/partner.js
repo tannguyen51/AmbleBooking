@@ -57,7 +57,7 @@ const partnerSchema = new mongoose.Schema(
     // Subscription
     subscriptionPackage: {
       type: String,
-      enum: ['basic', 'pro', 'premium'],
+      enum: ['basic', 'standard'],
       default: 'basic',
     },
     subscriptionStatus: {
@@ -68,6 +68,10 @@ const partnerSchema = new mongoose.Schema(
     subscriptionExpiry: {
       type: Date,
       default: null,
+    },
+    isPermanent: {
+      type: Boolean,
+      default: false,
     },
     approvalNote: {
       type: String,
