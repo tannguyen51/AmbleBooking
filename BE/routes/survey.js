@@ -46,7 +46,6 @@ const TEMP_SURVEY_DATA = {
 router.get("/stats", async (req, res) => {
   try {
     return res.json({ success: true, data: TEMP_SURVEY_DATA });
-    // eslint-disable-next-line no-unreachable
     const total = await SurveyResponse.countDocuments();
     const sources = await SurveyResponse.aggregate([
       { $group: { _id: "$source", count: { $sum: 1 } } },

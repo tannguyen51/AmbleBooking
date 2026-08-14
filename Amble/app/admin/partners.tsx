@@ -255,7 +255,7 @@ export default function AdminPartnersScreen() {
                 </View>
 
                 <View style={s.actionsRow}>
-                  {item.subscriptionStatus === "pending" || item.subscriptionStatus === "paid_pending" ? (
+                  {item.subscriptionStatus === "paid_pending" ? (
                     <>
                       <TouchableOpacity style={[s.actionBtn, s.actionPrimary]} onPress={() => openApprove(item)}>
                         <Text style={s.actionTextPrimary}>{t("admin.partners.approve")}</Text>

@@ -36,20 +36,22 @@ export default function PartnerPaymentScreen() {
   };
 
   // Tín hiệu "thanh toán thật sự xong" lấy từ checkPartnerPaymentStatus
-  const isPaidSignal = (d: any): boolean =>
+  const isPaidSignal = (d: any, m?: string): boolean =>
     d?.payosStatus === "PAID" ||
     d?.paymentType === "upgrade" ||
     d?.paymentType === "permanent" ||
-    // Không còn payment pending (payosStatus undefined) và webhook đã set active → đã xử lý xong
-    (d?.payosStatus === undefined && (d?.subscriptionStatus === "active" || d?.subscriptionStatus === "paid_pending"));
+    // Chỉ dành cho luồng đăng ký mới (m !== "upgrade"): webhook đã set active
+    (m !== "upgrade" &&
+      d?.payosStatus === undefined &&
+      (d?.subscriptionStatus === "active" || d?.subscriptionStatus === "paid_pending"));
 
   const verifyPayos = useCallback(async (partnerId: string) => {
     const res = await paymentAPI.checkPartnerPaymentStatus(partnerId);
     const d = res.data || {};
-    if (isPaidSignal(d)) {
+    if (isPaidSignal(d, mode)) {
       onPaid(d.subscriptionStatus === "paid_pending" ? "paid_pending" : d.subscriptionStatus || "active");
     }
-  }, []);
+  }, [mode]);
 
   // Poll nhẹ mỗi 3 giây
   const checkStatus = useCallback(async () => {

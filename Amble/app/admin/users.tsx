@@ -58,7 +58,7 @@ export default function AdminUsersScreen() {
   const loadUsers = async (reset = false) => {
     setLoading(true);
     try {
-      const nextPage = reset ? 1 : page;
+      const nextPage = reset ? 1 : page + 1;
       const res = await adminAPI.getUsers({
         search,
         role: roleFilter === "all" ? undefined : roleFilter,

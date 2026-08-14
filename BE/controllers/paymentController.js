@@ -258,6 +258,10 @@ exports.handlePayosWebhook = async (req, res) => {
     }
 
     if (status === "PAID" || status === "COMPLETED") {
+      // Booking đã hủy → không hồi phục khi user thanh toán link cũ
+      if (booking.status === "cancelled" || booking.status === "declined") {
+        return res.json({ success: true });
+      }
       booking.payment = {
         ...(booking.payment || {}),
         payosStatus: status,
@@ -533,6 +537,10 @@ exports.partnerPayosWebhook = async (req, res) => {
     }
 
     if (webhookData.data?.status === "PAID" || webhookData.data?.status === "COMPLETED") {
+      // Idempotent: webhook PayOS có thể gửi lại PAID nhiều lần → không xử lý lại
+      if (payment.status === "paid") {
+        return res.json({ success: true });
+      }
       payment.status = "paid";
       payment.payosStatus = webhookData.data.status;
       payment.paidAt = new Date();
@@ -614,10 +622,21 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
 
     if (!payment) {
       const partner = await Partner.findById(partnerId);
+      // Kèm payosStatus của payment gần nhất (đã xử lý) để FE không báo nhầm "thành công"
+      const lastPayment = await PartnerPayment.findOne({ partnerId })
+        .sort({ createdAt: -1 })
+        .select("status payosStatus")
+        .lean();
+      const payosStatus = lastPayment
+        ? lastPayment.status === "cancelled"
+          ? "CANCELLED"
+          : lastPayment.payosStatus || lastPayment.status
+        : undefined;
       return res.json({
         success: true,
         subscriptionStatus: partner?.subscriptionStatus || "pending",
         subscriptionPackage: partner?.subscriptionPackage || "basic",
+        payosStatus,
       });
     }
 
@@ -643,6 +662,17 @@ exports.checkPartnerPaymentStatus = async (req, res) => {
     }
 
     if (payosResult?.status === "PAID") {
+      // Idempotent: nếu payment đã được webhook xử lý rồi → không cộng dồn lại 30 ngày
+      if (payment.status === "paid") {
+        const partner = await Partner.findById(partnerId);
+        return res.json({
+          success: true,
+          subscriptionStatus: partner?.subscriptionStatus || "active",
+          subscriptionPackage: partner?.subscriptionPackage || "basic",
+          paymentType: payment.paymentType,
+          payosStatus: "PAID",
+        });
+      }
       payment.status = "paid";
       payment.payosStatus = "PAID";
       payment.paidAt = new Date();

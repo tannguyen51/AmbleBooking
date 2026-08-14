@@ -342,7 +342,7 @@ export default function PartnerProfileScreen() {
       setIsUpgradePaying(true);
       setUpgradePaymentStatus("paying");
 
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app";
+      const baseUrl = (process.env.EXPO_PUBLIC_API_URL || "https://amblebooking-production.up.railway.app").replace(/\/api$/, "");
       const returnUrl = `${baseUrl}/api/payment/partner/payos-return`;
       const cancelUrl = `${baseUrl}/api/payment/partner/payos-cancel`;
 
@@ -371,9 +371,13 @@ export default function PartnerProfileScreen() {
     if (!partner?._id) return;
     try {
       const res = await paymentAPI.checkPartnerPaymentStatus(partner._id);
-      const subStatus = res.data?.subscriptionStatus;
-      // Gia hạn/nâng cấp thành công → status "active", package "standard" (hoặc paymentType permanent/basic)
-      if (res.data?.paymentType === "upgrade" || res.data?.paymentType === "permanent" || subStatus === "active") {
+      const d = res.data || {};
+      // Only thành công khi PayOS báo đã thanh toán (tránh báo nhầm khi account vốn đã active)
+      const paid =
+        d?.payosStatus === "PAID" ||
+        d?.paymentType === "upgrade" ||
+        d?.paymentType === "permanent";
+      if (paid) {
         setUpgradePaymentStatus("success");
         if (upgradeTimerRef.current) clearInterval(upgradeTimerRef.current);
         await usePartnerAuthStore.getState().loadPartner();

@@ -16,11 +16,9 @@ const getRestaurantFilter = (req) => {
 };
 
 // ════════════════════════════════════════════════════════════════════
-// TẠM THỜI: Dữ liệu demo cho ADMIN analytics — app hiện chỉ có 1 quán
-// (Mì Cay Seoul) nên các con số được chốt thống nhất:
+// DEMO (ĐANG BẬT): dữ liệu cố định cho ADMIN analytics theo số đã chốt:
 //   103 active users · 92 bookings · 50 survey · funnel 268/128/92/92/92 …
-// Khi dữ liệu thật đầy đủ → DỄ dùng số thật: đổi TEMP_DEMO_MODE=false rồi
-// xóa 2 function isTempDemo() + tempReply() và các dòng early-return bên dưới.
+// Khi muốn đếm thật theo DB → đổi TEMP_DEMO_MODE=false (số sẽ tự tăng theo hành vi user).
 // ════════════════════════════════════════════════════════════════════
 const TEMP_DEMO_MODE = true;
 

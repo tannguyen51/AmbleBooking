@@ -65,7 +65,7 @@ exports.getDashboard = async (req, res) => {
       stats: {
         totalUsers,
         // TẠM THỜI: hiển thị số "user đang hoạt động" = 103 theo yêu cầu.
-        // Bỏ dòng này khi DB đã được làm sạch (khi đó dùng giá trị thật `activeUsers` bên trên).
+        // Bỏ dòng này khi muốn đếm thật (`activeUsers` bên trên).
         activeUsers: 103,
         partnersPending,
         partnersActive,
@@ -335,6 +335,26 @@ exports.approvePartner = async (req, res) => {
   try {
     const { subscriptionPackage, subscriptionExpiry, note } = req.body;
 
+    if (subscriptionPackage && !["basic", "standard"].includes(subscriptionPackage)) {
+      return res.status(400).json({ success: false, message: "Gói không hợp lệ" });
+    }
+
+    const existing = await Partner.findById(req.params.id).lean();
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Partner not found" });
+    }
+
+    // Chặn admin "duyệt" partner CHƯA thanh toán → tránh kích hoạt miễn phí,
+    // bỏ qua quy tắc gói (chỉ active sau khi thanh toán/auto-activate).
+    if (existing.subscriptionStatus === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Đối tác chưa thanh toán gói — không thể duyệt kích hoạt.",
+      });
+    }
+
     const update = {
       subscriptionStatus: "active",
       isActive: true,
@@ -348,6 +368,7 @@ exports.approvePartner = async (req, res) => {
 
     if (subscriptionPackage) {
       update.subscriptionPackage = subscriptionPackage;
+      update.isPermanent = subscriptionPackage === "basic";
     }
     if (subscriptionExpiry) {
       update.subscriptionExpiry = new Date(subscriptionExpiry);
@@ -356,12 +377,6 @@ exports.approvePartner = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(req.params.id, update, {
       new: true,
     }).lean();
-
-    if (!partner) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Partner not found" });
-    }
 
     // Kích hoạt nhà hàng của partner
     if (partner.restaurantId) {
@@ -446,19 +461,28 @@ exports.updatePartnerActive = async (req, res) => {
         .json({ success: false, message: "isActive required" });
     }
 
-    const partner = await Partner.findByIdAndUpdate(
-      req.params.id,
-      { isActive: isActiveBool },
-      { new: true },
-    ).lean();
-
+    const partner = await Partner.findById(req.params.id).lean();
     if (!partner) {
       return res
         .status(404)
         .json({ success: false, message: "Partner not found" });
     }
 
-    return res.json({ success: true, partner });
+    // Không được "mở khóa" account hết hạn bằng tay — phải gia hạn (thanh toán) mới active lại
+    if (isActiveBool === true && partner.subscriptionStatus === "expired") {
+      return res.status(400).json({
+        success: false,
+        message: "Tài khoản hết hạn — yêu cầu đối tác gia hạn qua thanh toán.",
+      });
+    }
+
+    const updated = await Partner.findByIdAndUpdate(
+      req.params.id,
+      { isActive: isActiveBool },
+      { new: true },
+    ).lean();
+
+    return res.json({ success: true, partner: updated });
   } catch (err) {
     console.error("[admin/updatePartnerActive]", err);
     return res.status(500).json({ success: false, message: "Server error" });

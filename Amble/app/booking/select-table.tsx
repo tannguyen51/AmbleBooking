@@ -220,7 +220,9 @@ export default function SelectTableScreen() {
   const handleContinue = () => {
     const sel = tables.find((t) => t._id === selectedTableId);
     if (!sel) return;
-    const dateStr = date.toISOString().split("T")[0];
+    // Gửi ngày theo MÚI GIỜ ĐỊA PHƯƠNG (tránh lệch 1 ngày khi dùng toISOString/UTC)
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     router.push({
       pathname: "/booking/confirm" as any,
       params: {

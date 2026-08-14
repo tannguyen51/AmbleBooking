@@ -174,6 +174,9 @@ exports.createBooking = async (req, res) => {
     // Chuẩn hóa time về HH:MM để so sánh string an toàn
     const normalizedTime = time?.padStart(5, '0').slice(0, 5) || time;
 
+    let lockedTableId = null;
+    let bookingCreated = false;
+
     // Chỉ cho phép đặt bàn tương lai (bỏ luồng đặt bàn quá khứ)
     const bookingDateTime = new Date(date + 'T' + normalizedTime);
     if (Number.isNaN(bookingDateTime.getTime())) {
@@ -222,6 +225,31 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    // ── Kiểm tra thời gian hợp lệ (TRƯỚC khi lock bàn) ──
+    const hour = parseInt(normalizedTime.split(':')[0], 10);
+    const isLunchTime = hour >= 11 && hour < 15;
+    const isDinnerTime = hour >= 17 && hour < 23;
+    if (!isLunchTime && !isDinnerTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Giờ đặt không nằm trong khung hoạt động (11:00-14:59 hoặc 17:00-22:59)',
+      });
+    }
+
+    // ── Kiểm tra trùng lặp thời gian (TRƯỚC khi lock bàn) ──
+    const existingBooking = await Booking.findOne({
+      tableId,
+      'bookingDetails.date': date,
+      'bookingDetails.time': normalizedTime,
+      status: { $in: ['pending', 'confirmed', 'occupied'] }
+    });
+    if (existingBooking) {
+      return res.status(409).json({
+        success: false,
+        message: `Bàn này đã được đặt lúc ${normalizedTime}. Vui lòng chọn giờ khác.`
+      });
+    }
+
     // ── Atomic lock bàn (R1 fix) ──
     // Lock ngay lập tức cho mọi phương thức thanh toán
     const locked = await Table.findOneAndUpdate(
@@ -235,6 +263,7 @@ exports.createBooking = async (req, res) => {
         message: "Bàn này vừa được người khác đặt. Vui lòng chọn bàn khác.",
       });
     }
+    lockedTableId = tableId;
 
     const depositAmount = table.pricing.baseDeposit;
 
@@ -260,31 +289,6 @@ exports.createBooking = async (req, res) => {
     const dateStr = (date || new Date().toISOString().slice(0, 10)).replace(/-/g, "");
     const random = Math.floor(1000 + Math.random() * 9000);
     const bookingNumber = `BK-${dateStr}-${random}`;
-
-    // ── Kiểm tra thời gian hợp lệ ──
-    const hour = parseInt(normalizedTime.split(':')[0], 10);
-    const isLunchTime = hour >= 11 && hour < 15;
-    const isDinnerTime = hour >= 17 && hour < 23;
-    if (!isLunchTime && !isDinnerTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'Giờ đặt không nằm trong khung hoạt động (11:00-14:59 hoặc 17:00-22:59)',
-      });
-    }
-
-    // ── Kiểm tra trùng lặp thời gian ──
-    const existingBooking = await Booking.findOne({
-      tableId,
-      'bookingDetails.date': date,
-      'bookingDetails.time': normalizedTime,
-      status: { $in: ['pending', 'confirmed', 'occupied'] }
-    });
-    if (existingBooking) {
-      return res.status(409).json({
-        success: false,
-        message: `Bàn này đã được đặt lúc ${normalizedTime}. Vui lòng chọn giờ khác.`
-      });
-    }
 
     const booking = await Booking.create({
       bookingNumber,
@@ -313,6 +317,7 @@ exports.createBooking = async (req, res) => {
       status: "pending",
       source: paymentMethod || 'app',
     });
+    bookingCreated = true;
 
     // Increment voucher usage count
     if (voucherCode) {
@@ -384,6 +389,13 @@ exports.createBooking = async (req, res) => {
       message: "Yêu cầu đặt bàn đã được gửi cho nhà hàng",
     });
   } catch (err) {
+    // Giải phóng bàn nếu đã lock nhưng chưa tạo được booking (tránh lock mồ côi)
+    if (lockedTableId && !bookingCreated) {
+      await Table.findOneAndUpdate(
+        { _id: lockedTableId, status: 'reserved' },
+        { status: 'available', isAvailable: true, currentBookingId: null },
+      ).catch(() => {});
+    }
     console.error("[createBooking]", err);
     return res.status(500).json({ success: false, message: "Lỗi server" });
   }

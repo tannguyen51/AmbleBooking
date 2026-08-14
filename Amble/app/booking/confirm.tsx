@@ -134,7 +134,12 @@ export default function ConfirmBookingScreen() {
   };
   const formatDate = (d: string) => {
     try {
-      return new Date(d).toLocaleDateString("vi-VN", {
+      // d = "YYYY-MM-DD" theo giờ địa phương — parse thủ công để không lệch 1 ngày do UTC
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
+      const dt = m
+        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+        : new Date(d);
+      return dt.toLocaleDateString("vi-VN", {
         weekday: "long",
         year: "numeric",
         month: "long",

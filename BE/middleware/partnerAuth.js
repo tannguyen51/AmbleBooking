@@ -35,9 +35,13 @@ const protectPartner = async (req, res, next) => {
     }
 
     if (!partner.isActive) {
-      // Tài khoản hết hạn (chưa gia hạn): chỉ cho phép các endpoint thanh toán/gia hạn
+      // Tài khoản hết hạn (chưa gia hạn): cho phép endpoint thanh toán/gia hạn + getMe/login để vào màn gia hạn
       if (partner.subscriptionStatus === "expired") {
-        if (req.originalUrl && req.originalUrl.includes("/payment/partner/")) {
+        const allowedExpired =
+          req.originalUrl &&
+          (req.originalUrl.includes("/payment/partner/") ||
+            req.originalUrl.includes("/partner/auth/"));
+        if (allowedExpired) {
           req.partner = partner;
           return next();
         }
