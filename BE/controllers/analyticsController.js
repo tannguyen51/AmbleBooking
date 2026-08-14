@@ -15,6 +15,134 @@ const getRestaurantFilter = (req) => {
   return rid ? { restaurantId: rid } : {};
 };
 
+// ════════════════════════════════════════════════════════════════════
+// TẠM THỜI: Dữ liệu demo cho ADMIN analytics — app hiện chỉ có 1 quán
+// (Mì Cay Seoul) nên các con số được chốt thống nhất:
+//   103 active users · 92 bookings · 50 survey · funnel 268/128/92/92/92 …
+// Khi dữ liệu thật đầy đủ → DỄ dùng số thật: đổi TEMP_DEMO_MODE=false rồi
+// xóa 2 function isTempDemo() + tempReply() và các dòng early-return bên dưới.
+// ════════════════════════════════════════════════════════════════════
+const TEMP_DEMO_MODE = true;
+
+function isTempDemo(req) {
+  return TEMP_DEMO_MODE && !req.partner && !req.query.restaurantId;
+}
+function tempReply(res, data) {
+  return res.json({ success: true, data });
+}
+
+const TEMP_ANALYTICS = {
+  overview: {
+    totalBookings: 92,
+    todayBookings: 0,
+    totalRevenue: 0,
+    cancelledBookings: 0,
+    completedBookings: 81,
+    confirmedBookings: 92,
+    totalUsers: 103,
+    newUsers: 64,
+    peakHour: "19:00",
+    popularTableType: "Standard (78%)",
+    cancelRate: 0,
+    completionRate: 88,
+  },
+  users: {
+    totalUsers: 103,
+    newUsers: 64,
+    returningUsers: 39,
+    dailyActive: [
+      { date: "2026-08-07", count: 21 },
+      { date: "2026-08-08", count: 25 },
+      { date: "2026-08-09", count: 30 },
+      { date: "2026-08-10", count: 33 },
+      { date: "2026-08-11", count: 29 },
+      { date: "2026-08-12", count: 35 },
+      { date: "2026-08-13", count: 38 },
+    ],
+  },
+  funnel: {
+    funnel: {
+      restaurantViews: 268,
+      tableViews: 128,
+      bookingStarted: 92,
+      bookingCompleted: 92,
+      bookingConfirmed: 92,
+      bookingCompletedReal: 81,
+    },
+    funnelConversion: {
+      viewToTable: 48,
+      tableToStart: 72,
+      viewToStart: 34,
+      startToBook: 100,
+      bookToConfirm: 100,
+      startToConfirm: 100,
+      confirmToComplete: 88,
+    },
+  },
+  tables: {
+    vipTableBookings: 7,
+    viewTableBookings: 13,
+    standardTableBookings: 72,
+    totalBookings: 92,
+    tableTypeRatio: { vip: 8, view: 14, regular: 0, standard: 78 },
+    totalTableViewClicks: 128,
+  },
+  cancel: {
+    totalCancelled: 0,
+    totalNoShow: 0,
+    cancelRate: 0,
+    noShowRate: 0,
+    cancelReasons: [],
+  },
+  ai: {
+    totalChats: 51,
+    uniqueUsers: 38,
+    completedBookings: 16,
+    conversionRate: 31,
+    commonRequests: [
+      { text: "Quán gần đây", count: 12 },
+      { text: "Mì cay", count: 9 },
+      { text: "Korean food", count: 7 },
+      { text: "Quận 12", count: 6 },
+      { text: "Quán cho nhóm", count: 5 },
+      { text: "Quán đi date", count: 4 },
+      { text: "Còn bàn tối nay", count: 3 },
+    ],
+  },
+  engagement: {
+    totalFavorites: 27,
+    totalReviews: 18,
+    photoReviews: 6,
+    rewardPointsUsed: 0,
+    rewardPointsEarned: 0,
+    depositWarningViews: 0,
+    aiRecommendClicks: 29,
+    filterUsage: [],
+  },
+  peak: {
+    // Tổng heatmap = 92 bookings: 4+6+10+22+26+18+6
+    heatmap: [
+      { dayOfWeek: 0, hour: 11, bookings: 4 },
+      { dayOfWeek: 0, hour: 12, bookings: 6 },
+      { dayOfWeek: 0, hour: 17, bookings: 10 },
+      { dayOfWeek: 0, hour: 18, bookings: 22 },
+      { dayOfWeek: 0, hour: 19, bookings: 26 },
+      { dayOfWeek: 0, hour: 20, bookings: 18 },
+      { dayOfWeek: 0, hour: 21, bookings: 6 },
+    ],
+    peakHours: [
+      { dayOfWeek: 0, hour: 19, bookings: 26 },
+      { dayOfWeek: 0, hour: 18, bookings: 22 },
+      { dayOfWeek: 0, hour: 20, bookings: 18 },
+      { dayOfWeek: 0, hour: 17, bookings: 10 },
+      { dayOfWeek: 0, hour: 12, bookings: 6 },
+      { dayOfWeek: 0, hour: 21, bookings: 6 },
+      { dayOfWeek: 0, hour: 11, bookings: 4 },
+    ],
+    totalBookingsInRange: 92,
+  },
+};
+
 const getDateRange = (from, to) => {
   const end = to ? new Date(to) : new Date();
   const start = from
@@ -43,6 +171,7 @@ const buildEventFilter = (restaurantId, events, from, to) => {
 // ── GET /api/partner/analytics/overview?from=&to= ────────────
 exports.getOverview = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.overview);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -176,6 +305,7 @@ exports.getOverview = async (req, res) => {
 // ── GET /api/partner/analytics/users?from=&to= ───────────────
 exports.getUserActivity = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.users);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -306,6 +436,7 @@ exports.getSearchDiscovery = async (req, res) => {
 // ── GET /api/partner/analytics/funnel?from=&to= ──────────────
 exports.getBookingFunnel = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.funnel);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -392,6 +523,7 @@ exports.getBookingFunnel = async (req, res) => {
 // ── GET /api/partner/analytics/tables?from=&to= ──────────────
 exports.getTableSelection = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.tables);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -449,6 +581,7 @@ exports.getTableSelection = async (req, res) => {
 // ── GET /api/partner/analytics/cancellation?from=&to= ────────
 exports.getCancellationMetrics = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.cancel);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -504,6 +637,7 @@ exports.getCancellationMetrics = async (req, res) => {
 // ── GET /api/partner/analytics/peak-hours?from=&to= ──────────
 exports.getPeakHours = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.peak);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -566,6 +700,7 @@ exports.getPeakHours = async (req, res) => {
 // ── GET /api/partner/analytics/ai?from=&to= ──────────────────
 exports.getAIMetrics = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.ai);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {
@@ -649,6 +784,7 @@ exports.recordEvent = async (req, res) => {
 // ── GET /api/partner/analytics/engagement?from=&to= ──────
 exports.getEngagement = async (req, res) => {
   try {
+    if (isTempDemo(req)) return tempReply(res, TEMP_ANALYTICS.engagement);
     const restaurantId = getRestaurantId(req);
     const rFilter = getRestaurantFilter(req);
     if (!restaurantId && req.partner) {

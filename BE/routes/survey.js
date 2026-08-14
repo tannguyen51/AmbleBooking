@@ -30,8 +30,23 @@ router.post("/", async (req, res) => {
 });
 
 // ── GET /api/survey/stats ─────────────────────────
+// TẠM THỜI: trả dữ liệu survey demo đã chốt (50 responses). Bỏ block này khi muốn đếm thật.
+const TEMP_SURVEY_DATA = {
+  total: 50,
+  sources: [
+    { source: "tiktok", label: "TikTok", count: 24, pct: 48 },
+    { source: "google_chplay", label: "Google / CH Play", count: 12, pct: 24 },
+    { source: "facebook", label: "Facebook", count: 7, pct: 14 },
+    { source: "event", label: "Campaign / Event", count: 4, pct: 8 },
+    { source: "friends_family", label: "Friends / Family", count: 2, pct: 4 },
+    { source: "restaurant", label: "Restaurant introduction", count: 1, pct: 2 },
+  ],
+};
+
 router.get("/stats", async (req, res) => {
   try {
+    return res.json({ success: true, data: TEMP_SURVEY_DATA });
+    // eslint-disable-next-line no-unreachable
     const total = await SurveyResponse.countDocuments();
     const sources = await SurveyResponse.aggregate([
       { $group: { _id: "$source", count: { $sum: 1 } } },
