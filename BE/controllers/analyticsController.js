@@ -32,8 +32,10 @@ function tempReply(res, data) {
 const TEMP_ANALYTICS = {
   overview: {
     totalBookings: 92,
-    todayBookings: 0,
-    totalRevenue: 0,
+    todayBookings: 4,
+    // Tổng doanh thu demo — lấy theo số thật hiện tại (39 booking completed = 6.800.000đ).
+    // Có thể chỉnh con số này theo ý muốn.
+    totalRevenue: 6800000,
     cancelledBookings: 0,
     completedBookings: 81,
     confirmedBookings: 92,

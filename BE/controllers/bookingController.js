@@ -177,17 +177,12 @@ exports.createBooking = async (req, res) => {
     let lockedTableId = null;
     let bookingCreated = false;
 
-    // Chỉ cho phép đặt bàn tương lai (bỏ luồng đặt bàn quá khứ)
+    // Kiểm tra ngày giờ hợp lệ (cho phép đặt bàn trong quá khứ — ví dụ thao tác admin/bổ sung dữ liệu)
     const bookingDateTime = new Date(date + 'T' + normalizedTime);
     if (Number.isNaN(bookingDateTime.getTime())) {
       return res
         .status(400)
         .json({ success: false, message: "Thời gian đặt bàn không hợp lệ" });
-    }
-    if (bookingDateTime.getTime() < Date.now()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Không thể đặt bàn ở thời điểm trong quá khứ. Vui lòng chọn thời điểm tương lai." });
     }
 
     const restaurant = await Restaurant.findById(restaurantId);

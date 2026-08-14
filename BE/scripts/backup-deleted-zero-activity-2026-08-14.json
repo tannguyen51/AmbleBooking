@@ -1,0 +1,575 @@
+{
+  "deletedAt": "2026-08-14T04:35:35.775Z",
+  "candidates": [
+    {
+      "_id": "69c3feec540157945997edb7",
+      "fullName": "Nguyen Thi Lan",
+      "email": "lan.nguyen@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-03-25T15:27:40.731Z"
+    },
+    {
+      "_id": "69c3feed540157945997edba",
+      "fullName": "Tran Van Minh",
+      "email": "minh.tran@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-03-25T15:27:41.119Z"
+    },
+    {
+      "_id": "69c3feed540157945997edbc",
+      "fullName": "Pham Thi Hoa",
+      "email": "hoa.pham@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-03-25T15:27:41.483Z"
+    },
+    {
+      "_id": "69c4dfd171397c1d0ff41360",
+      "fullName": "Quang Minh",
+      "email": "minh@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-03-26T07:27:13.082Z"
+    },
+    {
+      "_id": "6a0c296a174eb1ba5e606f7e",
+      "fullName": "Minh Ng",
+      "email": "nguyenminhquang12.qni@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-05-19T09:12:10.668Z"
+    },
+    {
+      "_id": "6a0c6867430d226285e9c94d",
+      "fullName": "Minh Ng",
+      "email": "minhnqse181684@fpt.edu.vn",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-05-19T13:40:55.666Z"
+    },
+    {
+      "_id": "6a13db70fef24c3fbc8af4cf",
+      "fullName": "Vuong Lam",
+      "email": "xuantan83tcv@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-05-25T05:17:36.912Z"
+    },
+    {
+      "_id": "6a13dc47fef24c3fbc8af502",
+      "fullName": "Vuong Binh",
+      "email": "xuantan73tcv@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-05-25T05:21:11.562Z"
+    },
+    {
+      "_id": "6a2287bce4d59280b6b0e30c",
+      "fullName": "Out Linux",
+      "email": "linuxout4@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-06-05T08:24:28.114Z"
+    },
+    {
+      "_id": "6a23d7a85e6f3b65135893da",
+      "fullName": "Nguyễn Quang Minh (SE181684)",
+      "email": "se181684nguyenquangminh@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-06-06T08:17:44.419Z"
+    },
+    {
+      "_id": "6a258c38ee8382e6491cc584",
+      "fullName": "Vu Van Duc (K18 HCM)",
+      "email": "ducvvse181781@fpt.edu.vn",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-06-07T15:20:24.377Z"
+    },
+    {
+      "_id": "6a293101a0ca9c7a11ea506b",
+      "fullName": "nguyen nguyen",
+      "email": "nguyennguyen@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-06-10T09:40:17.285Z"
+    },
+    {
+      "_id": "6a466867347b7212b1c21e03",
+      "fullName": "Nguyen Xuan Tan",
+      "email": "xuantan@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-02T13:32:23.996Z"
+    },
+    {
+      "_id": "6a50dd1593fafbe5459e4a64",
+      "fullName": "Liên Liên",
+      "email": "nguyenlienaeri1712@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T11:52:53.746Z"
+    },
+    {
+      "_id": "6a50e12b93fafbe5459e4a98",
+      "fullName": "Dương Trung Hậu",
+      "email": "trunghau19032005@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T12:10:19.097Z"
+    },
+    {
+      "_id": "6a50e6ee93fafbe5459e4b7b",
+      "fullName": "Nguyễn Phạm Hoàng Phúc",
+      "email": "nguyenphamhoangphuc23032004@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T12:34:54.217Z"
+    },
+    {
+      "_id": "6a50f6aefcaa4ea86cf1cb17",
+      "fullName": "Võ công tài",
+      "email": "chutai0305@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T13:42:06.275Z"
+    },
+    {
+      "_id": "6a50fe52fcaa4ea86cf1cd71",
+      "fullName": "Trương Quí Anh",
+      "email": "truongqui830@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T14:14:42.816Z"
+    },
+    {
+      "_id": "6a5101f2fcaa4ea86cf1ce12",
+      "fullName": "Ngô Thị Phượng",
+      "email": "ngothiphuong054@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T14:30:10.567Z"
+    },
+    {
+      "_id": "6a5105d8fcaa4ea86cf1cf14",
+      "fullName": "Đỗ Thị Thu Hiền",
+      "email": "hiendttse184573@fpt.edu.vn",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T14:46:48.911Z"
+    },
+    {
+      "_id": "6a5107f8fcaa4ea86cf1cf52",
+      "fullName": "Hồ Bách Diệp",
+      "email": "bachdiep2712@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T14:55:52.933Z"
+    },
+    {
+      "_id": "6a511cde63bcb8efbf6dccbd",
+      "fullName": "Trần Thị May",
+      "email": "tranmay20101981@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T16:25:02.327Z"
+    },
+    {
+      "_id": "6a51225263bcb8efbf6dcd65",
+      "fullName": "Bùi Quốc Thái",
+      "email": "thaionbi84@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-10T16:48:18.945Z"
+    },
+    {
+      "_id": "6a51d41e7c4b344bab73907e",
+      "fullName": "Lê Thị Thúy Vân",
+      "email": "thuyvan170427@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T05:26:54.431Z"
+    },
+    {
+      "_id": "6a51d5237c4b344bab7390a6",
+      "fullName": "Bảo Trân",
+      "email": "baotran170829@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T05:31:15.005Z"
+    },
+    {
+      "_id": "6a51d5937c4b344bab7390bb",
+      "fullName": "Phạm Thanh Tuyền",
+      "email": "thtuyen107@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T05:33:07.475Z"
+    },
+    {
+      "_id": "6a51d6397c4b344bab7390cf",
+      "fullName": "Trương Thị Hoài Thư",
+      "email": "thnatruongthi8@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T05:35:53.738Z"
+    },
+    {
+      "_id": "6a51d6b77c4b344bab7390e3",
+      "fullName": "Đoàn Tuấn Kiệt",
+      "email": "doantuankietk07@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T05:37:59.427Z"
+    },
+    {
+      "_id": "6a5200337c4b344bab73956b",
+      "fullName": "Nguyễn Hoàng Thiên An",
+      "email": "annguyenn2406@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T08:34:59.129Z"
+    },
+    {
+      "_id": "6a5210b6443892087dfcc227",
+      "fullName": "Đặng Thanh Bình",
+      "email": "dangthanhbinh629928@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T09:45:26.895Z"
+    },
+    {
+      "_id": "6a5239fc443892087dfcc3b9",
+      "fullName": "khaituatcon1408",
+      "email": "dqk1408@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T12:41:32.534Z"
+    },
+    {
+      "_id": "6a527e90443892087dfcc867",
+      "fullName": "Nhật huy",
+      "email": "meobeha2005sl@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-11T17:34:08.312Z"
+    },
+    {
+      "_id": "6a53741d443892087dfccb97",
+      "fullName": "Trần Trúc Linh",
+      "email": "truclinh30806@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-12T11:01:49.805Z"
+    },
+    {
+      "_id": "6a546ac1443892087dfccc9b",
+      "fullName": "Trần Anh Kiệt",
+      "email": "trananhkiet400@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-13T04:34:09.048Z"
+    },
+    {
+      "_id": "6a5484fd443892087dfcccc1",
+      "fullName": "Nguyen Phuc Hung (K17 QN)",
+      "email": "hungnpqe170057@fpt.edu.vn",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-13T06:26:05.917Z"
+    },
+    {
+      "_id": "6a58acf6443892087dfcf1f7",
+      "fullName": "Quang Nhật",
+      "email": "nhat9983@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-16T10:05:42.162Z"
+    },
+    {
+      "_id": "6a58d4b8443892087dfcf221",
+      "fullName": "trần hữu phước",
+      "email": "phuoc73bp@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-16T12:55:20.424Z"
+    },
+    {
+      "_id": "6a624d5b1f69d6923c1e7e34",
+      "fullName": "Lý Hoàng Thành",
+      "email": "acb@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-23T17:20:27.125Z"
+    },
+    {
+      "_id": "6a62ce081f69d6923c1e7ec6",
+      "fullName": "Đức Vũ",
+      "email": "vuvanduc3012004@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T02:29:28.512Z"
+    },
+    {
+      "_id": "6a6325171f69d6923c1e7f0b",
+      "fullName": "Kiiro",
+      "email": "linguwu.2308@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T08:40:55.483Z"
+    },
+    {
+      "_id": "6a632b621f69d6923c1e7f22",
+      "fullName": "Lưu Trí Tâm",
+      "email": "thexanh062@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T09:07:46.326Z"
+    },
+    {
+      "_id": "6a63531a1f69d6923c1e7fb5",
+      "fullName": "Kukumi",
+      "email": "mk.trungtruc2004@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T11:57:14.836Z"
+    },
+    {
+      "_id": "6a637fa41f69d6923c1e804e",
+      "fullName": "Phạm Lâm Hoàng",
+      "email": "hoangmex2@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T15:07:16.817Z"
+    },
+    {
+      "_id": "6a6381621f69d6923c1e8066",
+      "fullName": "Tú Phùng",
+      "email": "phungtu087@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T15:14:42.960Z"
+    },
+    {
+      "_id": "6a6391c21f69d6923c1e8090",
+      "fullName": "JungKook",
+      "email": "namzihu@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-24T16:24:34.312Z"
+    },
+    {
+      "_id": "6a64ddc01f69d6923c1e8619",
+      "fullName": "Thành Trương",
+      "email": "svnthanh8@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-25T16:01:04.968Z"
+    },
+    {
+      "_id": "6a66145087ad3caa0a90bf22",
+      "fullName": "Hồng Phúc Lê",
+      "email": "hphuc123pq@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-26T14:06:08.649Z"
+    },
+    {
+      "_id": "6a68463b87ad3caa0a90c0f9",
+      "fullName": "nguyễn việt anh",
+      "email": "vietanh332@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-28T06:03:39.776Z"
+    },
+    {
+      "_id": "6a68b89487ad3caa0a90c189",
+      "fullName": "Duc Vu",
+      "email": "vuducmoi123@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-28T14:11:32.618Z"
+    },
+    {
+      "_id": "6a6aea3cc167132585433d37",
+      "fullName": "Phạm Tính",
+      "email": "tinhpham171099@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-07-30T06:07:56.017Z"
+    },
+    {
+      "_id": "6a7e20a52d566c1b51c788a7",
+      "fullName": "Владислав Карпенко",
+      "email": "karpenkot877@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T19:53:09.360Z"
+    },
+    {
+      "_id": "6a7e21de2d566c1b51c788c4",
+      "fullName": "Aleksandar",
+      "email": "aleksandar.surudzic.21@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T19:58:22.111Z"
+    },
+    {
+      "_id": "6a7e235d2d566c1b51c788dd",
+      "fullName": "Hashir Nagi",
+      "email": "hashirnagii@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T20:04:45.057Z"
+    },
+    {
+      "_id": "6a7e43932d566c1b51c7895a",
+      "fullName": "Gummy",
+      "email": "usagichiiki@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T22:22:11.034Z"
+    },
+    {
+      "_id": "6a7e44e02d566c1b51c78975",
+      "fullName": "Cnomlilelerrrü",
+      "email": "cnomlilelerrru98@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T22:27:44.594Z"
+    },
+    {
+      "_id": "6a7e514e2d566c1b51c78997",
+      "fullName": "Brayan Martinez",
+      "email": "brayananel35@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-13T23:20:46.065Z"
+    },
+    {
+      "_id": "6a7e6f522d566c1b51c78a17",
+      "fullName": "Bryan Ortiz",
+      "email": "bryangeovannyortiz@gmail.com",
+      "role": "customer",
+      "isActive": true,
+      "favoriteRoutes": [],
+      "favoriteRestaurants": [],
+      "createdAt": "2026-08-14T01:28:50.221Z"
+    }
+  ]
+}
